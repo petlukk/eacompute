@@ -165,11 +165,13 @@ Real workloads. Real data. Verified against established tools.
 | [Cornell Box ray tracer](demo/cornell_box/)    | Graphics             | Struct return, recursion, scalar math           | First non-SIMD demo: full ray tracer in 245 lines of Eä                    |
 | [Particle life](demo/particle_life/)           | Simulation           | N-body scalar, fused vs unfused                 | Matches hand-written C at clang-18 -O2. Interactive pygame UI              |
 
-Each demo compiles an Ea kernel to `.so`, calls it from Python via ctypes,
-and benchmarks against NumPy and OpenCV. Run `python run.py` in any demo directory.
+Each demo compiles an Eä kernel to `.so`, calls it from Python via `ea bind`
+bindings, and benchmarks against industry tools — FAISS, OpenCV, polars, pandas,
+NumPy. Run `python run.py` (or `python3 run.py`) in any demo directory.
 
-**Methodology:** all speedup numbers are warm-cache medians (50 runs after 5 warmup).
-Where cold-cache numbers differ materially they are noted.
+**Methodology:** speedup numbers are warm-cache medians. Run counts vary per demo
+(20–50 timed runs, 5–10 warmup). Where cold-cache numbers differ materially they
+are noted.
 
 ### Kernel fusion
 
