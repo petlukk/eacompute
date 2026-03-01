@@ -163,6 +163,7 @@ Real workloads. Real data. Verified against established tools.
 | [Cornell Box ray tracer](demo/cornell_box/)    | Graphics             | Struct return, recursion, scalar math           | First non-SIMD demo: full ray tracer in 245 lines of Eä                    |
 | [Particle life](demo/particle_life/)           | Simulation           | N-body scalar, fused vs unfused                 | Matches hand-written C at clang-18 -O2. Interactive pygame UI              |
 | [Eastat](demo/eastat/)                         | CSV analytics        | Structural scan, SIMD reduction, binary search  | **1.4–2.2x faster than polars**, 3–5x faster than pandas across 10 MB–544 MB. Stress-tested on adversarial CSVs, f32 precision validated, zero manual ctypes via `ea bind` |
+| [Eavec](demo/eavec/)                           | Vector search        | Dual-acc FMA, f32x8, next-vec prefetch          | **4–8x faster than FAISS** at dim=384, 28.5x vs NumPy on cosine (single-pass fusion). Validated against FAISS IndexFlatIP + NumPy across dims 384/768/1536 |
 
 Each demo compiles an Ea kernel to `.so`, calls it from Python via ctypes,
 and benchmarks against NumPy and OpenCV. Run `python run.py` in any demo directory.
