@@ -2,7 +2,7 @@
 
 CSV column statistics powered by [Eä](https://github.com/petlukk/eacompute) `ea bind`.
 
-Same SIMD kernels as [simdstat](https://github.com/petlukk/simdstat), rewritten with zero manual ctypes. Every kernel call goes through auto-generated Python bindings from `ea bind --python`.
+Zero manual ctypes. Every kernel call goes through auto-generated Python bindings from `ea bind --python`.
 
 ## Results
 
@@ -52,7 +52,7 @@ Both tools now compute identical statistics. Eastat uses SIMD binary search for 
 
 ## What `ea bind` eliminates
 
-| Before (simdstat) | After (eastat) | Lines saved |
+| Before (manual ctypes) | After (ea bind) | Lines saved |
 |---|---|---|
 | 86 lines ctypes boilerplate (CDLL, argtypes, restype) | Auto-generated `csv_parse.py`, `csv_stats.py` | 86 |
 | ~80 lines call-site `.ctypes.data_as()` / `ctypes.c_int32()` | One-line wrapper calls | ~80 |
