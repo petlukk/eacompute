@@ -1,6 +1,6 @@
 # Eastat
 
-CSV column statistics powered by `ea bind`.
+CSV column statistics powered by [Eä](https://github.com/petlukk/eacompute) `ea bind`.
 
 Same SIMD kernels as [simdstat](https://github.com/petlukk/simdstat), rewritten with zero manual ctypes. Every kernel call goes through auto-generated Python bindings from `ea bind --python`.
 
@@ -25,23 +25,22 @@ Same SIMD kernels as [simdstat](https://github.com/petlukk/simdstat), rewritten 
 
 ```
 eastat breakdown:
-  scan  (structural extraction):   2091.9 ms   <- Ea kernel
-  layout (row/delim index):          22.3 ms   <- Ea kernel
-  stats  (parse + reduce):           82.6 ms   <- Ea kernel
-  total:                           2199.0 ms
+  scan  (structural extraction):     82.1 ms   <- Ea kernel
+  layout (row/delim index):          29.1 ms   <- Ea kernel
+  stats  (parse + reduce + pct):    108.8 ms   <- Ea kernel
+  total:                            220.2 ms
 
 pandas breakdown:
-  read_csv (parse -> DataFrame):    897.7 ms
-  .describe() full:                 170.9 ms
-  total (full):                    1068.6 ms
-  total (no percentiles):          1040.9 ms
+  read_csv (parse -> DataFrame):    746.6 ms
+  .describe() full:                 119.9 ms
+  total:                            866.5 ms
 ```
 
 ### Speedup (honest accounting)
 
 | Comparison | Speedup |
 |------------|---------|
-| eastat vs pandas `.describe()` (equivalent work) | 0.5x |
+| eastat vs pandas `.describe()` (equivalent work) | 3.9x |
 
 Both tools now compute identical statistics. Eastat uses SIMD binary search for percentiles (no sorting required); pandas sorts each column.
 
