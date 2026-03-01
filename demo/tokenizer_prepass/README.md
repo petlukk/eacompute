@@ -95,6 +95,19 @@ For each 16-byte chunk, it:
 
 Zero intermediate arrays. One memory pass. But 2x classification compute.
 
+## Why compare against NumPy
+
+The comparison is against NumPy because it demonstrates the SIMD technique, not because anyone tokenizes with NumPy in production.
+
+The tool people actually use for tokenization is HuggingFace's `tokenizers` library (Rust-based, highly optimized). Profiling it on the same 738 KB text:
+
+- **GPT-2 (BPE):** full encode takes ~1,084 ms. Pre-tokenization (byte-level splitting) is 1.1% of the pipeline. BPE merging dominates at 99%.
+- **BERT (WordPiece):** full encode takes ~1,095 ms. The bottleneck is per-word subword merging, not byte scanning.
+
+The Ea prepass at 0.27 ms does work that accounts for <2% of a real tokenizer pipeline. The bottleneck in modern tokenizers is subword merging — BPE pair lookups, trie traversals, vocabulary matching — which is O(n × merge_depth) algorithmic work that can't be replaced with SIMD byte scanning. HuggingFace already does the byte-level work in Rust at comparable throughput.
+
+This demo is a **kernel design showcase** (SIMD classification, fusion tradeoffs, byte-level vectorization), not a production tokenization accelerator.
+
 ## What this demonstrates
 
 **Ea extends beyond image processing.** This is byte-level text processing

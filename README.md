@@ -158,7 +158,7 @@ Real workloads. Real data. Verified against established tools.
 | [Conv2d (dot/1d)](demo/conv2d/)                | Integer SIMD         | maddubs_i16, u8×i8                              | dot: **5.6x**, conv1d: **3.3x** vs NumPy                                   |
 | [Conv2d 3×3 NHWC](demo/conv2d_3x3/)            | Quantized inference  | maddubs_i16 dual-acc / maddubs_i32 safe variant | **57.3x vs NumPy**, 44.6 GMACs/s on 56×56×64                               |
 | [Pipeline fusion](demo/skimage_fusion/)        | Image processing     | Stencil fusion, algebraic optimization          | 5.4x vs NumPy, **1.28x fusion at 4K**, 7x memory reduction                 |
-| [Tokenizer prepass](demo/tokenizer_prepass/)   | Text/NLP             | Structural scan, bitwise ops                    | unfused: **65.5x**, fused: **56.1x** vs NumPy (fusion: 0.74x — see README) |
+| [Tokenizer prepass](demo/tokenizer_prepass/)   | Text/NLP             | Structural scan, bitwise ops                    | **65.5x** vs NumPy (kernel design showcase — byte classification, fusion tradeoffs; see README for HuggingFace comparison) |
 | [Particle update](demo/particles/)             | Struct FFI           | C-compatible structs over FFI                   | Correctness demo — proves struct layout matches C exactly                  |
 | [Cornell Box ray tracer](demo/cornell_box/)    | Graphics             | Struct return, recursion, scalar math           | First non-SIMD demo: full ray tracer in 245 lines of Eä                    |
 | [Particle life](demo/particle_life/)           | Simulation           | N-body scalar, fused vs unfused                 | Matches hand-written C at clang-18 -O2. Interactive pygame UI              |
