@@ -162,7 +162,7 @@ Real workloads. Real data. Verified against established tools.
 | [Particle update](demo/particles/)             | Struct FFI           | C-compatible structs over FFI                   | Correctness demo — proves struct layout matches C exactly                  |
 | [Cornell Box ray tracer](demo/cornell_box/)    | Graphics             | Struct return, recursion, scalar math           | First non-SIMD demo: full ray tracer in 245 lines of Eä                    |
 | [Particle life](demo/particle_life/)           | Simulation           | N-body scalar, fused vs unfused                 | Matches hand-written C at clang-18 -O2. Interactive pygame UI              |
-| [Eastat](demo/eastat/)                         | CSV analytics        | Structural scan, SIMD reduction                 | 0.5x (slower than pandas) — honest phase breakdown, zero manual ctypes via `ea bind` |
+| [Eastat](demo/eastat/)                         | CSV analytics        | Structural scan, SIMD reduction, binary search  | **3.9x faster** than pandas `.describe()` (full equivalent: count/mean/std/min/25%/50%/75%/max), zero manual ctypes via `ea bind` |
 
 Each demo compiles an Ea kernel to `.so`, calls it from Python via ctypes,
 and benchmarks against NumPy and OpenCV. Run `python run.py` in any demo directory.
