@@ -14,6 +14,9 @@ Usage:
 """
 
 import argparse
+import concurrent.futures
+import ctypes
+import os
 import sys
 import time
 import urllib.request
@@ -117,6 +120,74 @@ def sobel_ea(img):
     return flat_out
 
 
+_mt_pool = None
+_mt_pool_size = 0
+
+
+def _get_pool(num_threads):
+    global _mt_pool, _mt_pool_size
+    if _mt_pool is None or _mt_pool_size != num_threads:
+        if _mt_pool is not None:
+            _mt_pool.shutdown(wait=False)
+        _mt_pool = concurrent.futures.ThreadPoolExecutor(max_workers=num_threads)
+        _mt_pool_size = num_threads
+    return _mt_pool
+
+
+def sobel_ea_mt(img, num_threads=None):
+    """Multi-threaded Eä Sobel — splits rows across threads.
+
+    Each thread calls the same SIMD kernel on a horizontal strip.
+    ctypes releases the GIL, so threads run truly in parallel.
+    """
+    import sobel as _sobel
+    if num_threads is None:
+        num_threads = os.cpu_count() or 4
+    h, w = img.shape
+    flat_in = np.ascontiguousarray(img, dtype=np.float32)
+    flat_out = np.zeros_like(flat_in)
+
+    interior_rows = h - 2  # rows 1..h-2
+    if interior_rows <= 0 or num_threads <= 1:
+        _sobel.sobel(flat_in, flat_out, w, h)
+        return flat_out
+
+    # Raw base addresses (integers) for pointer arithmetic
+    base_in = flat_in.ctypes.data
+    base_out = flat_out.ctypes.data
+    lib = _sobel._lib
+    sizeof_f32 = 4
+
+    # Divide interior rows across threads
+    strips = []
+    rows_per = interior_rows // num_threads
+    remainder = interior_rows % num_threads
+    y = 1
+    for t in range(num_threads):
+        count = rows_per + (1 if t < remainder else 0)
+        if count == 0:
+            continue
+        # Strip includes 1 row above and 1 row below for the stencil
+        offset = (y - 1) * w  # start at row above first interior row
+        strip_h = count + 2   # interior rows + top/bottom border
+        strips.append((offset, strip_h))
+        y += count
+
+    def process_strip(offset, strip_h):
+        in_p = ctypes.cast(base_in + offset * sizeof_f32,
+                           ctypes.POINTER(ctypes.c_float))
+        out_p = ctypes.cast(base_out + offset * sizeof_f32,
+                            ctypes.POINTER(ctypes.c_float))
+        lib.sobel(in_p, out_p, ctypes.c_int32(w), ctypes.c_int32(strip_h))
+
+    pool = _get_pool(num_threads)
+    futures = [pool.submit(process_strip, *s) for s in strips]
+    for f in concurrent.futures.as_completed(futures):
+        f.result()  # propagate exceptions
+
+    return flat_out
+
+
 # ---------------------------------------------------------------------------
 # Benchmarking
 # ---------------------------------------------------------------------------
@@ -139,11 +210,12 @@ def bench(func, img, warmup=10, runs=50):
 # Main
 # ---------------------------------------------------------------------------
 
-def run_correctness(img):
+def run_correctness(img, num_threads=4):
     """Compare all implementations for correctness."""
     print("=== Correctness ===\n")
 
     result_ea = sobel_ea(img)
+    result_mt = sobel_ea_mt(img, num_threads=num_threads)
     result_np = sobel_numpy(img)
 
     # Ea vs NumPy (both use identical Sobel kernel, should be bitwise close)
@@ -152,6 +224,12 @@ def run_correctness(img):
     mean_diff = diff.mean()
     print(f"  Ea vs NumPy:   max diff = {max_diff:.6f}  mean = {mean_diff:.6f}  ", end="")
     print("MATCH" if max_diff < 0.001 else f"APPROX (max {max_diff:.4f})")
+
+    # MT vs single-threaded (should be exact match)
+    diff_mt = np.abs(result_mt[1:-1, 1:-1] - result_ea[1:-1, 1:-1])
+    max_mt = diff_mt.max()
+    print(f"  Ea MT vs ST:   max diff = {max_mt:.6f}  ({num_threads} threads)  ", end="")
+    print("MATCH" if max_mt < 0.001 else f"MISMATCH (max {max_mt:.4f})")
 
     has_cv = False
     try:
@@ -191,10 +269,10 @@ def run_correctness(img):
     print()
 
 
-def run_benchmark(sizes):
+def run_benchmark(sizes, num_threads=4):
     """Run scaling benchmark across multiple image sizes."""
     print("=== Performance ===\n")
-    print(f"  10 warmup, 50 runs, median. OpenCV pinned to 1 thread.\n")
+    print(f"  10 warmup, 50 runs, median. OpenCV pinned to 1 thread. Ea MT = {num_threads} threads.\n")
 
     has_cv = True
     has_sk = True
@@ -207,12 +285,14 @@ def run_benchmark(sizes):
     except ImportError:
         has_sk = False
 
-    header = f"  {'Size':>6} {'Pixels':>12} {'Ea':>9}"
+    ea_mt_func = lambda img: sobel_ea_mt(img, num_threads=num_threads)
+
+    header = f"  {'Size':>6} {'Pixels':>12} {'Ea':>9} {'Ea MT':>9}"
     if has_cv:
         header += f" {'OpenCV':>9}"
     if has_sk:
         header += f" {'skimage':>9}"
-    header += f" {'NumPy':>9}"
+    header += f" {'NumPy':>9} {'MT/ST':>7}"
     if has_cv:
         header += f" {'vs cv2':>7}"
     if has_sk:
@@ -220,12 +300,12 @@ def run_benchmark(sizes):
     header += f" {'vs np':>7} {'Mpx/s':>7}"
     print(header)
 
-    sep = f"  {'─'*6} {'─'*12} {'─'*9}"
+    sep = f"  {'─'*6} {'─'*12} {'─'*9} {'─'*9}"
     if has_cv:
         sep += f" {'─'*9}"
     if has_sk:
         sep += f" {'─'*9}"
-    sep += f" {'─'*9}"
+    sep += f" {'─'*9} {'─'*7}"
     if has_cv:
         sep += f" {'─'*7}"
     if has_sk:
@@ -239,28 +319,30 @@ def run_benchmark(sizes):
         px = w * h
 
         t_ea = bench(sobel_ea, img)
+        t_mt = bench(ea_mt_func, img)
         t_cv = bench(sobel_opencv, img) if has_cv else None
         t_sk = bench(sobel_skimage, img) if has_sk else None
         t_np = bench(sobel_numpy, img)
-        mpx = px / (t_ea / 1000) / 1e6
+        mpx = px / (t_mt / 1000) / 1e6
 
-        row = f"  {name:>6} {px:>12,} {t_ea:>7.2f}ms"
+        row = f"  {name:>6} {px:>12,} {t_ea:>7.2f}ms {t_mt:>7.2f}ms"
         if has_cv:
             row += f" {t_cv:>7.2f}ms"
         if has_sk:
             row += f" {t_sk:>7.2f}ms"
-        row += f" {t_np:>7.2f}ms"
+        row += f" {t_np:>7.2f}ms {t_ea/t_mt:>6.1f}x"
         if has_cv:
-            row += f" {t_cv/t_ea:>6.1f}x"
+            row += f" {t_cv/t_mt:>6.1f}x"
         if has_sk:
-            row += f" {t_sk/t_ea:>6.1f}x"
-        row += f" {t_np/t_ea:>6.1f}x {mpx:>6.0f}"
+            row += f" {t_sk/t_mt:>6.1f}x"
+        row += f" {t_np/t_mt:>6.1f}x {mpx:>6.0f}"
         print(row)
 
         results.append({
             'name': name, 'w': w, 'h': h, 'pixels': px,
-            'ea_ms': t_ea, 'cv_ms': t_cv, 'sk_ms': t_sk, 'np_ms': t_np,
-            'mpx_s': mpx,
+            'ea_ms': t_ea, 'mt_ms': t_mt,
+            'cv_ms': t_cv, 'sk_ms': t_sk, 'np_ms': t_np,
+            'mpx_s': mpx, 'mt_speedup': t_ea / t_mt,
         })
 
     print()
@@ -272,7 +354,10 @@ def main():
         description='Sobel edge detection: Eä vs OpenCV vs skimage vs NumPy')
     parser.add_argument('image', nargs='?', help='Image file to process')
     parser.add_argument('--quick', action='store_true', help='720p only')
+    parser.add_argument('--threads', type=int, default=None,
+                        help='Thread count for multi-threaded Ea (default: all cores)')
     args = parser.parse_args()
+    num_threads = args.threads or os.cpu_count() or 4
 
     print("Sobel Edge Detection — Eä Kernel Demo")
     print("=" * 60)
@@ -294,7 +379,7 @@ def main():
             img = generate_image(768, 512)
             print(f"Image: synthetic (768x512)\n")
 
-    run_correctness(img)
+    run_correctness(img, num_threads=num_threads)
 
     # Scaling benchmark
     if args.quick:
@@ -302,19 +387,21 @@ def main():
     else:
         sizes = [('720p', 1280, 720), ('1080p', 1920, 1080), ('4K', 3840, 2160)]
 
-    results = run_benchmark(sizes)
+    results = run_benchmark(sizes, num_threads=num_threads)
 
     # Summary
     print("=== Summary ===\n")
     for r in results:
         print(f"  {r['name']}:")
+        print(f"    MT speedup: {r['mt_speedup']:.1f}x ({num_threads} threads)")
         if r['cv_ms']:
-            print(f"    vs OpenCV:  {r['cv_ms']/r['ea_ms']:.1f}x faster")
+            print(f"    vs OpenCV:  {r['cv_ms']/r['mt_ms']:.1f}x faster")
         if r['sk_ms']:
-            print(f"    vs skimage: {r['sk_ms']/r['ea_ms']:.1f}x faster")
-        print(f"    vs NumPy:   {r['np_ms']/r['ea_ms']:.1f}x faster")
+            print(f"    vs skimage: {r['sk_ms']/r['mt_ms']:.1f}x faster")
+        print(f"    vs NumPy:   {r['np_ms']/r['mt_ms']:.1f}x faster")
         print(f"    throughput: {r['mpx_s']:.0f} Mpx/s")
     print()
+    print(f"  Ea MT: {num_threads} threads (row-striped, GIL released via ctypes)")
     print("  OpenCV: single-threaded (cv2.setNumThreads(1))")
     print("  skimage: uses L2 norm (sqrt), Eä uses L1 (abs sum)")
     print("  All use f32 precision, 3x3 Sobel kernel")
