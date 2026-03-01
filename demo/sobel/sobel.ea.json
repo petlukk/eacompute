@@ -1,0 +1,12 @@
+{
+  "library": "libsobel.so",
+  "exports": [
+    {
+      "name": "sobel",
+      "args": [{"name": "input", "type": "*restrict f32", "direction": "in", "cap": null, "count": null}, {"name": "out", "type": "*mut f32", "direction": "in", "cap": null, "count": null}, {"name": "width", "type": "i32", "direction": "in", "cap": null, "count": null}, {"name": "height", "type": "i32", "direction": "in", "cap": null, "count": null}],
+      "return_type": null
+    }
+  ],
+  "structs": [
+  ]
+}

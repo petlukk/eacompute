@@ -150,7 +150,7 @@ Real workloads. Real data. Verified against established tools.
 
 | Demo                                           | Domain               | Patterns                                        | Result                                                                     |
 | ---------------------------------------------- | -------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
-| [Sobel edge detection](demo/sobel/)            | Image processing     | Stencil, pipeline                               | 12.0x faster than NumPy, 4.2x faster than OpenCV                           |
+| [Sobel edge detection](demo/sobel/)            | Image processing     | Stencil, f32x4 SIMD, prefetch                   | **7–10x faster than OpenCV** (single-threaded), 15–21x vs NumPy across 720p–4K. Four-tool comparison, L3 cache scaling analysis |
 | [Video anomaly detection](demo/video_anomaly/) | Video analysis       | Streaming, fused pipeline                       | 3 kernels: **0.96x (slower)**. Fused: **11.5x faster**                     |
 | [Astronomy stacking](demo/astro_stack/)        | Scientific computing | Streaming dataset                               | 2.6x faster, 16x less memory than NumPy                                    |
 | [MNIST preprocessing](demo/mnist_normalize/)   | ML preprocessing     | Streaming, fused pipeline                       | Single op: **1.0x (memory-bound)**. Fused pipeline: **4.0x faster**         |
