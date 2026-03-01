@@ -52,19 +52,32 @@ def process(filepath, delimiter=',', has_header=True, selected_columns=None):
     timings['mmap'] = time.perf_counter() - t0
 
     # 2. Structural scan — extract delimiter and LF positions
+    #    Small files (<128 MB): single-pass with generous allocation
+    #    Large files: two-pass (count → exact alloc → extract) to avoid
+    #    wasting hundreds of MB on position buffers
     t0 = time.perf_counter()
     delim_byte = ord(delimiter)
-    delim_pos = np.empty(n // 4 + 256, dtype=np.int32)
-    lf_pos = np.empty(n // 20 + 256, dtype=np.int32)
     counts = np.zeros(3, dtype=np.int32)
 
-    csv_parse.extract_positions_quoted(text, delim_byte, delim_pos, lf_pos, counts)
+    if n < 128 * 1024 * 1024:
+        # Single-pass: over-allocate, scan, truncate
+        delim_pos = np.empty(n // 4 + 256, dtype=np.int32)
+        lf_pos = np.empty(n // 20 + 256, dtype=np.int32)
+        csv_parse.extract_positions_quoted(text, delim_byte, delim_pos, lf_pos, counts)
+        n_delims = int(counts[0])
+        n_lfs = int(counts[1])
+        delim_pos = delim_pos[:n_delims]
+        lf_pos = lf_pos[:n_lfs]
+    else:
+        # Two-pass: count first, allocate exactly, then extract
+        csv_parse.count_positions_quoted(text, delim_byte, counts)
+        n_delims = int(counts[0])
+        n_lfs = int(counts[1])
+        delim_pos = np.empty(n_delims, dtype=np.int32)
+        lf_pos = np.empty(n_lfs, dtype=np.int32)
+        csv_parse.extract_positions_quoted(text, delim_byte, delim_pos, lf_pos, counts)
 
-    n_delims = int(counts[0])
-    n_lfs = int(counts[1])
     header_dc = int(counts[2])
-    delim_pos = delim_pos[:n_delims]
-    lf_pos = lf_pos[:n_lfs]
     timings['scan'] = time.perf_counter() - t0
 
     # 3. Build layout — row arrays + delimiter index
@@ -75,6 +88,8 @@ def process(filepath, delimiter=',', has_header=True, selected_columns=None):
     if has_header:
         first_nl = int(lf_pos[0]) if n_lfs > 0 else n
         hdr = bytes(text[:first_nl])
+        if hdr.startswith(b'\xef\xbb\xbf'):
+            hdr = hdr[3:]
         if hdr.endswith(b'\r'):
             hdr = hdr[:-1]
         headers = hdr.decode('utf-8', errors='replace').split(delimiter)

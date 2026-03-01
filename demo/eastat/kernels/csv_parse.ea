@@ -1,7 +1,8 @@
 // CSV structural parsing kernels for Eastat.
 //
-// Six exports:
-//   extract_positions_quoted  — single-pass structural scan (delims + LFs)
+// Seven exports:
+//   count_positions_quoted    — count-only structural scan (no position output)
+//   extract_positions_quoted  — full structural scan (delims + LFs with positions)
 //   build_row_arrays          — compute row start/end from LF positions
 //   build_row_delim_index     — per-row delimiter mapping via merge-scan
 //   compute_field_bounds      — field start/end for a given column
@@ -20,6 +21,60 @@ const ASCII_ZERO: i32 = 48
 const ASCII_NINE: i32 = 57
 
 static_assert(ASCII_NINE - ASCII_ZERO == 9, "digit range must be contiguous for atof")
+
+
+// Count-only structural scan. Same logic as extract_positions_quoted but without
+// writing position arrays. Used as the first pass of a two-pass strategy:
+// count → allocate exactly → extract. Faster than the full scan because it
+// avoids scattered writes to position arrays.
+//
+// out_counts: [delim_count, lf_count, header_delim_count]
+export func count_positions_quoted(
+    text: *u8,
+    len: i32,
+    delim: u8,
+    out_counts: *mut i32
+) {
+    let mut dc: i32 = 0
+    let mut lc: i32 = 0
+    let mut in_quote: i32 = 0
+    let mut header_dc: i32 = -1
+    let mut i: i32 = 0
+
+    while i < len {
+        let b: u8 = text[i]
+
+        if b == 34 {
+            if in_quote == 0 {
+                in_quote = 1
+            } else {
+                in_quote = 0
+            }
+        }
+
+        if in_quote == 0 {
+            if b == delim {
+                dc = dc + 1
+            }
+            if b == 10 {
+                if header_dc == -1 {
+                    header_dc = dc
+                }
+                lc = lc + 1
+            }
+        }
+
+        i = i + 1
+    }
+
+    if header_dc == -1 {
+        header_dc = dc
+    }
+
+    out_counts[0] = dc
+    out_counts[1] = lc
+    out_counts[2] = header_dc
+}
 
 
 // Scan raw text bytes, extract delimiter and newline (LF) positions in one pass.
