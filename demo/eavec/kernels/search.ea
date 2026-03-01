@@ -1,0 +1,321 @@
+// Batch vector search operations for embedding databases.
+//
+// Database layout: row-major, vector v starts at db[v * dim].
+// All batch ops write results to caller-provided output buffers.
+
+export func batch_dot(
+    query: *restrict f32,
+    db: *restrict f32,
+    dim: i32,
+    n_vecs: i32,
+    out: *mut f32
+) {
+    let mut v: i32 = 0
+    while v < n_vecs {
+        let base: i32 = v * dim
+
+        let mut acc0: f32x8 = splat(0.0)
+        let mut acc1: f32x8 = splat(0.0)
+        let mut j: i32 = 0
+
+        while j + 16 <= dim {
+            let qa0: f32x8 = load(query, j)
+            let db0: f32x8 = load(db, base + j)
+            let qa1: f32x8 = load(query, j + 8)
+            let db1: f32x8 = load(db, base + j + 8)
+            acc0 = fma(qa0, db0, acc0)
+            acc1 = fma(qa1, db1, acc1)
+            j = j + 16
+        }
+
+        while j + 8 <= dim {
+            let qa: f32x8 = load(query, j)
+            let db_v: f32x8 = load(db, base + j)
+            acc0 = fma(qa, db_v, acc0)
+            j = j + 8
+        }
+
+        let mut dot: f32 = reduce_add(acc0 .+ acc1)
+
+        while j < dim {
+            dot = dot + query[j] * db[base + j]
+            j = j + 1
+        }
+
+        out[v] = dot
+        v = v + 1
+    }
+}
+
+export func batch_cosine(
+    query: *restrict f32,
+    db: *restrict f32,
+    dim: i32,
+    n_vecs: i32,
+    out: *mut f32
+) {
+    // Precompute query norm once
+    let mut qn0: f32x8 = splat(0.0)
+    let mut qn1: f32x8 = splat(0.0)
+    let mut qi: i32 = 0
+    while qi + 16 <= dim {
+        let qv0: f32x8 = load(query, qi)
+        let qv1: f32x8 = load(query, qi + 8)
+        qn0 = fma(qv0, qv0, qn0)
+        qn1 = fma(qv1, qv1, qn1)
+        qi = qi + 16
+    }
+    while qi + 8 <= dim {
+        let qv: f32x8 = load(query, qi)
+        qn0 = fma(qv, qv, qn0)
+        qi = qi + 8
+    }
+    let mut query_sq: f32 = reduce_add(qn0 .+ qn1)
+    while qi < dim {
+        query_sq = query_sq + query[qi] * query[qi]
+        qi = qi + 1
+    }
+    let query_norm: f32 = sqrt(query_sq)
+
+    if query_norm == 0.0 {
+        let mut z: i32 = 0
+        while z < n_vecs {
+            out[z] = 0.0
+            z = z + 1
+        }
+        return
+    }
+
+    let mut v: i32 = 0
+    while v < n_vecs {
+        let base: i32 = v * dim
+
+        let mut dot0: f32x8 = splat(0.0)
+        let mut dot1: f32x8 = splat(0.0)
+        let mut sq0: f32x8 = splat(0.0)
+        let mut sq1: f32x8 = splat(0.0)
+        let mut j: i32 = 0
+
+        while j + 16 <= dim {
+            let qa0: f32x8 = load(query, j)
+            let db0: f32x8 = load(db, base + j)
+            let qa1: f32x8 = load(query, j + 8)
+            let db1: f32x8 = load(db, base + j + 8)
+            dot0 = fma(qa0, db0, dot0)
+            dot1 = fma(qa1, db1, dot1)
+            sq0 = fma(db0, db0, sq0)
+            sq1 = fma(db1, db1, sq1)
+            j = j + 16
+        }
+
+        while j + 8 <= dim {
+            let qa: f32x8 = load(query, j)
+            let db_v: f32x8 = load(db, base + j)
+            dot0 = fma(qa, db_v, dot0)
+            sq0 = fma(db_v, db_v, sq0)
+            j = j + 8
+        }
+
+        let mut dot: f32 = reduce_add(dot0 .+ dot1)
+        let mut sq_b: f32 = reduce_add(sq0 .+ sq1)
+
+        while j < dim {
+            dot = dot + query[j] * db[base + j]
+            sq_b = sq_b + db[base + j] * db[base + j]
+            j = j + 1
+        }
+
+        let db_norm: f32 = sqrt(sq_b)
+        if db_norm == 0.0 {
+            out[v] = 0.0
+        } else {
+            out[v] = dot / (query_norm * db_norm)
+        }
+
+        v = v + 1
+    }
+}
+
+export func batch_l2(
+    query: *restrict f32,
+    db: *restrict f32,
+    dim: i32,
+    n_vecs: i32,
+    out: *mut f32
+) {
+    let mut v: i32 = 0
+    while v < n_vecs {
+        let base: i32 = v * dim
+
+        let mut acc0: f32x8 = splat(0.0)
+        let mut acc1: f32x8 = splat(0.0)
+        let mut j: i32 = 0
+
+        while j + 16 <= dim {
+            let qa0: f32x8 = load(query, j)
+            let db0: f32x8 = load(db, base + j)
+            let qa1: f32x8 = load(query, j + 8)
+            let db1: f32x8 = load(db, base + j + 8)
+            let diff0: f32x8 = qa0 .- db0
+            let diff1: f32x8 = qa1 .- db1
+            acc0 = fma(diff0, diff0, acc0)
+            acc1 = fma(diff1, diff1, acc1)
+            j = j + 16
+        }
+
+        while j + 8 <= dim {
+            let qa: f32x8 = load(query, j)
+            let db_v: f32x8 = load(db, base + j)
+            let diff: f32x8 = qa .- db_v
+            acc0 = fma(diff, diff, acc0)
+            j = j + 8
+        }
+
+        let mut dist: f32 = reduce_add(acc0 .+ acc1)
+
+        while j < dim {
+            let d: f32 = query[j] - db[base + j]
+            dist = dist + d * d
+            j = j + 1
+        }
+
+        out[v] = dist
+        v = v + 1
+    }
+}
+
+export func normalize_vectors(
+    db: *restrict f32,
+    dim: i32,
+    n_vecs: i32,
+    out: *mut f32
+) {
+    let mut v: i32 = 0
+    while v < n_vecs {
+        let base: i32 = v * dim
+
+        // Compute squared norm
+        let mut acc0: f32x8 = splat(0.0)
+        let mut acc1: f32x8 = splat(0.0)
+        let mut j: i32 = 0
+
+        while j + 16 <= dim {
+            let v0: f32x8 = load(db, base + j)
+            let v1: f32x8 = load(db, base + j + 8)
+            acc0 = fma(v0, v0, acc0)
+            acc1 = fma(v1, v1, acc1)
+            j = j + 16
+        }
+
+        while j + 8 <= dim {
+            let vv: f32x8 = load(db, base + j)
+            acc0 = fma(vv, vv, acc0)
+            j = j + 8
+        }
+
+        let mut norm_sq: f32 = reduce_add(acc0 .+ acc1)
+        while j < dim {
+            norm_sq = norm_sq + db[base + j] * db[base + j]
+            j = j + 1
+        }
+
+        let inv_norm: f32 = 1.0 / sqrt(norm_sq)
+        let inv_vec: f32x8 = splat(inv_norm)
+
+        // Divide each element by norm
+        j = 0
+        while j + 8 <= dim {
+            let vv: f32x8 = load(db, base + j)
+            store(out, base + j, vv .* inv_vec)
+            j = j + 8
+        }
+
+        while j < dim {
+            out[base + j] = db[base + j] * inv_norm
+            j = j + 1
+        }
+
+        v = v + 1
+    }
+}
+
+export func threshold_filter(
+    scores: *restrict f32,
+    n: i32,
+    threshold: f32,
+    out_indices: *mut i32,
+    out_count: *mut i32
+) {
+    let mut count: i32 = 0
+    let mut i: i32 = 0
+    while i < n {
+        if scores[i] > threshold {
+            out_indices[count] = i
+            count = count + 1
+        }
+        i = i + 1
+    }
+    out_count[0] = count
+}
+
+export func top_k(
+    scores: *f32,
+    work: *mut f32,
+    n: i32,
+    k: i32,
+    out_values: *mut f32,
+    out_indices: *mut i32
+) {
+    // Copy scores to work buffer
+    let mut c: i32 = 0
+    while c + 8 <= n {
+        store(work, c, load(scores, c))
+        c = c + 8
+    }
+    while c < n {
+        work[c] = scores[c]
+        c = c + 1
+    }
+
+    let neg_inf: f32 = -99999999.0
+
+    let mut pass: i32 = 0
+    while pass < k {
+        // Find max via SIMD
+        let mut max_vec: f32x8 = splat(neg_inf)
+        let mut j: i32 = 0
+
+        while j + 8 <= n {
+            let v: f32x8 = load(work, j)
+            max_vec = select(v .> max_vec, v, max_vec)
+            j = j + 8
+        }
+
+        let mut best_val: f32 = reduce_max(max_vec)
+
+        // Scalar tail for max
+        while j < n {
+            if work[j] > best_val {
+                best_val = work[j]
+            }
+            j = j + 1
+        }
+
+        // Linear scan for index of max
+        let mut best_idx: i32 = 0
+        let mut s: i32 = 0
+        while s < n {
+            if work[s] == best_val {
+                best_idx = s
+                s = n
+            }
+            s = s + 1
+        }
+
+        out_values[pass] = best_val
+        out_indices[pass] = best_idx
+        work[best_idx] = neg_inf
+
+        pass = pass + 1
+    }
+}

@@ -1,0 +1,161 @@
+// Single-pair vector similarity primitives.
+//
+// Dual-accumulator f32x8 FMA for ILP on superscalar cores.
+// All functions return f32 — these are reduction kernels, not batch ops.
+
+export func dot_f32(a: *restrict f32, b: *restrict f32, len: i32) -> f32 {
+    let mut acc0: f32x8 = splat(0.0)
+    let mut acc1: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+
+    while i + 16 <= len {
+        prefetch(a, i + 64)
+        prefetch(b, i + 64)
+        let va0: f32x8 = load(a, i)
+        let vb0: f32x8 = load(b, i)
+        let va1: f32x8 = load(a, i + 8)
+        let vb1: f32x8 = load(b, i + 8)
+        acc0 = fma(va0, vb0, acc0)
+        acc1 = fma(va1, vb1, acc1)
+        i = i + 16
+    }
+
+    while i + 8 <= len {
+        let va: f32x8 = load(a, i)
+        let vb: f32x8 = load(b, i)
+        acc0 = fma(va, vb, acc0)
+        i = i + 8
+    }
+
+    let mut total: f32 = reduce_add(acc0 .+ acc1)
+
+    while i < len {
+        total = total + a[i] * b[i]
+        i = i + 1
+    }
+
+    return total
+}
+
+export func norm_f32(a: *restrict f32, len: i32) -> f32 {
+    let mut acc0: f32x8 = splat(0.0)
+    let mut acc1: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+
+    while i + 16 <= len {
+        prefetch(a, i + 64)
+        let v0: f32x8 = load(a, i)
+        let v1: f32x8 = load(a, i + 8)
+        acc0 = fma(v0, v0, acc0)
+        acc1 = fma(v1, v1, acc1)
+        i = i + 16
+    }
+
+    while i + 8 <= len {
+        let v: f32x8 = load(a, i)
+        acc0 = fma(v, v, acc0)
+        i = i + 8
+    }
+
+    let mut sq: f32 = reduce_add(acc0 .+ acc1)
+
+    while i < len {
+        sq = sq + a[i] * a[i]
+        i = i + 1
+    }
+
+    return sqrt(sq)
+}
+
+export func cosine_f32(a: *restrict f32, b: *restrict f32, len: i32) -> f32 {
+    let mut dot0: f32x8 = splat(0.0)
+    let mut dot1: f32x8 = splat(0.0)
+    let mut sq_a0: f32x8 = splat(0.0)
+    let mut sq_a1: f32x8 = splat(0.0)
+    let mut sq_b0: f32x8 = splat(0.0)
+    let mut sq_b1: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+
+    while i + 16 <= len {
+        prefetch(a, i + 64)
+        prefetch(b, i + 64)
+        let va0: f32x8 = load(a, i)
+        let vb0: f32x8 = load(b, i)
+        let va1: f32x8 = load(a, i + 8)
+        let vb1: f32x8 = load(b, i + 8)
+        dot0 = fma(va0, vb0, dot0)
+        dot1 = fma(va1, vb1, dot1)
+        sq_a0 = fma(va0, va0, sq_a0)
+        sq_a1 = fma(va1, va1, sq_a1)
+        sq_b0 = fma(vb0, vb0, sq_b0)
+        sq_b1 = fma(vb1, vb1, sq_b1)
+        i = i + 16
+    }
+
+    while i + 8 <= len {
+        let va: f32x8 = load(a, i)
+        let vb: f32x8 = load(b, i)
+        dot0 = fma(va, vb, dot0)
+        sq_a0 = fma(va, va, sq_a0)
+        sq_b0 = fma(vb, vb, sq_b0)
+        i = i + 8
+    }
+
+    let mut dot: f32 = reduce_add(dot0 .+ dot1)
+    let mut sq_a: f32 = reduce_add(sq_a0 .+ sq_a1)
+    let mut sq_b: f32 = reduce_add(sq_b0 .+ sq_b1)
+
+    while i < len {
+        dot = dot + a[i] * b[i]
+        sq_a = sq_a + a[i] * a[i]
+        sq_b = sq_b + b[i] * b[i]
+        i = i + 1
+    }
+
+    if sq_a == 0.0 {
+        return 0.0
+    }
+    if sq_b == 0.0 {
+        return 0.0
+    }
+
+    return dot / (sqrt(sq_a) * sqrt(sq_b))
+}
+
+export func l2_sq_f32(a: *restrict f32, b: *restrict f32, len: i32) -> f32 {
+    let mut acc0: f32x8 = splat(0.0)
+    let mut acc1: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+
+    while i + 16 <= len {
+        prefetch(a, i + 64)
+        prefetch(b, i + 64)
+        let a0: f32x8 = load(a, i)
+        let b0: f32x8 = load(b, i)
+        let a1: f32x8 = load(a, i + 8)
+        let b1: f32x8 = load(b, i + 8)
+        let diff0: f32x8 = a0 .- b0
+        let diff1: f32x8 = a1 .- b1
+        acc0 = fma(diff0, diff0, acc0)
+        acc1 = fma(diff1, diff1, acc1)
+        i = i + 16
+    }
+
+    while i + 8 <= len {
+        let va: f32x8 = load(a, i)
+        let vb: f32x8 = load(b, i)
+        let diff: f32x8 = va .- vb
+        acc0 = fma(diff, diff, acc0)
+        i = i + 8
+    }
+
+    let mut total: f32 = reduce_add(acc0 .+ acc1)
+
+    while i < len {
+        let d: f32 = a[i] - b[i]
+        total = total + d * d
+        i = i + 1
+    }
+
+    return total
+}
