@@ -337,4 +337,67 @@ impl<'ctx> CodeGenerator<'ctx> {
 
         Ok(result)
     }
+
+    /// movemask(vec) -> i32
+    /// Extracts the MSB of each byte into a scalar bitmask.
+    /// Accepts <N x i1> (from comparisons — sext to i8 first) or <N x i8> (raw byte vectors).
+    /// Maps to SSE2 pmovmskb.128 (width 16) or AVX2 pmovmskb.256 (width 32).
+    pub(super) fn compile_movemask(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        if self.is_arm {
+            return Err(CompileError::codegen_error(
+                "movemask is x86-only (SSE2/AVX2); no NEON equivalent",
+            ));
+        }
+
+        let arg_val = self.compile_expr(&args[0], function)?;
+        let vec_val = arg_val.into_vector_value();
+        let vec_ty = vec_val.get_type();
+        let width = vec_ty.get_size();
+
+        // If the vector is <N x i1> (from a comparison), sext to <N x i8>
+        let i8_vec_ty = self.context.i8_type().vec_type(width);
+        let byte_vec = if vec_ty.get_element_type().into_int_type().get_bit_width() == 1 {
+            self.builder
+                .build_int_s_extend(vec_val, i8_vec_ty, "movemask_sext")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+        } else {
+            vec_val
+        };
+
+        let i32_ty = self.context.i32_type();
+        let (intrinsic_name, fn_type) = match width {
+            16 => (
+                "llvm.x86.sse2.pmovmskb.128",
+                i32_ty.fn_type(&[i8_vec_ty.into()], false),
+            ),
+            32 => (
+                "llvm.x86.avx2.pmovmskb",
+                i32_ty.fn_type(&[i8_vec_ty.into()], false),
+            ),
+            _ => {
+                return Err(CompileError::codegen_error(format!(
+                    "movemask unsupported for width {width}"
+                )));
+            }
+        };
+
+        let intrinsic = self
+            .module
+            .get_function(intrinsic_name)
+            .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
+
+        let result = self
+            .builder
+            .build_call(intrinsic, &[byte_vec.into()], "movemask")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .try_as_basic_value()
+            .left()
+            .ok_or_else(|| CompileError::codegen_error("movemask did not return a value"))?;
+
+        Ok(result)
+    }
 }

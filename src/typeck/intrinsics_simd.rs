@@ -426,4 +426,42 @@ impl TypeChecker {
             )),
         }
     }
+
+    pub(super) fn check_movemask(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                "movemask expects 1 argument (byte or bool vector)",
+                span.clone(),
+            ));
+        }
+        let arg_type = self.check_expr(&args[0], locals)?;
+
+        match &arg_type {
+            Type::Vector { elem, width } => {
+                let valid_elem = matches!(elem.as_ref(), Type::U8 | Type::I8 | Type::Bool);
+                if !valid_elem {
+                    return Err(CompileError::type_error(
+                        format!("movemask requires u8/i8/bool vector, got {arg_type}"),
+                        args[0].span().clone(),
+                    ));
+                }
+                if *width != 16 && *width != 32 {
+                    return Err(CompileError::type_error(
+                        format!("movemask requires width 16 or 32, got {width}"),
+                        args[0].span().clone(),
+                    ));
+                }
+                Ok(Type::I32)
+            }
+            _ => Err(CompileError::type_error(
+                format!("movemask expects a vector, got {arg_type}"),
+                args[0].span().clone(),
+            )),
+        }
+    }
 }

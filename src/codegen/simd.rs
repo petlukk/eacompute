@@ -46,6 +46,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "to_i32"
                 | "to_i64"
                 | "prefetch"
+                | "movemask"
         )
     }
 
@@ -92,6 +93,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 self.compile_conversion(name, args, function)
             }
             "prefetch" => self.compile_prefetch(args, function),
+            "movemask" => self.compile_movemask(args, function),
             _ => Err(CompileError::codegen_error(format!(
                 "unknown SIMD intrinsic '{name}'"
             ))),

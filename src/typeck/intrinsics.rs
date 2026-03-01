@@ -43,6 +43,7 @@ impl TypeChecker {
             "scatter" => Some(self.check_scatter(args, locals, span)),
             "load_masked" => Some(self.check_load_masked(args, locals, type_hint, span)),
             "store_masked" => Some(self.check_store_masked(args, locals, span)),
+            "movemask" => Some(self.check_movemask(args, locals, span)),
             _ => None,
         }
     }
