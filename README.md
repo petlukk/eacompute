@@ -150,7 +150,9 @@ Real workloads. Real data. Verified against established tools.
 
 | Demo                                           | Domain               | Patterns                                        | Result                                                                     |
 | ---------------------------------------------- | -------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
+| [Eavec](demo/eavec/)                           | Vector search        | Dual-acc FMA, f32x8, next-vec prefetch          | **4–8x faster than FAISS** at dim=384, 28.5x vs NumPy on cosine (single-pass fusion). Validated against FAISS IndexFlatIP + NumPy across dims 384/768/1536 |
 | [Sobel edge detection](demo/sobel/)            | Image processing     | Stencil, f32x4 SIMD, prefetch                   | **7–10x faster than OpenCV** (single-threaded), 15–21x vs NumPy across 720p–4K. Four-tool comparison, L3 cache scaling analysis |
+| [Eastat](demo/eastat/)                         | CSV analytics        | Structural scan, SIMD reduction, binary search  | **1.4–2.2x faster than polars**, 3–5x faster than pandas across 10 MB–544 MB. Stress-tested on adversarial CSVs, f32 precision validated, zero manual ctypes via `ea bind` |
 | [Video anomaly detection](demo/video_anomaly/) | Video analysis       | Streaming, fused pipeline                       | 3 kernels: **0.96x (slower)**. Fused: **11.5x faster**                     |
 | [Astronomy stacking](demo/astro_stack/)        | Scientific computing | Streaming dataset                               | 2.6x faster, 16x less memory than NumPy                                    |
 | [MNIST preprocessing](demo/mnist_normalize/)   | ML preprocessing     | Streaming, fused pipeline                       | Single op: **1.0x (memory-bound)**. Fused pipeline: **4.0x faster**         |
@@ -162,8 +164,6 @@ Real workloads. Real data. Verified against established tools.
 | [Particle update](demo/particles/)             | Struct FFI           | C-compatible structs over FFI                   | Correctness demo — proves struct layout matches C exactly                  |
 | [Cornell Box ray tracer](demo/cornell_box/)    | Graphics             | Struct return, recursion, scalar math           | First non-SIMD demo: full ray tracer in 245 lines of Eä                    |
 | [Particle life](demo/particle_life/)           | Simulation           | N-body scalar, fused vs unfused                 | Matches hand-written C at clang-18 -O2. Interactive pygame UI              |
-| [Eastat](demo/eastat/)                         | CSV analytics        | Structural scan, SIMD reduction, binary search  | **1.4–2.2x faster than polars**, 3–5x faster than pandas across 10 MB–544 MB. Stress-tested on adversarial CSVs, f32 precision validated, zero manual ctypes via `ea bind` |
-| [Eavec](demo/eavec/)                           | Vector search        | Dual-acc FMA, f32x8, next-vec prefetch          | **4–8x faster than FAISS** at dim=384, 28.5x vs NumPy on cosine (single-pass fusion). Validated against FAISS IndexFlatIP + NumPy across dims 384/768/1536 |
 
 Each demo compiles an Ea kernel to `.so`, calls it from Python via ctypes,
 and benchmarks against NumPy and OpenCV. Run `python run.py` in any demo directory.
