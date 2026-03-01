@@ -84,3 +84,81 @@ export func f32_column_stats(
     out_max[0] = total_max
     out_sumsq[0] = total_sumsq
 }
+
+// Binary-search percentiles — 3 simultaneous searches with SIMD counting.
+//
+// Each iteration does one data pass counting elements <= candidate for all
+// 3 percentiles (p25, p50, p75) via select + reduce_add.  30 iterations
+// converges to f32 precision.
+
+export func f32_percentiles(
+    data: *restrict f32,
+    len: i32,
+    min_val: f32,
+    max_val: f32,
+    out_p25: *mut f32,
+    out_p50: *mut f32,
+    out_p75: *mut f32
+) {
+    let ones: f32x8 = splat(1.0)
+    let zeros: f32x8 = splat(0.0)
+
+    let flen: f32 = to_f32(len)
+    let rank25: f32 = flen * 0.25
+    let rank50: f32 = flen * 0.5
+    let rank75: f32 = flen * 0.75
+
+    let mut lo25: f32 = min_val
+    let mut hi25: f32 = max_val
+    let mut lo50: f32 = min_val
+    let mut hi50: f32 = max_val
+    let mut lo75: f32 = min_val
+    let mut hi75: f32 = max_val
+
+    let mut iter: i32 = 0
+    while iter < 30 {
+        let mid25: f32 = (lo25 + hi25) * 0.5
+        let mid50: f32 = (lo50 + hi50) * 0.5
+        let mid75: f32 = (lo75 + hi75) * 0.5
+
+        let s25: f32x8 = splat(mid25)
+        let s50: f32x8 = splat(mid50)
+        let s75: f32x8 = splat(mid75)
+
+        let mut acc25: f32x8 = splat(0.0)
+        let mut acc50: f32x8 = splat(0.0)
+        let mut acc75: f32x8 = splat(0.0)
+
+        let mut i: i32 = 0
+        while i + 8 <= len {
+            let v: f32x8 = load(data, i)
+            acc25 = acc25 .+ select(v .<= s25, ones, zeros)
+            acc50 = acc50 .+ select(v .<= s50, ones, zeros)
+            acc75 = acc75 .+ select(v .<= s75, ones, zeros)
+            i = i + 8
+        }
+
+        let mut cnt25: f32 = reduce_add(acc25)
+        let mut cnt50: f32 = reduce_add(acc50)
+        let mut cnt75: f32 = reduce_add(acc75)
+
+        // Scalar tail
+        while i < len {
+            let v: f32 = data[i]
+            if v <= mid25 { cnt25 = cnt25 + 1.0 }
+            if v <= mid50 { cnt50 = cnt50 + 1.0 }
+            if v <= mid75 { cnt75 = cnt75 + 1.0 }
+            i = i + 1
+        }
+
+        if cnt25 < rank25 { lo25 = mid25 } else { hi25 = mid25 }
+        if cnt50 < rank50 { lo50 = mid50 } else { hi50 = mid50 }
+        if cnt75 < rank75 { lo75 = mid75 } else { hi75 = mid75 }
+
+        iter = iter + 1
+    }
+
+    out_p25[0] = (lo25 + hi25) * 0.5
+    out_p50[0] = (lo50 + hi50) * 0.5
+    out_p75[0] = (lo75 + hi75) * 0.5
+}

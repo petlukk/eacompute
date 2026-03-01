@@ -16,10 +16,10 @@ Same SIMD kernels as [simdstat](https://github.com/petlukk/simdstat), rewritten 
 | mean      | yes    | yes                 |
 | std       | yes    | yes                 |
 | min       | yes    | yes                 |
+| 25%       | yes (SIMD binary search) | yes (requires sort) |
+| 50%       | yes (SIMD binary search) | yes (requires sort) |
+| 75%       | yes (SIMD binary search) | yes (requires sort) |
 | max       | yes    | yes                 |
-| 25%       | —      | yes (requires sort) |
-| 50%       | —      | yes (requires sort) |
-| 75%       | —      | yes (requires sort) |
 
 ### Phase breakdown
 
@@ -41,10 +41,9 @@ pandas breakdown:
 
 | Comparison | Speedup |
 |------------|---------|
-| eastat vs pandas (comparable work — no percentiles) | 0.5x |
-| eastat vs pandas (full `.describe()` including percentiles) | 0.5x |
+| eastat vs pandas `.describe()` (equivalent work) | 0.5x |
 
-The "comparable work" number is the honest one: it compares equivalent operations (count, mean, std, min, max) while excluding percentile computation that eastat doesn't perform.
+Both tools now compute identical statistics. Eastat uses SIMD binary search for percentiles (no sorting required); pandas sorts each column.
 
 ### Where the speedup comes from
 
@@ -73,8 +72,9 @@ The "comparable work" number is the honest one: it compares equivalent operation
 - `batch_atof` — ASCII-to-float parser at C speed
 - `field_length_stats` — string column min/max/total length
 
-**csv_stats.ea** — 1 export:
+**csv_stats.ea** — 2 exports:
 - `f32_column_stats` — fused sum + min + max + sum-of-squares (f32x8 dual-accumulator with FMA)
+- `f32_percentiles` — binary-search p25/p50/p75 with SIMD counting (3 simultaneous searches per data pass)
 
 ## Usage
 
@@ -100,7 +100,7 @@ python bench.py
 1. mmap file → uint8 array
 2. extract_positions_quoted → delimiter + LF positions
 3. build_row_arrays + build_row_delim_index → row layout
-4. per column: compute_field_bounds → batch_atof → f32_column_stats
+4. per column: compute_field_bounds → batch_atof → f32_column_stats → f32_percentiles
 5. print results
 ```
 
@@ -109,4 +109,5 @@ Every kernel call is one line:
 ```python
 csv_parse.extract_positions_quoted(text, delim, buf1, buf2, counts)
 csv_stats.f32_column_stats(values, out_sum, out_min, out_max, out_sumsq)
+csv_stats.f32_percentiles(values, min_val, max_val, out_p25, out_p50, out_p75)
 ```

@@ -185,7 +185,8 @@ def _numeric_stats(val_buf, count, total_rows):
 
     if count == 0:
         return {'rows': total_rows, 'nulls': nulls, 'count': 0,
-                'min': None, 'max': None, 'mean': None, 'stddev': None, 'sum': None}
+                'min': None, 'max': None, 'mean': None, 'stddev': None, 'sum': None,
+                'p25': None, 'p50': None, 'p75': None}
 
     if count >= 16:
         out_sum = np.zeros(1, dtype=np.float32)
@@ -199,12 +200,25 @@ def _numeric_stats(val_buf, count, total_rows):
         total_min = float(out_min[0])
         total_max = float(out_max[0])
         total_sumsq = float(out_sumsq[0])
+
+        # Percentiles via SIMD binary search
+        out_p25 = np.zeros(1, dtype=np.float32)
+        out_p50 = np.zeros(1, dtype=np.float32)
+        out_p75 = np.zeros(1, dtype=np.float32)
+        csv_stats.f32_percentiles(values, total_min, total_max, out_p25, out_p50, out_p75)
+        p25 = float(out_p25[0])
+        p50 = float(out_p50[0])
+        p75 = float(out_p75[0])
     else:
         arr = values.astype(np.float64)
         total_sum = float(np.sum(arr))
         total_min = float(np.min(arr))
         total_max = float(np.max(arr))
         total_sumsq = float(np.sum(arr ** 2))
+        sorted_arr = np.sort(arr)
+        p25 = float(np.percentile(sorted_arr, 25))
+        p50 = float(np.percentile(sorted_arr, 50))
+        p75 = float(np.percentile(sorted_arr, 75))
 
     mean = total_sum / count
     variance = max(0.0, total_sumsq / count - mean * mean)
@@ -214,6 +228,7 @@ def _numeric_stats(val_buf, count, total_rows):
         'rows': total_rows, 'nulls': nulls, 'count': count,
         'min': total_min, 'max': total_max,
         'mean': mean, 'stddev': stddev, 'sum': total_sum,
+        'p25': p25, 'p50': p50, 'p75': p75,
     }
 
 
@@ -271,6 +286,8 @@ def print_table(results, headers, row_count, col_count, timings, file_size):
             if r.get('min') is not None:
                 print(f"        Min: {format_number(r['min']):>15}    Max: {format_number(r['max'])}")
                 print(f"        Mean: {format_number(r['mean']):>14}    StdDev: {format_number(r['stddev'])}")
+                print(f"        25%: {format_number(r.get('p25')):>15}    50%: {format_number(r.get('p50'))}")
+                print(f"        75%: {format_number(r.get('p75')):>15}")
         else:
             print(f"        Min Length: {format_number(r.get('min_length', 0)):>10}    Max Length: {format_number(r.get('max_length', 0))}")
 
@@ -308,6 +325,7 @@ def print_json(results, headers, row_count, col_count, timings, file_size):
             col.update({
                 'min': r.get('min'), 'max': r.get('max'),
                 'mean': r.get('mean'), 'stddev': r.get('stddev'),
+                'p25': r.get('p25'), 'p50': r.get('p50'), 'p75': r.get('p75'),
             })
         else:
             col.update({
