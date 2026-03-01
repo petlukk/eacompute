@@ -101,14 +101,18 @@ Run `python bench.py --precision test_file.csv` to see exact divergence on your 
 | Whitespace-padded numerics | Handled — `batch_atof` strips leading whitespace |
 | Very long fields (>256 chars) | Handled (tested with 500-char fields) |
 
-## What `ea bind` eliminates
+## Code size
 
-| Before (manual ctypes) | After (ea bind) | Lines saved |
-|---|---|---|
-| 86 lines ctypes boilerplate (CDLL, argtypes, restype) | Auto-generated `csv_parse.py`, `csv_stats.py` | 86 |
-| ~80 lines call-site `.ctypes.data_as()` / `ctypes.c_int32()` | One-line wrapper calls | ~80 |
-| 227 lines NumPy fallback paths | Dropped (kernels are the product) | 227 |
-| ~70 lines Python row-boundary computation | `build_row_arrays` kernel | ~70 |
+For the work eastat actually does — structural CSV scanning, numeric parsing, and column statistics including percentiles — the entire implementation is 1,042 lines compiling to 38 KB of shared objects. Pandas needs roughly 10x the code for the same computation (~6,000 lines Python + ~4,000 lines C/Cython). Polars' Python surface is comparable in size, but dispatches to a Rust core of tens of thousands of lines.
+
+This is not a claim of feature equivalence. Pandas and polars are general-purpose DataFrame libraries. Eastat does one thing. The point is that `ea bind` makes writing that one thing remarkably compact — you write the kernels, the bindings are generated, and there's no framework in between.
+
+| Component | Lines |
+|-----------|-------|
+| `csv_parse.ea` (7 kernel exports) | 474 |
+| `csv_stats.ea` (2 kernel exports) | 164 |
+| `eastat.py` (pipeline + output) | 404 |
+| **Total** | **1,042** |
 
 `grep -c ctypes eastat.py` → **0**
 
