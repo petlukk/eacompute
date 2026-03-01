@@ -5,44 +5,49 @@ Dual-accumulator FMA with f32x8 (AVX2), benchmarked against NumPy and FAISS.
 
 ## Results
 
-**Headline: 3–4x faster than FAISS at dim=384** — the most common embedding dimension
+**Headline: 4–8x faster than FAISS at dim=384** — the most common embedding dimension
 (all-MiniLM-L6, e5-small, many production models).
 
 batch_dot / inner product, single-threaded:
 
 | dim  | N     | Eä ST    | NumPy    | FAISS    | vs NumPy | vs FAISS |
 |------|-------|----------|----------|----------|----------|----------|
-| 384  | 10K   | 0.3 ms   | 0.3 ms   | 1.4 ms   | 0.8x     | 4.3x     |
-| 384  | 100K  | 6.0 ms   | 24.5 ms  | 25.7 ms  | 4.0x     | 4.2x     |
-| 384  | 500K  | 40.9 ms  | 83.4 ms  | 190.1 ms | 1.5x     | 3.4x     |
-| 768  | 100K  | 15.0 ms  | 40.3 ms  | 45.5 ms  | 1.8x     | 2.1x     |
-| 1536 | 100K  | 28.7 ms  | 48.0 ms  | 56.0 ms  | 1.3x     | 1.5x     |
+| 384  | 10K   | 0.3 ms   | 0.3 ms   | 1.6 ms   | 0.9x     | 4.3x     |
+| 384  | 100K  | 4.9 ms   | 24.3 ms  | 42.2 ms  | 4.6x     | 8.0x     |
+| 384  | 500K  | 36.0 ms  | 99.5 ms  | 191.5 ms | 2.8x     | 5.4x     |
+| 768  | 100K  | 12.1 ms  | 34.6 ms  | 44.5 ms  | 1.3x     | 1.7x     |
+| 1536 | 10K   | 4.6 ms   | 5.7 ms   | 3.7 ms   | 1.4x     | 0.9x     |
+| 1536 | 100K  | 30.8 ms  | 63.5 ms  | 78.5 ms  | 1.5x     | 1.9x     |
 
-**Honest note on dim=384, N=10K:** Eä is 0.8x NumPy. At that size, NumPy's BLAS
+**Honest note on dim=384, N=10K:** Eä is 0.9x NumPy. At that size, NumPy's BLAS
 (OpenBLAS/MKL) is highly optimized for small matrix-vector products and Eä's kernel
 entry cost is visible. The advantage appears at 100K+ vectors where the inner loop
 dominates.
 
+**Honest note on dim=1536, N=10K:** FAISS wins 0.9x. At small N with high dim,
+FAISS's inner kernel is very tight and the per-vector overhead is minimal. Eä takes
+the lead back at 100K vectors (1.9x).
+
 **Scaling story:** Eä's advantage is largest at dim=384 (compute-bound) and narrows
 at dim=1536. At 1536 dimensions with 100K vectors you're moving 580MB of data — the
-bottleneck shifts from compute to memory bandwidth, and 1.5x over FAISS is still a
+bottleneck shifts from compute to memory bandwidth, and 1.9x over FAISS is still a
 win but the ceiling is lower.
 
 **FAISS overhead:** FAISS' `IndexFlatIP.search()` carries dispatch cost — index
 bookkeeping, thread pool management, result sorting — even in single-threaded mode.
 Eä's kernel is the raw dot product with no framework around it. That dispatch cost
-is a larger fraction at small N (4.3x at 10K) and shrinks at large N (3.4x at 500K)
+is a larger fraction at small N (4.3x at 10K) and shrinks at large N (5.4x at 500K)
 as the actual compute dominates.
 
 ### Metric comparison (dim=768, N=100K)
 
 | Metric | Eä ST    | NumPy     | FAISS    | vs NumPy | vs FAISS |
 |--------|----------|-----------|----------|----------|----------|
-| dot    | 12.2 ms  | 25.6 ms   | 36.7 ms  | 2.1x     | 3.0x     |
-| cosine | 12.5 ms  | 322.0 ms  | —        | 25.8x    | —        |
-| l2_sq  | 20.2 ms  | 570.8 ms  | 33.7 ms  | 28.3x    | 1.7x     |
+| dot    | 9.8 ms   | 38.7 ms   | 40.1 ms  | 3.9x     | 4.1x     |
+| cosine | 11.7 ms  | 334.6 ms  | —        | 28.5x    | —        |
+| l2_sq  | 19.8 ms  | 659.3 ms  | 42.6 ms  | 33.3x    | 2.1x     |
 
-The 25.8x cosine speedup vs NumPy is an architectural win, not a kernel efficiency
+The 28.5x cosine speedup vs NumPy is an architectural win, not a kernel efficiency
 win. NumPy computes cosine as `dot(a,b) / (norm(a) * norm(b))` — three separate
 passes over the data. Eä's `batch_cosine` fuses the dot product and both norms
 into a single pass with 4 accumulators, reading each vector exactly once. FAISS
@@ -64,6 +69,11 @@ over a single accumulator.
 
 **`*restrict` pointers** — tells LLVM that query and database pointers don't alias,
 enabling vectorization without runtime alias checks.
+
+**Next-vector prefetch** — each outer loop iteration prefetches `db[(v+1)*dim]`,
+the start of the next database vector. The hardware prefetcher handles sequential
+access within a vector, but the jump between vectors (up to 6KB at dim=1536)
+benefits from the explicit hint. This improved dim=384 N=100K by ~19%.
 
 **Single-pass cosine** — `cosine_f32` computes dot product, `||a||²`, and `||b||²`
 simultaneously using 6 accumulators, reading each vector exactly once.
@@ -99,7 +109,7 @@ top_k:              overlap = 10/10      MATCH
 
 | Function             | Description                                         |
 |---------------------|-----------------------------------------------------|
-| `batch_dot`         | Query vs N vectors, FMA inner loop                  |
+| `batch_dot`         | Query vs N vectors, FMA inner loop, next-vec prefetch |
 | `batch_cosine`      | Query vs N vectors, precomputed query norm          |
 | `batch_l2`          | Query vs N vectors, fused diff-squared accumulation |
 | `normalize_vectors` | In-place L2 normalization                           |
