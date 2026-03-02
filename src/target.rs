@@ -104,10 +104,44 @@ pub fn optimize_module(
     machine: &TargetMachine,
     opt_level: u8,
 ) -> crate::error::Result<()> {
+    disable_loop_idiom_libcalls();
+
     let passes = format!("default<O{}>", opt_level.min(3));
     let opts = PassBuilderOptions::create();
     module
         .run_passes(&passes, machine, opts)
         .map_err(|e| CompileError::codegen_error(format!("pass pipeline failed: {e}")))?;
     Ok(())
+}
+
+/// Tell LLVM's LoopIdiomRecognize pass not to synthesize memset/memcpy calls.
+///
+/// Eä produces freestanding kernel code with no C runtime.  LLVM's optimizer
+/// can replace store-loops with memset/memcpy, which then fail to link on
+/// Windows (/NODEFAULTLIB) and hide what the programmer actually wrote.
+/// This sets the LLVM-internal flags once per process.
+#[cfg(feature = "llvm")]
+fn disable_loop_idiom_libcalls() {
+    use std::ffi::CString;
+    use std::sync::Once;
+
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        let args: Vec<CString> = [
+            "ea",
+            "-disable-loop-idiom-memset",
+            "-disable-loop-idiom-memcpy",
+        ]
+        .iter()
+        .map(|s| CString::new(*s).unwrap())
+        .collect();
+        let ptrs: Vec<*const i8> = args.iter().map(|s| s.as_ptr()).collect();
+        unsafe {
+            inkwell::llvm_sys::support::LLVMParseCommandLineOptions(
+                ptrs.len() as i32,
+                ptrs.as_ptr(),
+                std::ptr::null(),
+            );
+        }
+    });
 }
