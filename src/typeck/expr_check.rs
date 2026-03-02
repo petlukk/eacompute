@@ -306,9 +306,10 @@ impl TypeChecker {
         type_hint: Option<&Type>,
     ) -> crate::error::Result<Type> {
         if let Expr::Call { name, args, span } = expr
-            && let Some(result) = self.check_intrinsic_call(name, args, locals, type_hint, span) {
-                return result;
-            }
+            && let Some(result) = self.check_intrinsic_call(name, args, locals, type_hint, span)
+        {
+            return result;
+        }
         self.check_expr(expr, locals)
     }
 }

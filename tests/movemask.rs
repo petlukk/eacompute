@@ -129,6 +129,7 @@ mod tests {
     // --- IR inspection: verify pmovmskb appears in LLVM IR ---
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn test_movemask_ir() {
         let ir = compile_to_ir(
             r#"

@@ -11,9 +11,10 @@ impl<'ctx> CodeGenerator<'ctx> {
     /// Returns true if the argument expression is a vector variable with an unsigned element type.
     pub(crate) fn infer_unsigned_elem_from_arg(&self, arg: &Expr) -> bool {
         if let Expr::Variable(name, _) = arg
-            && let Some((_, Type::Vector { elem, .. })) = self.variables.get(name) {
-                return matches!(elem.as_ref(), Type::U8 | Type::U16);
-            }
+            && let Some((_, Type::Vector { elem, .. })) = self.variables.get(name)
+        {
+            return matches!(elem.as_ref(), Type::U8 | Type::U16);
+        }
         false
     }
 

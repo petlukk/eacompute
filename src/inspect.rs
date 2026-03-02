@@ -222,9 +222,10 @@ fn is_vector_instruction(instr: &inkwell::values::InstructionValue) -> bool {
     // Check if any operand is a vector type via get_operands iterator
     for operand in instr.get_operands().flatten() {
         if let Left(val) = operand
-            && val.get_type().is_vector_type() {
-                return true;
-            }
+            && val.get_type().is_vector_type()
+        {
+            return true;
+        }
     }
     false
 }
@@ -247,15 +248,17 @@ fn detect_loops(function: &inkwell::values::FunctionValue) -> u32 {
     let mut loops = 0u32;
     for (idx, block) in block_order.iter().enumerate() {
         if let Some(term) = block.get_terminator()
-            && term.get_opcode() == InstructionOpcode::Br {
-                for operand in term.get_operands().flatten() {
-                    if let Right(succ_bb) = operand
-                        && let Some(&succ_idx) = block_index.get(&succ_bb)
-                            && succ_idx <= idx {
-                                loops += 1;
-                            }
+            && term.get_opcode() == InstructionOpcode::Br
+        {
+            for operand in term.get_operands().flatten() {
+                if let Right(succ_bb) = operand
+                    && let Some(&succ_idx) = block_index.get(&succ_bb)
+                    && succ_idx <= idx
+                {
+                    loops += 1;
                 }
             }
+        }
     }
 
     loops

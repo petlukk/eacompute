@@ -63,14 +63,15 @@ impl<'ctx> CodeGenerator<'ctx> {
             }
         }
         if let Expr::Variable(name, _) = ptr_arg
-            && let Some((_, Type::Pointer { inner, .. })) = self.variables.get(name) {
-                let elem_llvm = self.llvm_type(inner);
-                match elem_llvm {
-                    BasicTypeEnum::FloatType(ft) => return ft.vec_type(4),
-                    BasicTypeEnum::IntType(it) => return it.vec_type(4),
-                    _ => {}
-                }
+            && let Some((_, Type::Pointer { inner, .. })) = self.variables.get(name)
+        {
+            let elem_llvm = self.llvm_type(inner);
+            match elem_llvm {
+                BasicTypeEnum::FloatType(ft) => return ft.vec_type(4),
+                BasicTypeEnum::IntType(it) => return it.vec_type(4),
+                _ => {}
             }
+        }
         self.context.f32_type().vec_type(4)
     }
 

@@ -111,13 +111,14 @@ fn emit_wrapper(out: &mut String, func: &ExportFunc) {
             continue;
         }
         if let Some(inner) = pointer_inner(&arg.ty)
-            && let Some(dtype) = numpy_dtype(inner) {
-                out.push_str(&format!("    if {}.dtype != _np.{dtype}:\n", arg.name));
-                out.push_str(&format!(
-                    "        raise TypeError(\"{}: expected {dtype}\")\n",
-                    arg.name
-                ));
-            }
+            && let Some(dtype) = numpy_dtype(inner)
+        {
+            out.push_str(&format!("    if {}.dtype != _np.{dtype}:\n", arg.name));
+            out.push_str(&format!(
+                "        raise TypeError(\"{}: expected {dtype}\")\n",
+                arg.name
+            ));
+        }
     }
 
     // Auto-allocate out buffers
