@@ -185,6 +185,7 @@ mod tests {
     // === x86: no regression — wider vectors still work ===
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn test_x86_still_accepts_f32x8() {
         try_compile(
             "export func f(v: f32x8) -> f32x8 { return v }",
@@ -194,6 +195,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn test_x86_still_accepts_i32x8() {
         try_compile(
             "export func f(v: i32x8) -> i32x8 { return v }",
