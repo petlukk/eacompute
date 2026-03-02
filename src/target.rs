@@ -135,7 +135,7 @@ fn disable_loop_idiom_libcalls() {
         .iter()
         .map(|s| CString::new(*s).unwrap())
         .collect();
-        let ptrs: Vec<*const i8> = args.iter().map(|s| s.as_ptr()).collect();
+        let ptrs: Vec<*const _> = args.iter().map(|s| s.as_ptr()).collect();
         unsafe {
             inkwell::llvm_sys::support::LLVMParseCommandLineOptions(
                 ptrs.len() as i32,
