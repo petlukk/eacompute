@@ -5,15 +5,31 @@ Astronomy Frame Stacking Demo: Ea vs NumPy
 Stacks N noisy exposures of a starfield to reduce noise.
 Signal reinforces, noise cancels by sqrt(N).
 
+Zero manual ctypes — Ea kernel called via auto-generated bindings from `ea bind --python`.
+
+Methodology:
+  - Three implementations benchmarked:
+    A) NumPy batch — np.mean on pre-built 3D array (idiomatic, best-case NumPy)
+    B) NumPy streaming — same accumulate+scale algorithm as Ea, pure NumPy
+    C) Ea streaming — SIMD kernel via auto-generated bindings
+  - All buffers pre-allocated before timing. No allocation inside timed code.
+  - Single-threaded: OMP/MKL/OPENBLAS threads pinned to 1.
+  - 50 runs, median reported. 5 warmup runs discarded.
+
 Usage:
     python run.py [N_frames]
 
 Default: 16 frames from NASA SkyView (or synthetic if unavailable).
 """
 
+import os
+# Force single-threaded NumPy before import
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+
 import sys
 import time
-import ctypes
 import subprocess
 import urllib.request
 from pathlib import Path
@@ -24,8 +40,8 @@ EA_ROOT = DEMO_DIR / ".." / ".."
 
 N_FRAMES = 16
 NOISE_SIGMA = 0.05
-
-FLOAT_PTR = ctypes.POINTER(ctypes.c_float)
+WARMUP = 5
+RUNS = 50
 
 NASA_SKYVIEW_URL = "https://skyview.gsfc.nasa.gov/current/cgi/runquery.pl"
 
@@ -215,26 +231,6 @@ def generate_noisy_frames(reference, n_frames, sigma, seed=100):
 # Image I/O
 # ---------------------------------------------------------------------------
 
-def load_image(path):
-    """Load image as grayscale float32 [0, 1]."""
-    try:
-        from PIL import Image
-        img = Image.open(path).convert("L")
-        return np.array(img, dtype=np.float32) / 255.0
-    except ImportError:
-        pass
-    try:
-        import cv2
-        img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
-        if img is None:
-            raise FileNotFoundError(f"Cannot read: {path}")
-        return img.astype(np.float32) / 255.0
-    except ImportError:
-        print("Error: need Pillow or OpenCV to load images")
-        print("  pip install Pillow  OR  pip install opencv-python")
-        sys.exit(1)
-
-
 def save_image(data, path):
     """Save float32 array as grayscale PNG."""
     clamped = np.clip(data, 0, None)
@@ -261,87 +257,48 @@ def save_image(data, path):
 # ---------------------------------------------------------------------------
 
 def build_ea_kernel():
-    """Compile stack.ea to stack.so if needed."""
-    so_path = DEMO_DIR / "stack.so"
+    """Compile stack.ea to libstack.so + stack.py bindings if needed."""
+    so_path = DEMO_DIR / "libstack.so"
     ea_path = DEMO_DIR / "stack.ea"
+    py_path = DEMO_DIR / "stack.py"
 
-    if so_path.exists() and so_path.stat().st_mtime > ea_path.stat().st_mtime:
+    if (so_path.exists() and py_path.exists()
+            and so_path.stat().st_mtime > ea_path.stat().st_mtime):
         return so_path
 
     print("Building Ea kernel...")
     result = subprocess.run(
-        ["cargo", "run", "--features=llvm", "--release", "--",
-         str(ea_path), "--lib"],
+        ["cargo", "build", "--features=llvm", "--release", "--quiet"],
         capture_output=True, text=True, cwd=str(EA_ROOT),
     )
     if result.returncode != 0:
-        print(f"Build failed:\n{result.stderr}")
+        print(f"Compiler build failed:\n{result.stderr}")
         sys.exit(1)
 
-    # Move from project root to demo dir
-    built = EA_ROOT / "stack.so"
-    if built.exists():
-        built.rename(so_path)
+    ea_bin = EA_ROOT / "target" / "release" / "ea"
+
+    result = subprocess.run(
+        [str(ea_bin), str(ea_path), "--lib", "-o", str(so_path)],
+        capture_output=True, text=True, cwd=str(DEMO_DIR),
+    )
+    if result.returncode != 0:
+        print(f"Kernel build failed:\n{result.stderr}")
+        sys.exit(1)
+
+    result = subprocess.run(
+        [str(ea_bin), "bind", str(ea_path), "--python"],
+        capture_output=True, text=True, cwd=str(DEMO_DIR),
+    )
+    if result.returncode != 0:
+        print(f"Binding generation failed:\n{result.stderr}")
+        sys.exit(1)
+
+    for obj in DEMO_DIR.glob("*.o"):
+        obj.unlink()
 
     print(f"  Built: {so_path}")
+    print(f"  Generated: {py_path}")
     return so_path
-
-
-# ---------------------------------------------------------------------------
-# Implementations
-# ---------------------------------------------------------------------------
-
-def stack_numpy(frames):
-    """Stack frames by averaging. Uses O(N*pixels) memory."""
-    return np.mean(np.array(frames), axis=0)
-
-
-def _load_ea_lib(so_path):
-    """Load Ea shared library and set up function signatures."""
-    lib = ctypes.CDLL(str(so_path))
-    lib.accumulate_f32x8.argtypes = [FLOAT_PTR, FLOAT_PTR, ctypes.c_int32]
-    lib.accumulate_f32x8.restype = None
-    lib.accumulate_foreach.argtypes = [FLOAT_PTR, FLOAT_PTR, ctypes.c_int32]
-    lib.accumulate_foreach.restype = None
-    lib.scale_f32x8.argtypes = [FLOAT_PTR, FLOAT_PTR, ctypes.c_int32, ctypes.c_float]
-    lib.scale_f32x8.restype = None
-    return lib
-
-
-def _stack_ea_impl(frames, lib, accumulate_fn):
-    """Common stacking logic using a given accumulate function."""
-    h, w = frames[0].shape
-    n = h * w
-    acc = np.zeros(n, dtype=np.float32)
-
-    for frame in frames:
-        flat = np.ascontiguousarray(frame, dtype=np.float32).ravel()
-        accumulate_fn(
-            acc.ctypes.data_as(FLOAT_PTR),
-            flat.ctypes.data_as(FLOAT_PTR),
-            n,
-        )
-
-    out = np.zeros(n, dtype=np.float32)
-    lib.scale_f32x8(
-        acc.ctypes.data_as(FLOAT_PTR),
-        out.ctypes.data_as(FLOAT_PTR),
-        n,
-        ctypes.c_float(1.0 / len(frames)),
-    )
-    return out.reshape(h, w)
-
-
-def stack_ea(frames, so_path):
-    """Stack frames using Ea f32x8 SIMD kernels."""
-    lib = _load_ea_lib(so_path)
-    return _stack_ea_impl(frames, lib, lib.accumulate_f32x8)
-
-
-def stack_ea_foreach(frames, so_path):
-    """Stack frames using Ea foreach (auto-vectorized) kernel."""
-    lib = _load_ea_lib(so_path)
-    return _stack_ea_impl(frames, lib, lib.accumulate_foreach)
 
 
 # ---------------------------------------------------------------------------
@@ -361,18 +318,16 @@ def compute_snr(image, reference):
 # Benchmarking
 # ---------------------------------------------------------------------------
 
-def benchmark(func, *args, warmup=5, runs=50):
-    """Run function multiple times, return median time in ms."""
+def benchmark(func, warmup=WARMUP, runs=RUNS):
+    """Benchmark a zero-arg callable. Returns (median_ms, std_ms)."""
     for _ in range(warmup):
-        func(*args)
-
+        func()
     times = []
     for _ in range(runs):
         t0 = time.perf_counter()
-        func(*args)
+        func()
         t1 = time.perf_counter()
         times.append((t1 - t0) * 1000)
-
     times.sort()
     median = times[len(times) // 2]
     return median, float(np.std(times))
@@ -383,7 +338,6 @@ def benchmark(func, *args, warmup=5, runs=50):
 # ---------------------------------------------------------------------------
 
 def main():
-    # Parse args
     n_frames = N_FRAMES
     if len(sys.argv) > 1:
         n_frames = int(sys.argv[1])
@@ -408,36 +362,99 @@ def main():
         data_source = "synthetic starfield"
 
     h, w = reference.shape
-    print(f"  Image: {w}x{h} ({w*h:,} pixels)")
-    print(f"  Data source: {data_source}")
+    n_pixels = h * w
+    print(f"  Image  : {w}x{h} ({n_pixels:,} pixels)")
+    print(f"  Source : {data_source}")
+    print(f"  NumPy  : {np.__version__}")
+    print(f"  Threads: OMP=1, MKL=1, OPENBLAS=1 (single-threaded)")
     print()
 
     # Build Ea kernel
-    so_path = build_ea_kernel()
+    build_ea_kernel()
     print()
 
-    # --- Correctness ---
-    print("=== Correctness ===")
-    result_numpy = stack_numpy(frames)
-    result_ea = stack_ea(frames, so_path)
+    # Import auto-generated bindings
+    sys.path.insert(0, str(DEMO_DIR))
+    import stack as _stack
 
-    diff = np.abs(result_ea - result_numpy)
-    max_diff = diff.max()
-    mean_diff = diff.mean()
-    print(f"  Ea vs NumPy: max diff = {max_diff:.8f}, mean diff = {mean_diff:.8f}")
-    if max_diff < 1e-5:
-        print("  Match: YES (within floating-point tolerance)")
-    else:
-        print(f"  Match: APPROXIMATE (max diff {max_diff:.6f})")
+    # ---------------------------------------------------------------
+    # Pre-allocate ALL buffers outside the benchmark loop
+    # ---------------------------------------------------------------
+
+    # For NumPy batch: pre-build 3D array (best-case: data already contiguous)
+    stacked_3d = np.array(frames)  # shape (N, H, W)
+
+    # For streaming (both NumPy and Ea): pre-flatten frames
+    flat_frames = [np.ascontiguousarray(f, dtype=np.float32).ravel()
+                   for f in frames]
+
+    # Pre-allocate accumulator and output
+    acc = np.zeros(n_pixels, dtype=np.float32)
+    out = np.zeros(n_pixels, dtype=np.float32)
+    factor = np.float32(1.0 / n_frames)
+
+    # ---------------------------------------------------------------
+    # Benchmark functions (zero allocation inside timed code)
+    # ---------------------------------------------------------------
+
+    def numpy_batch():
+        return np.mean(stacked_3d, axis=0)
+
+    def numpy_streaming():
+        acc[:] = 0.0
+        for flat in flat_frames:
+            np.add(acc, flat, out=acc)
+        np.multiply(acc, factor, out=out)
+
+    def ea_streaming():
+        acc[:] = 0.0
+        for flat in flat_frames:
+            _stack.accumulate_f32x8(acc, flat)
+        _stack.scale_f32x8(acc, out, float(factor))
+
+    # ---------------------------------------------------------------
+    # Correctness: all three must agree
+    # ---------------------------------------------------------------
+    print("=== Correctness ===")
+    ref_batch = numpy_batch()
+
+    numpy_streaming()
+    result_np_stream = out.reshape(h, w).copy()
+
+    ea_streaming()
+    result_ea = out.reshape(h, w).copy()
+
+    diff_stream = np.abs(result_np_stream - ref_batch)
+    diff_ea = np.abs(result_ea - ref_batch)
+    diff_ea_np = np.abs(result_ea - result_np_stream)
+
+    print(f"  NumPy stream vs batch : max={diff_stream.max():.2e}  "
+          f"mean={diff_stream.mean():.2e}")
+    print(f"  Ea vs NumPy batch     : max={diff_ea.max():.2e}  "
+          f"mean={diff_ea.mean():.2e}")
+    print(f"  Ea vs NumPy stream    : max={diff_ea_np.max():.2e}  "
+          f"mean={diff_ea_np.mean():.2e}")
+    all_match = diff_ea.max() < 1e-5 and diff_stream.max() < 1e-5
+    print(f"  All match: {'YES' if all_match else 'NO'}")
+    print()
+
+    # --- Frame stats (Ea kernel) ---
+    print("=== Frame Stats (Ea SIMD kernel) ===")
+    flat_result = np.ascontiguousarray(result_ea, dtype=np.float32).ravel()
+    out_min = np.zeros(1, dtype=np.float32)
+    out_max = np.zeros(1, dtype=np.float32)
+    out_sum = np.zeros(1, dtype=np.float32)
+    _stack.frame_stats(flat_result, out_min, out_max, out_sum)
+    print(f"  Min : {out_min[0]:.6f}")
+    print(f"  Max : {out_max[0]:.6f}")
+    print(f"  Mean: {out_sum[0] / n_pixels:.6f}")
     print()
 
     # --- SNR Analysis ---
     print("=== SNR Analysis ===")
     snr_single = compute_snr(frames[0], reference)
-    snr_numpy = compute_snr(result_numpy, reference)
+    snr_numpy = compute_snr(ref_batch, reference)
     snr_ea = compute_snr(result_ea, reference)
-    # Power SNR improvement from averaging N frames: noise power drops by N,
-    # so SNR improves by 10*log10(N). (The /2 form is for amplitude SNR only.)
     expected_improvement_db = 10 * np.log10(n_frames)
 
     print(f"  Single noisy frame SNR : {snr_single:6.2f} dB")
@@ -445,7 +462,7 @@ def main():
     print(f"  Stacked (Ea) SNR       : {snr_ea:6.2f} dB")
     print(f"  Improvement (Ea)       : {snr_ea - snr_single:+.2f} dB")
     print(f"  Expected improvement   : ~{expected_improvement_db:+.2f} dB "
-          f"(noise power / {n_frames} → power SNR + 10·log₁₀({n_frames}))")
+          f"(noise power / {n_frames} \u2192 power SNR + 10\u00b7log\u2081\u2080({n_frames}))")
     print()
 
     # Save output images
@@ -456,35 +473,41 @@ def main():
     print()
 
     # --- Performance ---
-    print("=== Performance ===")
-    print(f"  {n_frames} frames, {w}x{h} image, 50 runs, median time\n")
-
-    t_numpy, s_numpy = benchmark(stack_numpy, frames)
-    print(f"  NumPy               : {t_numpy:8.2f} ms  ±{s_numpy:.2f}")
-
-    t_ea, s_ea = benchmark(stack_ea, frames, so_path)
-    print(f"  Ea f32x8 (SIMD)     : {t_ea:8.2f} ms  ±{s_ea:.2f}")
-
-    t_fe, s_fe = benchmark(stack_ea_foreach, frames, so_path)
-    print(f"  Ea foreach (auto)   : {t_fe:8.2f} ms  ±{s_fe:.2f}")
+    print(f"=== Performance ({RUNS} runs, median, single-threaded) ===")
+    print(f"  {n_frames} frames, {w}x{h}")
     print()
 
-    # Memory note
-    pixels = w * h
-    print("=== Memory Usage ===")
-    print(f"  Ea    : O(pixels) extra = {pixels * 4 / 1024:.0f} KB "
-          f"(single accumulator)")
-    print(f"  NumPy : O(N*pixels)     = {n_frames * pixels * 4 / 1024:.0f} KB "
-          f"(np.array stacks all frames)")
+    t_batch, s_batch = benchmark(numpy_batch)
+    print(f"  NumPy batch  (np.mean)  : {t_batch:8.2f} ms  +/-{s_batch:.2f}")
+
+    t_stream, s_stream = benchmark(numpy_streaming)
+    print(f"  NumPy stream (same algo): {t_stream:8.2f} ms  +/-{s_stream:.2f}")
+
+    t_ea, s_ea = benchmark(ea_streaming)
+    print(f"  Ea stream    (SIMD)     : {t_ea:8.2f} ms  +/-{s_ea:.2f}")
+    print()
+
+    print("  Speedup:")
+    print(f"    Ea vs NumPy batch  : {t_batch / t_ea:.2f}x "
+          f"{'faster' if t_ea < t_batch else 'slower'}")
+    print(f"    Ea vs NumPy stream : {t_stream / t_ea:.2f}x "
+          f"{'faster' if t_ea < t_stream else 'slower'} "
+          f"(apples-to-apples, same algorithm)")
+    print()
+
+    # Memory
+    print("=== Memory (streaming vs batch) ===")
+    mb_per_frame = n_pixels * 4 / 1024 / 1024
+    print(f"  Streaming (Ea or NumPy): {mb_per_frame:.1f} MB "
+          f"(one accumulator + one output)")
+    print(f"  NumPy batch            : {n_frames * mb_per_frame:.1f} MB "
+          f"(all frames in 3D array + output)")
+    print(f"  Note: both streaming variants use the same memory.")
     print()
 
     # --- Summary ---
     print("=== Summary ===")
-    speedup = t_numpy / t_ea
-    print(f"  Ea vs NumPy  : {speedup:.1f}x "
-          f"{'faster' if t_ea < t_numpy else 'slower'}")
-    print(f"  SNR gain     : {snr_ea - snr_single:+.2f} dB from stacking {n_frames} frames")
-    print(f"  Memory       : Ea uses {n_frames}x less memory than NumPy")
+    print(f"  SNR gain: {snr_ea - snr_single:+.2f} dB from stacking {n_frames} frames")
     print()
     print("Output images saved to demo/astro_stack/")
 

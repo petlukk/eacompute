@@ -1,41 +1,141 @@
 // Astronomy frame stacking: accumulate N noisy exposures, then scale.
 // Signal reinforces, noise cancels by sqrt(N).
-// Two kernels: accumulate (called N times), scale (called once).
+//
+// Dual-accumulator f32x8 loops with software prefetch for ILP.
+// Three kernels: accumulate (called N times), scale (called once),
+// frame_stats (single-pass min/max/sum of final result).
 
 // In-place accumulation: acc[i] += frame[i]
+// Dual f32x8 accumulators with prefetch for instruction-level parallelism.
 export func accumulate_f32x8(acc: *mut f32, frame: *restrict f32, len: i32) {
     let mut i: i32 = 0
+
+    // Main loop: 16 floats per iteration (2x f32x8)
+    while i + 16 <= len {
+        prefetch(acc, i + 64)
+        prefetch(frame, i + 64)
+        let va0: f32x8 = load(acc, i)
+        let vf0: f32x8 = load(frame, i)
+        let va1: f32x8 = load(acc, i + 8)
+        let vf1: f32x8 = load(frame, i + 8)
+        store(acc, i, va0 .+ vf0)
+        store(acc, i + 8, va1 .+ vf1)
+        i = i + 16
+    }
+
+    // Residual full vector
     while i + 8 <= len {
         let va: f32x8 = load(acc, i)
         let vf: f32x8 = load(frame, i)
         store(acc, i, va .+ vf)
         i = i + 8
     }
+
+    // Scalar tail
     while i < len {
         acc[i] = acc[i] + frame[i]
         i = i + 1
-    }
-}
-
-// foreach accumulation variant (relies on LLVM auto-vectorization at O2+)
-export func accumulate_foreach(acc: *mut f32, frame: *restrict f32, len: i32) {
-    foreach (i in 0..len) {
-        acc[i] = acc[i] + frame[i]
     }
 }
 
 // Scale: out[i] = data[i] * factor
 // Called with factor = 1.0 / N to compute mean.
+// Dual f32x8 accumulators with prefetch.
 export func scale_f32x8(data: *restrict f32, out: *mut f32, len: i32, factor: f32) {
     let vfactor: f32x8 = splat(factor)
     let mut i: i32 = 0
+
+    // Main loop: 16 floats per iteration (2x f32x8)
+    while i + 16 <= len {
+        prefetch(data, i + 64)
+        let v0: f32x8 = load(data, i)
+        let v1: f32x8 = load(data, i + 8)
+        store(out, i, v0 .* vfactor)
+        store(out, i + 8, v1 .* vfactor)
+        i = i + 16
+    }
+
+    // Residual full vector
     while i + 8 <= len {
         let v: f32x8 = load(data, i)
         store(out, i, v .* vfactor)
         i = i + 8
     }
+
+    // Scalar tail
     while i < len {
         out[i] = data[i] * factor
         i = i + 1
     }
+}
+
+// Single-pass min/max/sum of stacked result.
+// Dual-accumulator reductions for ILP.
+// Writes results to out_min[0], out_max[0], out_sum[0].
+export func frame_stats(
+    data: *restrict f32,
+    len: i32,
+    out_min: *mut f32,
+    out_max: *mut f32,
+    out_sum: *mut f32
+) {
+    let init_val: f32 = data[0]
+    let mut sum_acc0: f32x8 = splat(0.0)
+    let mut sum_acc1: f32x8 = splat(0.0)
+    let mut min_acc0: f32x8 = splat(init_val)
+    let mut min_acc1: f32x8 = splat(init_val)
+    let mut max_acc0: f32x8 = splat(init_val)
+    let mut max_acc1: f32x8 = splat(init_val)
+
+    let mut i: i32 = 0
+
+    // Main loop: 16 floats per iteration (2x f32x8)
+    while i + 16 <= len {
+        prefetch(data, i + 64)
+        let v0: f32x8 = load(data, i)
+        let v1: f32x8 = load(data, i + 8)
+
+        sum_acc0 = sum_acc0 .+ v0
+        sum_acc1 = sum_acc1 .+ v1
+
+        min_acc0 = select(v0 .< min_acc0, v0, min_acc0)
+        min_acc1 = select(v1 .< min_acc1, v1, min_acc1)
+
+        max_acc0 = select(v0 .> max_acc0, v0, max_acc0)
+        max_acc1 = select(v1 .> max_acc1, v1, max_acc1)
+
+        i = i + 16
+    }
+
+    // Residual full vector
+    while i + 8 <= len {
+        let v: f32x8 = load(data, i)
+        sum_acc0 = sum_acc0 .+ v
+        min_acc0 = select(v .< min_acc0, v, min_acc0)
+        max_acc0 = select(v .> max_acc0, v, max_acc0)
+        i = i + 8
+    }
+
+    // Merge dual accumulators
+    let sum_merged: f32x8 = sum_acc0 .+ sum_acc1
+    let min_merged: f32x8 = select(min_acc0 .< min_acc1, min_acc0, min_acc1)
+    let max_merged: f32x8 = select(max_acc0 .> max_acc1, max_acc0, max_acc1)
+
+    // Horizontal reduction
+    let mut total_sum: f32 = reduce_add(sum_merged)
+    let mut total_min: f32 = reduce_min(min_merged)
+    let mut total_max: f32 = reduce_max(max_merged)
+
+    // Scalar tail
+    while i < len {
+        let v: f32 = data[i]
+        total_sum = total_sum + v
+        if v < total_min { total_min = v }
+        if v > total_max { total_max = v }
+        i = i + 1
+    }
+
+    out_min[0] = total_min
+    out_max[0] = total_max
+    out_sum[0] = total_sum
 }
