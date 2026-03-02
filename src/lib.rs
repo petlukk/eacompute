@@ -76,9 +76,16 @@ impl Default for CompileOptions {
 #[cfg(feature = "llvm")]
 impl CompileOptions {
     pub fn is_arm(&self) -> bool {
-        self.target_triple
-            .as_ref()
-            .is_some_and(|t| t.starts_with("aarch64") || t.starts_with("arm"))
+        let triple = self.target_triple.as_deref().unwrap_or(Self::host_triple());
+        triple.starts_with("aarch64") || triple.starts_with("arm")
+    }
+
+    fn host_triple() -> &'static str {
+        if cfg!(target_arch = "aarch64") {
+            "aarch64-unknown-linux-gnu"
+        } else {
+            "x86_64-unknown-linux-gnu"
+        }
     }
 }
 
