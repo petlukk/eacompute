@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.5.4 — Freestanding kernel correctness
+
+**Disable LLVM loop-idiom libcalls** — LLVM's LoopIdiomRecognize pass silently replaces store-loops with `memset`/`memcpy` calls. For freestanding kernels with no C runtime, this causes linker failures on Windows (`/NODEFAULTLIB`) and hides what the programmer actually wrote on all platforms. The optimizer now sets `-disable-loop-idiom-memset` and `-disable-loop-idiom-memcpy` via `LLVMParseCommandLineOptions` before running passes. Kernels contain exactly the code the programmer wrote — no synthesized libcalls, on any platform.
+
+**ARM build fix** — `c_char` is `u8` on ARM Linux but `i8` on x86. The loop-idiom flag setup used `*const i8` for the LLVM CLI argument pointers, which failed to compile on aarch64. Fixed by using inferred pointer types.
+
 ## v1.5 — Multi-kernel files, `static_assert`, `ea inspect`
 
 **Multi-kernel files** — multiple structs, constants, helper functions, and exported kernels in a single `.ea` file. The full pipeline (parser, desugarer, type checker, codegen, metadata, header, all five binding generators) handles everything seamlessly. No special syntax needed — just write multiple exports.
