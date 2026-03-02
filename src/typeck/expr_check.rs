@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::ast::{BinaryOp, Expr, Literal};
 use crate::error::CompileError;
 
-use super::types::{self, Type};
 use super::TypeChecker;
+use super::types::{self, Type};
 
 impl TypeChecker {
     pub(super) fn check_expr(
@@ -69,7 +69,9 @@ impl TypeChecker {
                 match obj_type.pointee() {
                     Some(inner) => Ok(inner.clone()),
                     None => Err(CompileError::type_error(
-                        format!("cannot index type {obj_type}. Only pointers and vectors support indexing"),
+                        format!(
+                            "cannot index type {obj_type}. Only pointers and vectors support indexing"
+                        ),
                         span.clone(),
                     )),
                 }
@@ -157,7 +159,7 @@ impl TypeChecker {
                         return Err(CompileError::type_error(
                             format!("expected vector type, got {vec_type}"),
                             span.clone(),
-                        ))
+                        ));
                     }
                 };
 
@@ -197,14 +199,14 @@ impl TypeChecker {
                             return Err(CompileError::type_error(
                                 format!("field access on non-struct pointer type {obj_type}"),
                                 span.clone(),
-                            ))
+                            ));
                         }
                     },
                     _ => {
                         return Err(CompileError::type_error(
                             format!("field access on non-struct type {obj_type}"),
                             span.clone(),
-                        ))
+                        ));
                     }
                 };
                 let fields = self.structs.get(&struct_name).ok_or_else(|| {
@@ -303,11 +305,10 @@ impl TypeChecker {
         locals: &HashMap<String, (Type, bool)>,
         type_hint: Option<&Type>,
     ) -> crate::error::Result<Type> {
-        if let Expr::Call { name, args, span } = expr {
-            if let Some(result) = self.check_intrinsic_call(name, args, locals, type_hint, span) {
+        if let Expr::Call { name, args, span } = expr
+            && let Some(result) = self.check_intrinsic_call(name, args, locals, type_hint, span) {
                 return result;
             }
-        }
         self.check_expr(expr, locals)
     }
 }

@@ -3,8 +3,8 @@ use inkwell::{FloatPredicate, IntPredicate};
 
 use crate::ast::{BinaryOp, Expr, Literal};
 use crate::error::CompileError;
-use crate::typeck::types::is_unsigned;
 use crate::typeck::Type;
+use crate::typeck::types::is_unsigned;
 
 use super::CodeGenerator;
 

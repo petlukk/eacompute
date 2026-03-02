@@ -19,6 +19,10 @@ mod structs;
 use std::collections::HashMap;
 
 #[cfg(feature = "llvm")]
+use inkwell::AddressSpace;
+#[cfg(feature = "llvm")]
+use inkwell::DLLStorageClass;
+#[cfg(feature = "llvm")]
 use inkwell::builder::Builder;
 #[cfg(feature = "llvm")]
 use inkwell::context::Context;
@@ -28,10 +32,6 @@ use inkwell::module::{Linkage, Module};
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 #[cfg(feature = "llvm")]
 use inkwell::values::{FunctionValue, PointerValue};
-#[cfg(feature = "llvm")]
-use inkwell::AddressSpace;
-#[cfg(feature = "llvm")]
-use inkwell::DLLStorageClass;
 
 #[cfg(feature = "llvm")]
 use crate::ast::{Literal, Stmt, TypeAnnotation};
@@ -200,11 +200,15 @@ impl<'ctx> CodeGenerator<'ctx> {
                 if let Some(st) = self.struct_types.get(name) {
                     BasicTypeEnum::StructType(*st)
                 } else {
-                    panic!("BUG: struct type '{name}' not registered — should have been caught by typechecker")
+                    panic!(
+                        "BUG: struct type '{name}' not registered — should have been caught by typechecker"
+                    )
                 }
             }
             Type::String | Type::Void => {
-                panic!("BUG: type {ty:?} has no LLVM representation — should have been caught by typechecker")
+                panic!(
+                    "BUG: type {ty:?} has no LLVM representation — should have been caught by typechecker"
+                )
             }
         }
     }

@@ -63,7 +63,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             _ => {
                 return Err(CompileError::codegen_error(
                     "unsupported vector binary operation",
-                ))
+                ));
             }
         };
         Ok(BasicValueEnum::VectorValue(

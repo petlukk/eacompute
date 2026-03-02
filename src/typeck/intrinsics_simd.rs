@@ -4,8 +4,8 @@ use crate::ast::Expr;
 use crate::error::CompileError;
 use crate::lexer::Span;
 
-use super::types::{self, Type};
 use super::TypeChecker;
+use super::types::{self, Type};
 
 impl TypeChecker {
     pub(super) fn check_load(
@@ -146,7 +146,7 @@ impl TypeChecker {
                 return Err(CompileError::type_error(
                     format!("shuffle first argument must be vector, got {vec_type}"),
                     args[0].span().clone(),
-                ))
+                ));
             }
         };
 
@@ -175,7 +175,7 @@ impl TypeChecker {
                             return Err(CompileError::type_error(
                                 format!("shuffle index {i} must be integer literal"),
                                 idx.span().clone(),
-                            ))
+                            ));
                         }
                     }
                 }
@@ -184,7 +184,7 @@ impl TypeChecker {
                 return Err(CompileError::type_error(
                     "shuffle second argument must be [index, ...] array literal",
                     args[1].span().clone(),
-                ))
+                ));
             }
         }
         Ok(vec_type)
@@ -244,13 +244,13 @@ impl TypeChecker {
                 return Err(CompileError::type_error(
                     "gather expects pointer to numeric type",
                     args[0].span().clone(),
-                ))
+                ));
             }
             _ => {
                 return Err(CompileError::type_error(
                     format!("gather expects a pointer, got {ptr_type}"),
                     args[0].span().clone(),
-                ))
+                ));
             }
         };
         let width = match &idx_type {
@@ -259,7 +259,7 @@ impl TypeChecker {
                 return Err(CompileError::type_error(
                     format!("gather indices must be i32 vector, got {idx_type}"),
                     args[1].span().clone(),
-                ))
+                ));
             }
         };
         Ok(Type::Vector { elem: inner, width })
@@ -286,7 +286,7 @@ impl TypeChecker {
                 return Err(CompileError::type_error(
                     format!("scatter indices must be i32 vector, got {idx_type}"),
                     args[1].span().clone(),
-                ))
+                ));
             }
         }
         match (ptr_type, val_type) {

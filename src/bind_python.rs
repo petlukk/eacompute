@@ -1,6 +1,6 @@
 use crate::bind_common::{
-    find_collapsed_args, has_out_params, parse_exports, parse_string_field, pointer_inner,
-    ExportFunc,
+    ExportFunc, find_collapsed_args, has_out_params, parse_exports, parse_string_field,
+    pointer_inner,
 };
 
 pub fn generate(json_str: &str, module_stem: &str) -> Result<String, String> {
@@ -110,15 +110,14 @@ fn emit_wrapper(out: &mut String, func: &ExportFunc) {
         if arg.direction == "out" && arg.cap.is_some() {
             continue;
         }
-        if let Some(inner) = pointer_inner(&arg.ty) {
-            if let Some(dtype) = numpy_dtype(inner) {
+        if let Some(inner) = pointer_inner(&arg.ty)
+            && let Some(dtype) = numpy_dtype(inner) {
                 out.push_str(&format!("    if {}.dtype != _np.{dtype}:\n", arg.name));
                 out.push_str(&format!(
                     "        raise TypeError(\"{}: expected {dtype}\")\n",
                     arg.name
                 ));
             }
-        }
     }
 
     // Auto-allocate out buffers

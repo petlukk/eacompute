@@ -4,8 +4,8 @@ use crate::ast::Expr;
 use crate::error::CompileError;
 use crate::lexer::Span;
 
-use super::types::{self, Type};
 use super::TypeChecker;
+use super::types::{self, Type};
 
 impl TypeChecker {
     /// Returns Some(type) if the call is a known intrinsic, None if it's a user function.

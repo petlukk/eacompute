@@ -154,7 +154,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     _ => {
                         return Err(CompileError::codegen_error(
                             "index-assign on non-pointer type",
-                        ))
+                        ));
                     }
                 };
                 let inner_llvm_ty = self.llvm_type(&inner_type);

@@ -1,6 +1,6 @@
 #[cfg(feature = "llvm")]
 mod tests {
-    use ea_compiler::{inspect_source, CompileOptions};
+    use ea_compiler::{CompileOptions, inspect_source};
 
     #[cfg(target_arch = "x86_64")]
     #[test]

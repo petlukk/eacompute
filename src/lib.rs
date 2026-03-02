@@ -114,12 +114,12 @@ pub fn compile_with_options(
     check_types(&stmts)?;
 
     let context = inkwell::context::Context::create();
-    let mut gen = codegen::CodeGenerator::new(&context, "ea_module", opts);
-    gen.compile_program(&stmts)?;
+    let mut cg = codegen::CodeGenerator::new(&context, "ea_module", opts);
+    cg.compile_program(&stmts)?;
 
     match mode {
         OutputMode::ObjectFile => {
-            target::write_object_file(gen.module(), output_path, opts)?;
+            target::write_object_file(cg.module(), output_path, opts)?;
         }
         OutputMode::Executable(ref exe_name) => {
             let tmp_dir = std::env::temp_dir().join("ea_build");
@@ -127,7 +127,7 @@ pub fn compile_with_options(
                 error::CompileError::codegen_error(format!("failed to create temp dir: {e}"))
             })?;
             let obj_path = tmp_dir.join("temp.o");
-            target::write_object_file(gen.module(), &obj_path, opts)?;
+            target::write_object_file(cg.module(), &obj_path, opts)?;
 
             let status = std::process::Command::new("cc")
                 .arg(&obj_path)
@@ -146,7 +146,7 @@ pub fn compile_with_options(
             }
         }
         OutputMode::SharedLib(ref lib_name) => {
-            target::write_object_file(gen.module(), output_path, opts)?;
+            target::write_object_file(cg.module(), output_path, opts)?;
 
             #[cfg(target_os = "windows")]
             {
@@ -205,13 +205,13 @@ pub fn compile_with_options(
             }
         }
         OutputMode::LlvmIr => {
-            let ir = gen.print_ir();
+            let ir = cg.print_ir();
             std::fs::write(output_path, ir).map_err(|e| {
                 error::CompileError::codegen_error(format!("failed to write IR: {e}"))
             })?;
         }
         OutputMode::Asm => {
-            target::write_asm_file(gen.module(), output_path, opts)?;
+            target::write_asm_file(cg.module(), output_path, opts)?;
         }
     }
 
@@ -228,10 +228,10 @@ pub fn compile_to_ir(source: &str) -> error::Result<String> {
     check_types(&stmts)?;
 
     let context = inkwell::context::Context::create();
-    let mut gen = codegen::CodeGenerator::new(&context, "ea_module", &CompileOptions::default());
-    gen.compile_program(&stmts)?;
+    let mut cg = codegen::CodeGenerator::new(&context, "ea_module", &CompileOptions::default());
+    cg.compile_program(&stmts)?;
 
-    Ok(gen.print_ir())
+    Ok(cg.print_ir())
 }
 
 #[cfg(feature = "llvm")]
@@ -247,14 +247,14 @@ pub fn inspect_source(
     check_types(&stmts)?;
 
     let context = inkwell::context::Context::create();
-    let mut gen = codegen::CodeGenerator::new(&context, "ea_module", opts);
-    gen.compile_program(&stmts)?;
+    let mut cg = codegen::CodeGenerator::new(&context, "ea_module", opts);
+    cg.compile_program(&stmts)?;
 
     let machine = target::create_target_machine(opts)?;
 
     if opts.opt_level > 0 {
-        target::optimize_module(gen.module(), &machine, opts.opt_level)?;
+        target::optimize_module(cg.module(), &machine, opts.opt_level)?;
     }
 
-    inspect::analyze_module(gen.module(), &machine)
+    inspect::analyze_module(cg.module(), &machine)
 }

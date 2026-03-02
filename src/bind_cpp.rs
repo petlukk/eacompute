@@ -1,5 +1,5 @@
 use crate::bind_common::{
-    find_collapsed_args, is_mut_pointer, parse_exports, pointer_inner, ExportFunc,
+    ExportFunc, find_collapsed_args, is_mut_pointer, parse_exports, pointer_inner,
 };
 
 pub fn generate(json_str: &str, module_stem: &str) -> Result<String, String> {

@@ -68,8 +68,8 @@ impl Parser {
                     span: Span::new(expr_start, end),
                 });
             }
-            if let Expr::Index { object, index, .. } = expr {
-                if let Expr::Variable(name, _) = *object {
+            if let Expr::Index { object, index, .. } = expr
+                && let Expr::Variable(name, _) = *object {
                     return Ok(Stmt::IndexAssign {
                         object: name,
                         index: *index,
@@ -77,7 +77,6 @@ impl Parser {
                         span: Span::new(expr_start, end),
                     });
                 }
-            }
             return Err(crate::error::CompileError::parse_error(
                 "invalid assignment target",
                 self.current_position(),

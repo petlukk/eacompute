@@ -1,6 +1,6 @@
+use inkwell::IntPredicate;
 use inkwell::types::{BasicTypeEnum, VectorType};
 use inkwell::values::{BasicValue, BasicValueEnum, FunctionValue, VectorValue};
-use inkwell::IntPredicate;
 
 use crate::ast::Expr;
 use crate::error::CompileError;
@@ -62,8 +62,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                 _ => {}
             }
         }
-        if let Expr::Variable(name, _) = ptr_arg {
-            if let Some((_, Type::Pointer { inner, .. })) = self.variables.get(name) {
+        if let Expr::Variable(name, _) = ptr_arg
+            && let Some((_, Type::Pointer { inner, .. })) = self.variables.get(name) {
                 let elem_llvm = self.llvm_type(inner);
                 match elem_llvm {
                     BasicTypeEnum::FloatType(ft) => return ft.vec_type(4),
@@ -71,7 +71,6 @@ impl<'ctx> CodeGenerator<'ctx> {
                     _ => {}
                 }
             }
-        }
         self.context.f32_type().vec_type(4)
     }
 
@@ -296,7 +295,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             _ => {
                 return Err(CompileError::codegen_error(format!(
                     "cannot splat type {first_ty:?}"
-                )))
+                )));
             }
         };
 
@@ -375,7 +374,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             _ => {
                 return Err(CompileError::codegen_error(
                     "unsupported gather element type",
-                ))
+                ));
             }
         };
         let ptr_vec = self.build_gather_ptrs(base, indices, elem_ty)?;

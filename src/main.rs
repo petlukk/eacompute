@@ -1,4 +1,4 @@
-use ea_compiler::error::{format_with_source, CompileError};
+use ea_compiler::error::{CompileError, format_with_source};
 use std::process;
 
 fn print_error(e: &CompileError, filename: &str, source: &str) {
@@ -248,7 +248,7 @@ fn main() {
             OutputMode::Asm => "assembly",
         };
         let output_display = match &mode {
-            OutputMode::Executable(ref name) | OutputMode::SharedLib(ref name) => name.clone(),
+            OutputMode::Executable(name) | OutputMode::SharedLib(name) => name.clone(),
             _ => output_path.display().to_string(),
         };
 

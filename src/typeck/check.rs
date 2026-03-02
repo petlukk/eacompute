@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::ast::Stmt;
 use crate::error::CompileError;
 
-use super::types::{self, Type};
 use super::TypeChecker;
+use super::types::{self, Type};
 
 impl TypeChecker {
     pub(super) fn check_body(
@@ -96,7 +96,9 @@ impl TypeChecker {
                         Type::Pointer { mutable, inner, .. } => {
                             if !mutable {
                                 return Err(CompileError::type_error(
-                                    format!("cannot write through immutable pointer '{object}'. Declare as *mut to allow writes"),
+                                    format!(
+                                        "cannot write through immutable pointer '{object}'. Declare as *mut to allow writes"
+                                    ),
                                     span.clone(),
                                 ));
                             }
@@ -262,7 +264,7 @@ impl TypeChecker {
                                 return Err(CompileError::type_error(
                                     format!("field assign on non-struct pointer type {obj_type}"),
                                     span.clone(),
-                                ))
+                                ));
                             }
                         },
                         Type::Pointer {
@@ -273,13 +275,13 @@ impl TypeChecker {
                             return Err(CompileError::type_error(
                                 "cannot assign field through immutable pointer. Declare as *mut to allow writes",
                                 span.clone(),
-                            ))
+                            ));
                         }
                         _ => {
                             return Err(CompileError::type_error(
                                 format!("field assign on non-struct type {obj_type}"),
                                 span.clone(),
-                            ))
+                            ));
                         }
                     };
                     let fields = self.structs.get(&struct_name).ok_or_else(|| {

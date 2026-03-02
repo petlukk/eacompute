@@ -4,8 +4,8 @@ use crate::ast::Expr;
 use crate::error::CompileError;
 use crate::lexer::Span;
 
-use super::types::Type;
 use super::TypeChecker;
+use super::types::Type;
 
 impl TypeChecker {
     pub(super) fn check_widen_i8_f32x4(
