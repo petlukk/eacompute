@@ -17,6 +17,11 @@
       "return_type": null
     },
     {
+      "name": "accumulate_batch8_f32x8_nt",
+      "args": [{"name": "acc", "type": "*mut f32", "direction": "in", "cap": null, "count": null}, {"name": "f0", "type": "*restrict f32", "direction": "in", "cap": null, "count": null}, {"name": "f1", "type": "*restrict f32", "direction": "in", "cap": null, "count": null}, {"name": "f2", "type": "*restrict f32", "direction": "in", "cap": null, "count": null}, {"name": "f3", "type": "*restrict f32", "direction": "in", "cap": null, "count": null}, {"name": "f4", "type": "*restrict f32", "direction": "in", "cap": null, "count": null}, {"name": "f5", "type": "*restrict f32", "direction": "in", "cap": null, "count": null}, {"name": "f6", "type": "*restrict f32", "direction": "in", "cap": null, "count": null}, {"name": "f7", "type": "*restrict f32", "direction": "in", "cap": null, "count": null}, {"name": "len", "type": "i32", "direction": "in", "cap": null, "count": null}],
+      "return_type": null
+    },
+    {
       "name": "scale_f32x8",
       "args": [{"name": "data", "type": "*restrict f32", "direction": "in", "cap": null, "count": null}, {"name": "out", "type": "*mut f32", "direction": "in", "cap": null, "count": null}, {"name": "len", "type": "i32", "direction": "in", "cap": null, "count": null}, {"name": "factor", "type": "f32", "direction": "in", "cap": null, "count": null}],
       "return_type": null

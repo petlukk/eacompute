@@ -162,6 +162,78 @@ export func accumulate_batch8_f32x8(
     }
 }
 
+// Non-temporal variant of batch8 for comparison benchmarking.
+// Uses stream_store to bypass cache on write-back.
+// Better than regular store when acc exceeds L3 cache.
+export func accumulate_batch8_f32x8_nt(
+    acc: *mut f32,
+    f0: *restrict f32,
+    f1: *restrict f32,
+    f2: *restrict f32,
+    f3: *restrict f32,
+    f4: *restrict f32,
+    f5: *restrict f32,
+    f6: *restrict f32,
+    f7: *restrict f32,
+    len: i32
+) {
+    let mut i: i32 = 0
+
+    while i + 16 <= len {
+        prefetch(acc, i + 64)
+        prefetch(f0, i + 64)
+        prefetch(f1, i + 64)
+        prefetch(f2, i + 64)
+        prefetch(f3, i + 64)
+        prefetch(f4, i + 64)
+        prefetch(f5, i + 64)
+        prefetch(f6, i + 64)
+        prefetch(f7, i + 64)
+
+        let a0: f32x8 = load(acc, i)
+        let a1: f32x8 = load(acc, i + 8)
+        let v00: f32x8 = load(f0, i)
+        let v01: f32x8 = load(f0, i + 8)
+        let v10: f32x8 = load(f1, i)
+        let v11: f32x8 = load(f1, i + 8)
+        let v20: f32x8 = load(f2, i)
+        let v21: f32x8 = load(f2, i + 8)
+        let v30: f32x8 = load(f3, i)
+        let v31: f32x8 = load(f3, i + 8)
+        let v40: f32x8 = load(f4, i)
+        let v41: f32x8 = load(f4, i + 8)
+        let v50: f32x8 = load(f5, i)
+        let v51: f32x8 = load(f5, i + 8)
+        let v60: f32x8 = load(f6, i)
+        let v61: f32x8 = load(f6, i + 8)
+        let v70: f32x8 = load(f7, i)
+        let v71: f32x8 = load(f7, i + 8)
+
+        stream_store(acc, i,     a0 .+ v00 .+ v10 .+ v20 .+ v30 .+ v40 .+ v50 .+ v60 .+ v70)
+        stream_store(acc, i + 8, a1 .+ v01 .+ v11 .+ v21 .+ v31 .+ v41 .+ v51 .+ v61 .+ v71)
+        i = i + 16
+    }
+
+    while i + 8 <= len {
+        let a: f32x8 = load(acc, i)
+        let v0: f32x8 = load(f0, i)
+        let v1: f32x8 = load(f1, i)
+        let v2: f32x8 = load(f2, i)
+        let v3: f32x8 = load(f3, i)
+        let v4: f32x8 = load(f4, i)
+        let v5: f32x8 = load(f5, i)
+        let v6: f32x8 = load(f6, i)
+        let v7: f32x8 = load(f7, i)
+        stream_store(acc, i, a .+ v0 .+ v1 .+ v2 .+ v3 .+ v4 .+ v5 .+ v6 .+ v7)
+        i = i + 8
+    }
+
+    while i < len {
+        acc[i] = acc[i] + f0[i] + f1[i] + f2[i] + f3[i] + f4[i] + f5[i] + f6[i] + f7[i]
+        i = i + 1
+    }
+}
+
 // Scale: out[i] = data[i] * factor
 // Called with factor = 1.0 / N to compute mean.
 // Dual f32x8 accumulators with prefetch.

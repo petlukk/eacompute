@@ -80,6 +80,42 @@ def accumulate_batch8_f32x8(acc: _np.ndarray, f0: _np.ndarray, f1: _np.ndarray, 
         _ct.c_int32(f7.size)
     )
 
+_lib.accumulate_batch8_f32x8_nt.argtypes = [_ct.POINTER(_ct.c_float), _ct.POINTER(_ct.c_float), _ct.POINTER(_ct.c_float), _ct.POINTER(_ct.c_float), _ct.POINTER(_ct.c_float), _ct.POINTER(_ct.c_float), _ct.POINTER(_ct.c_float), _ct.POINTER(_ct.c_float), _ct.POINTER(_ct.c_float), _ct.c_int32]
+_lib.accumulate_batch8_f32x8_nt.restype = None
+
+def accumulate_batch8_f32x8_nt(acc: _np.ndarray, f0: _np.ndarray, f1: _np.ndarray, f2: _np.ndarray, f3: _np.ndarray, f4: _np.ndarray, f5: _np.ndarray, f6: _np.ndarray, f7: _np.ndarray):
+    """accumulate_batch8_f32x8_nt(acc: *mut f32, f0: *restrict f32, f1: *restrict f32, f2: *restrict f32, f3: *restrict f32, f4: *restrict f32, f5: *restrict f32, f6: *restrict f32, f7: *restrict f32, len: i32) -> void"""
+    if acc.dtype != _np.float32:
+        raise TypeError("acc: expected float32")
+    if f0.dtype != _np.float32:
+        raise TypeError("f0: expected float32")
+    if f1.dtype != _np.float32:
+        raise TypeError("f1: expected float32")
+    if f2.dtype != _np.float32:
+        raise TypeError("f2: expected float32")
+    if f3.dtype != _np.float32:
+        raise TypeError("f3: expected float32")
+    if f4.dtype != _np.float32:
+        raise TypeError("f4: expected float32")
+    if f5.dtype != _np.float32:
+        raise TypeError("f5: expected float32")
+    if f6.dtype != _np.float32:
+        raise TypeError("f6: expected float32")
+    if f7.dtype != _np.float32:
+        raise TypeError("f7: expected float32")
+    _lib.accumulate_batch8_f32x8_nt(
+        acc.ctypes.data_as(_ct.POINTER(_ct.c_float)),
+        f0.ctypes.data_as(_ct.POINTER(_ct.c_float)),
+        f1.ctypes.data_as(_ct.POINTER(_ct.c_float)),
+        f2.ctypes.data_as(_ct.POINTER(_ct.c_float)),
+        f3.ctypes.data_as(_ct.POINTER(_ct.c_float)),
+        f4.ctypes.data_as(_ct.POINTER(_ct.c_float)),
+        f5.ctypes.data_as(_ct.POINTER(_ct.c_float)),
+        f6.ctypes.data_as(_ct.POINTER(_ct.c_float)),
+        f7.ctypes.data_as(_ct.POINTER(_ct.c_float)),
+        _ct.c_int32(f7.size)
+    )
+
 _lib.scale_f32x8.argtypes = [_ct.POINTER(_ct.c_float), _ct.POINTER(_ct.c_float), _ct.c_int32, _ct.c_float]
 _lib.scale_f32x8.restype = None
 
