@@ -393,6 +393,7 @@ mod tests {
     // --- stream_store: non-temporal vector store ---
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn test_stream_store_f32x8() {
         assert_c_interop(
             r#"
@@ -402,16 +403,14 @@ mod tests {
             }
         "#,
             r#"#include <stdio.h>
-            #include <stdlib.h>
             extern void test(const float*, float*);
             int main() {
-                float* data = (float*)aligned_alloc(32, 8*sizeof(float));
-                float* out  = (float*)aligned_alloc(32, 8*sizeof(float));
+                __attribute__((aligned(32))) float data[8];
+                __attribute__((aligned(32))) float out[8];
                 for (int i = 0; i < 8; i++) { data[i] = (float)(i+1); out[i] = 0; }
                 test(data, out);
                 for (int i = 0; i < 8; i++) printf("%g ", out[i]);
                 printf("\n");
-                free(data); free(out);
                 return 0;
             }"#,
             "1 2 3 4 5 6 7 8",
