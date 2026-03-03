@@ -48,29 +48,33 @@ Export: `batch_parse_temps`. For each line delimited by newline positions:
 
 No float arithmetic — pure integer. The 1BRC temperature format is always `[-]D[D].D` (one decimal digit), so `i32` tenths are exact.
 
-## Benchmark Results (1M rows, 13 MB)
+## Benchmark Results (10M rows, 131 MB)
 
 ```
 Phase breakdown (Ea, 1 worker):
-  read           :     44 ms
-  scan (Ea SIMD) :     35 ms   — find newline positions
-  parse (Ea)     :     46 ms   — batch_parse_temps (i32 tenths)
-  aggregate (Py) :    795 ms   — Python dict accumulation ← bottleneck
-  sort+print     :      0 ms
-  total          :    921 ms
+  read           :    344 ms
+  scan (Ea SIMD) :    394 ms   — find newline positions
+  parse (Ea)     :    487 ms   — batch_parse_temps (i32 tenths)
+  aggregate (Py) :   7737 ms   — Python dict accumulation ← bottleneck
+  sort+print     :      1 ms
+  total          :   8963 ms
 
 Comparison:
-  Pure Python    :    693 ms   (line-by-line, float())
-  Polars         :    287 ms
+  Pure Python    :  11230 ms   (line-by-line, float())
+  Ea speedup     :    1.3x
+  Polars         :   2630 ms
 
 Bottleneck analysis:
-  scan+parse     :   8.8%  (Ea kernels)
+  scan+parse     :   9.8%  (Ea kernels)
   aggregate      :  86.3%  (Python dict — the bottleneck)
 ```
 
-The Ea kernels process 13 MB of raw bytes in ~81 ms (scan + parse combined, ~160 MB/s). The bottleneck is the per-row Python aggregation loop — creating `bytes` objects for station names, dict lookups, and min/max/sum updates. This loop runs in pure Python at ~1.3M rows/sec.
+**1.3x faster than pure Python.** The Ea kernels process 131 MB in ~881 ms (scan + parse, ~149 MB/s). The speedup comes from:
+1. **Integer temperature parsing** — Ea parses all 10M temperatures to `i32` tenths in 487ms, vs Python's `float()` + `round()` + `int()` per row
+2. **SIMD newline scanning** — u8x16 compare + movemask finds all 10M positions in 394ms
+3. **Zero-copy pointer passing** — `ctypes.c_char_p` wraps the `bytes` buffer without copying
 
-On multi-core machines, `ProcessPoolExecutor` splits the file into chunks aligned to newline boundaries. Each worker processes independently, and partial results are merged. The aggregation scales near-linearly with cores since it's CPU-bound.
+The bottleneck is the per-row Python aggregation loop (86%) — dict lookups, min/max/sum updates. On multi-core machines, `ProcessPoolExecutor` scales this near-linearly by splitting the file into chunks aligned to newline boundaries.
 
 ## Optimizations Applied
 

@@ -14,11 +14,8 @@ from solve import (
     _load_lib,
     _setup_parse,
     _setup_scan,
-    find_chunk_boundaries,
     format_results,
-    merge_results,
     solve,
-    solve_chunk,
 )
 
 
@@ -28,15 +25,13 @@ def bench_phases(path: str) -> dict:
     parse_lib = _setup_parse(_load_lib("parse_temp"))
     size = os.path.getsize(path)
 
-    # Phase 1: Read file
+    # Phase 1: Read file as bytes (zero-copy ctypes pointer via c_char_p)
     t0 = time.perf_counter()
     with open(path, "rb") as f:
-        chunk_data = bytearray(f.read())
+        chunk_bytes = f.read()
+    chunk_len = len(chunk_bytes)
+    buf_ptr = ctypes.cast(ctypes.c_char_p(chunk_bytes), ctypes.c_void_p)
     t_read = time.perf_counter() - t0
-
-    chunk_len = len(chunk_data)
-    buf = (ctypes.c_char * chunk_len).from_buffer(chunk_data)
-    buf_ptr = ctypes.cast(buf, ctypes.c_void_p)
 
     # Phase 2: Scan (count + extract)
     t0 = time.perf_counter()
@@ -58,15 +53,15 @@ def bench_phases(path: str) -> dict:
     parse_lib.batch_parse_temps(buf_ptr, nl_pos, n_lines, 0, semi_off, temps)
     t_parse = time.perf_counter() - t0
 
-    # Phase 4: Aggregate
+    # Phase 4: Aggregate (bytes slicing returns bytes — hashable, no extra copy)
     t0 = time.perf_counter()
     stations: dict[bytes, list] = {}
-    chunk_view = memoryview(chunk_data)
+    _get = stations.get
     for i in range(n_lines):
-        line_start = 0 if i == 0 else nl_pos[i - 1] + 1
-        name = bytes(chunk_view[line_start : line_start + semi_off[i]])
+        ls = 0 if i == 0 else nl_pos[i - 1] + 1
+        name = chunk_bytes[ls : ls + semi_off[i]]
         t = temps[i]
-        entry = stations.get(name)
+        entry = _get(name)
         if entry is not None:
             if t < entry[0]:
                 entry[0] = t
@@ -147,6 +142,7 @@ def main() -> None:
     print()
 
     # Multi-process
+    t_mp = 0.0
     if n_workers > 1:
         t0 = time.perf_counter()
         mp_results = solve(path, n_workers)
@@ -172,7 +168,7 @@ def main() -> None:
         import polars as pl  # noqa: F401
         t0 = time.perf_counter()
         df = pl.read_csv(path, separator=";", has_header=False, new_columns=["station", "temp"])
-        result = df.group_by("station").agg(
+        df.group_by("station").agg(
             pl.col("temp").min().alias("min"),
             pl.col("temp").mean().alias("mean"),
             pl.col("temp").max().alias("max"),

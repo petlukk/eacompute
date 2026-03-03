@@ -2,7 +2,6 @@
 """1BRC solver: mmap -> Ea SIMD scan -> Ea parse -> Python dict aggregate -> sort+print"""
 
 import ctypes
-import mmap
 import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
@@ -57,13 +56,13 @@ def solve_chunk(path: str, start: int, end: int) -> dict:
 
     chunk_len = end - start
 
-    # Read chunk into a mutable buffer for ctypes pointer access
+    # Read chunk as bytes (immutable, hashable — slicing returns bytes directly).
+    # c_char_p wraps the bytes buffer without copying (zero-copy pointer).
     with open(path, "rb") as f:
         f.seek(start)
-        chunk_data = bytearray(f.read(chunk_len))
+        chunk_bytes = f.read(chunk_len)
 
-    buf = (ctypes.c_char * chunk_len).from_buffer(chunk_data)
-    buf_ptr = ctypes.cast(buf, ctypes.c_void_p)
+    buf_ptr = ctypes.cast(ctypes.c_char_p(chunk_bytes), ctypes.c_void_p)
 
     # Count newlines for pre-allocation
     nl_count = ctypes.c_int(0)
@@ -84,15 +83,14 @@ def solve_chunk(path: str, start: int, end: int) -> dict:
     temps = IntArray()
     _parse_lib.batch_parse_temps(buf_ptr, nl_pos, n_lines, 0, semi_off, temps)
 
-    # Aggregate into Python dict
-    # Use bytes() for hashable dict keys — memoryview is not hashable
+    # Aggregate: chunk_bytes is bytes so slicing returns bytes (hashable, no copy)
     stations: dict[bytes, list] = {}
-    chunk_view = memoryview(chunk_data)
+    _get = stations.get
     for i in range(n_lines):
-        line_start = 0 if i == 0 else nl_pos[i - 1] + 1
-        name = bytes(chunk_view[line_start : line_start + semi_off[i]])
+        ls = 0 if i == 0 else nl_pos[i - 1] + 1
+        name = chunk_bytes[ls : ls + semi_off[i]]
         t = temps[i]
-        entry = stations.get(name)
+        entry = _get(name)
         if entry is not None:
             if t < entry[0]:
                 entry[0] = t
