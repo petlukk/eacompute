@@ -68,7 +68,9 @@ The messier the data, the bigger the gap over pandas. Eastat's quote-aware scan 
 
 **What matched**: row count (100,000 exact), null counts (5/6 columns), column names, all numeric stats within tolerance.
 
-**What diverged**: `score` column — pandas treats it as string entirely (due to ~4% `N/A`/`-` values). Eastat parses the 94% that are numeric and computes stats on that subset. Scientific notation (`1e3`) is not parsed by `batch_atof` and is counted as null.
+**What diverged**: `score` column — pandas treats it as string entirely (due to ~4% `N/A`/`-` values). Eastat parses the 94% that are numeric and computes stats on that subset.
+
+> **Note**: The [pip package](https://pypi.org/project/eastat/) (`pip install eastat`) is the maintained version. It adds scientific notation parsing and uses `np.percentile` (f64) for fairer comparison against pandas/polars. This demo is a frozen snapshot showing `ea bind` in action.
 
 ## Precision (f32 vs f64)
 
@@ -95,7 +97,7 @@ Run `python bench.py --precision test_file.csv` to see exact divergence on your 
 | Quoted fields with embedded newlines | Handled (quote-aware scan skips LFs inside quotes) |
 | UTF-8 BOM prefix | Handled — 3-byte BOM stripped from header before parsing |
 | Windows line endings (`\r\n`) | Handled — `\r` stripped from header; row boundaries use LF |
-| Scientific notation (`1e3`) | **Not parsed** — `batch_atof` handles decimal notation only; counted as null |
+| Scientific notation (`1e3`) | **Parsed in pip package** — this demo snapshot does not parse it; `pip install eastat` does |
 | Non-numeric values in numeric columns | Handled — `batch_atof` skips unparseable fields, column falls back to string if >50% fail |
 | Empty fields (nulls) | Handled — excluded from count and statistics |
 | Whitespace-padded numerics | Handled — `batch_atof` strips leading whitespace |
