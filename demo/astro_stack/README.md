@@ -1,68 +1,84 @@
 # Astronomy Frame Stacking — Eä Demo
 
 Stacks N noisy exposures to reduce noise using real telescope data
-from NASA SkyView (M31 / Andromeda galaxy). Demonstrates Eä's
-auto-generated Python bindings (`ea bind --python`) and streaming
-kernel architecture.
+from NASA SkyView (M31 / Andromeda galaxy). Demonstrates that
+**iteration fusion** — batching multiple frames per pass over the
+accumulator — beats NumPy's SIMD-optimized ufuncs by 1.25–1.76x on a
+workload previously considered bandwidth-bound.
 
-This is a **binding-generation and correctness demo**, not a performance
-showcase. Frame stacking is a bandwidth-bound workload (load, add, store)
-where NumPy's `np.add` ufunc — already SIMD-optimized C — hits the same
-memory bandwidth ceiling as explicit SIMD. There is no speed advantage
-to claim here. See "Why not faster?" below.
+## Key result
 
-## Results
-
-1024×1024, 16 frames. Single-threaded, all buffers pre-allocated,
-30 runs, median.
-
-### Performance
+4096×4096, 16 frames, single-threaded, 30 runs, median:
 
 ```
-NumPy stream (np.add)   :   5.6 ms
-Ea stream    (SIMD)     :   6.2 ms
+NumPy streaming (np.add loop)  : 119.3 ms
+Eä single-frame (same loop)    : 109.7 ms   ← matches NumPy (bandwidth-bound)
+Eä batched (8 frames/pass)     :  67.8 ms   ← 1.76x faster
 ```
 
-Ea matches NumPy across all tested sizes (1024² to 4096², 3–20 frames).
-The ratio stays 1.00–1.10x. Both are bandwidth-bound.
+The single-frame kernel hits the same memory bandwidth wall as NumPy.
+The batched kernel breaks through it by fusing iterations. Speedup
+increases with image size as acc memory traffic moves from cache to DRAM.
 
-### Signal-to-noise ratio
+## Why batching wins
+
+Single-frame accumulation `acc[i] += frame[i]` makes N passes over the
+accumulator. Each pass reads and writes acc — 3 memory transactions per
+element per frame. With N=16 frames, that's 48 transactions per element.
+
+Batched accumulation processes K frames per pass:
+```
+acc[i] += f0[i] + f1[i] + f2[i] + ... + f7[i]   // K=8 frames, one pass
+```
+
+This reduces acc traffic from `3N` to `3⌈N/K⌉` transactions per element.
+For N=16, K=8: from 48 down to 6 — a 2.7x traffic reduction.
+
+The gap between traffic reduction (2.7x) and wall-clock speedup is
+expected: frame loads dominate at high batch sizes. With K=8, each pass
+reads 8 frames plus one acc read/write. The acc savings are large in
+proportion but frame loads are the majority of total traffic. As image
+size grows (and acc moves to slower DRAM), the speedup increases from
+1.25x at 512² to 1.76x at 4096².
+
+## Scale sweep
+
+Bandwidth analysis across image sizes, calibrated against STREAM peak
+(~21 GB/s single-threaded on this machine):
 
 ```
-SNR gain: +12.03 dB from stacking 16 frames
+Size      AccMB   NP stream   Eä batch   Speedup   NP GB/s   Bat GB/s
+ 512²       1      0.5 ms      0.4 ms     1.25x      99.4      46.5
+1024²       4      4.3 ms      2.8 ms     1.53x      47.1      27.1
+2048²      16     21.8 ms     13.3 ms     1.63x      37.0      22.6
+4096²      64    119.3 ms     67.8 ms     1.76x      27.0      17.8
 ```
 
-## Why not faster?
+Key observations:
+- **Speedup increases with size**: 1.25x → 1.53x → 1.63x → 1.76x.
+  As acc moves from L2/L3 to DRAM, reducing acc traffic matters more.
+- **512² (L2-resident, 1MB)**: Both methods fast, batching still wins
+  but acc is already cached so the savings are smaller.
+- **4096² (DRAM-bound, 64MB)**: Peak 1.76x — acc round-trips to DRAM
+  are expensive and batching eliminates most of them.
+- **NP GB/s > STREAM peak at 512²**: Data fits in L2, so effective
+  bandwidth exceeds DRAM-measured STREAM peak.
 
-Frame accumulation is `acc[i] += frame[i]` — one add per element loaded.
-This is purely memory-bandwidth-bound: there's no compute intensity to
-exploit, no fusion opportunity, no branching logic that NumPy can't express.
-NumPy's ufuncs are already SIMD-optimized C hitting the same bandwidth.
+## Non-temporal stores (stream_store)
 
-Eä wins on workloads with higher arithmetic intensity per byte loaded:
-- **Sobel**: stencil pattern with coefficient multiplication across neighbors
-- **Vector search**: dual-accumulator FMA with high arithmetic intensity
-- **CSV structural scan**: branching logic (quote-state tracking)
-- **Cosine similarity**: three fused reductions in one pass
+We tested `stream_store` (x86 `vmovntps`) — bypasses cache on write-back.
+Theory: avoids write-allocate overhead when acc exceeds L3 cache.
 
-Simple element-wise operations aren't one of those. That's fine — it's
-a confirmed non-goal, not a weakness.
+Result: **stream_store never wins** on this workload. The dual-accumulator
+loop writes to `i` and `i+8` (16 floats = 64 bytes = one cache line),
+so regular stores already cover full cache lines with no write-allocate
+waste. Stream stores just evict acc from cache between batches, hurting
+performance.
 
-## What this demo does show
+## The kernels
 
-1. **Auto-generated bindings work**: `ea bind --python` produces a
-   zero-manual-ctypes Python module that handles type checking, length
-   inference, and pointer marshalling.
-2. **Correctness**: exact bit-for-bit match with NumPy (max diff = 0.0).
-3. **Multi-kernel composition**: three kernels (`accumulate`, `scale`,
-   `frame_stats`) composed from Python, each compiled to native SIMD code.
-4. **Streaming memory model**: O(pixels) vs O(N × pixels) for batch.
-   16 frames at 1024²: 4 MB streaming vs 64 MB batch.
-
-## The kernel
-
+**Single-frame accumulation** — same as NumPy, one frame per pass:
 ```
-// In-place accumulation: acc[i] += frame[i]
 export func accumulate_f32x8(acc: *mut f32, frame: *restrict f32, len: i32) {
     let mut i: i32 = 0
     while i + 16 <= len {
@@ -76,17 +92,47 @@ export func accumulate_f32x8(acc: *mut f32, frame: *restrict f32, len: i32) {
         store(acc, i + 8, va1 .+ vf1)
         i = i + 16
     }
-    // ... residual vector + scalar tail
+    // ... residual + scalar tail
 }
+```
 
-// Single-pass min/max/sum via dual-accumulator reductions.
-export func frame_stats(
-    data: *restrict f32, len: i32,
-    out_min: *mut f32, out_max: *mut f32, out_sum: *mut f32
+**Batched accumulation** — 8 frames per pass, 2.7x less acc traffic:
+```
+export func accumulate_batch8_f32x8(
+    acc: *mut f32,
+    f0: *restrict f32, f1: *restrict f32, ..., f7: *restrict f32,
+    len: i32
 ) {
-    // dual f32x8 accumulators with select for min/max, prefetch
-    // merge + horizontal: reduce_add, reduce_min, reduce_max
+    let mut i: i32 = 0
+    while i + 16 <= len {
+        prefetch(acc, i + 64)
+        prefetch(f0, i + 64)
+        // ... prefetch all 8 frames
+
+        let a0: f32x8 = load(acc, i)
+        let a1: f32x8 = load(acc, i + 8)
+        // ... load all 8 frames at both offsets
+
+        store(acc, i,     a0 .+ v00 .+ v10 .+ v20 .+ v30 .+ v40 .+ v50 .+ v60 .+ v70)
+        store(acc, i + 8, a1 .+ v01 .+ v11 .+ v21 .+ v31 .+ v41 .+ v51 .+ v61 .+ v71)
+        i = i + 16
+    }
+    // ... residual + scalar tail
 }
+```
+
+Python calls the batched kernel with frame grouping:
+```python
+i = 0
+while i + 8 <= n_frames:
+    stack.accumulate_batch8_f32x8(acc, frames[i], ..., frames[i+7])
+    i += 8
+while i + 4 <= n_frames:
+    stack.accumulate_batch4_f32x8(acc, frames[i], ..., frames[i+3])
+    i += 4
+while i < n_frames:
+    stack.accumulate_f32x8(acc, frames[i])
+    i += 1
 ```
 
 ## How to run
@@ -98,14 +144,14 @@ cargo build --features=llvm --release
 # Build kernel + generate bindings
 cd demo/astro_stack && bash build.sh
 
-# Run demo
+# Run demo (correctness + performance)
 python run.py
 
-# Run HST data benchmark
-python bench_hst.py
-
-# Run scale benchmark (1024² to 4096², confirms bandwidth-bound)
+# Scale sweep (512² to 4096², bandwidth analysis)
 python bench_scale.py
+
+# Plot scale sweep results
+python plot_scale.py
 ```
 
 ## How it works
@@ -117,13 +163,4 @@ starfield if download fails.
 ```bash
 ea stack.ea --lib -o libstack.so   # → libstack.so + stack.ea.json
 ea bind stack.ea --python          # → stack.py (auto-generated)
-```
-
-```python
-import stack as _stack
-
-for frame in noisy_frames:
-    _stack.accumulate_f32x8(acc, frame)
-_stack.scale_f32x8(acc, out, 1.0 / n_frames)
-_stack.frame_stats(result, out_min, out_max, out_sum)
 ```
