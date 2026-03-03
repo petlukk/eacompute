@@ -144,6 +144,45 @@ impl<'ctx> CodeGenerator<'ctx> {
         ))
     }
 
+    pub(super) fn compile_stream_store(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let ptr_val = self.compile_expr(&args[0], function)?.into_pointer_value();
+        let idx_val = self.compile_expr(&args[1], function)?.into_int_value();
+        let vec_val = self.compile_expr(&args[2], function)?.into_vector_value();
+
+        let vec_ty = vec_val.get_type();
+        let elem_ty = vec_ty.get_element_type();
+        let elem_ptr = unsafe {
+            self.builder
+                .build_gep(elem_ty, ptr_val, &[idx_val], "nt_store_gep")
+        }
+        .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+        let store_inst = self
+            .builder
+            .build_store(elem_ptr, vec_val)
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+        let element_alignment = self.element_alignment(vec_ty.get_element_type());
+        store_inst.set_alignment(element_alignment).map_err(|e| {
+            CompileError::codegen_error(format!("failed to set store alignment: {e}"))
+        })?;
+
+        let kind_id = self.context.get_kind_id("nontemporal");
+        let i32_one = self.context.i32_type().const_int(1, false);
+        let md_node = self.context.metadata_node(&[i32_one.into()]);
+        store_inst.set_metadata(md_node, kind_id).map_err(|e| {
+            CompileError::codegen_error(format!("failed to set nontemporal metadata: {e}"))
+        })?;
+
+        Ok(BasicValueEnum::IntValue(
+            self.context.i32_type().const_int(0, false),
+        ))
+    }
+
     pub(super) fn compile_load_masked(
         &mut self,
         args: &[Expr],

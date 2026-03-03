@@ -24,6 +24,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "splat"
                 | "load"
                 | "store"
+                | "stream_store"
                 | "gather"
                 | "scatter"
                 | "load_masked"
@@ -74,6 +75,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             }
             "load" => self.compile_load(args, type_hint, function),
             "store" => self.compile_store(args, function),
+            "stream_store" => self.compile_stream_store(args, function),
             "gather" => self.compile_gather(args, type_hint, function),
             "scatter" => self.compile_scatter(args, function),
             "load_masked" => self.compile_load_masked(args, type_hint, function),

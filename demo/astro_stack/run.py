@@ -8,10 +8,11 @@ Signal reinforces, noise cancels by sqrt(N).
 Zero manual ctypes — Ea kernel called via auto-generated bindings from `ea bind --python`.
 
 Methodology:
-  - Three implementations benchmarked:
+  - Four implementations benchmarked:
     A) NumPy batch — np.mean on pre-built 3D array (idiomatic, best-case NumPy)
     B) NumPy streaming — same accumulate+scale algorithm as Ea, pure NumPy
-    C) Ea streaming — SIMD kernel via auto-generated bindings
+    C) Ea streaming — single-frame SIMD kernel via auto-generated bindings
+    D) Ea batched — multi-frame kernel (8 or 4 frames per pass over acc)
   - All buffers pre-allocated before timing. No allocation inside timed code.
   - Single-threaded: OMP/MKL/OPENBLAS threads pinned to 1.
   - 50 runs, median reported. 5 warmup runs discarded.
@@ -412,8 +413,29 @@ def main():
             _stack.accumulate_f32x8(acc, flat)
         _stack.scale_f32x8(acc, out, float(factor))
 
+    def ea_batched():
+        acc[:] = 0.0
+        i = 0
+        while i + 8 <= n_frames:
+            _stack.accumulate_batch8_f32x8(
+                acc,
+                flat_frames[i], flat_frames[i+1], flat_frames[i+2], flat_frames[i+3],
+                flat_frames[i+4], flat_frames[i+5], flat_frames[i+6], flat_frames[i+7],
+            )
+            i += 8
+        while i + 4 <= n_frames:
+            _stack.accumulate_batch4_f32x8(
+                acc,
+                flat_frames[i], flat_frames[i+1], flat_frames[i+2], flat_frames[i+3],
+            )
+            i += 4
+        while i < n_frames:
+            _stack.accumulate_f32x8(acc, flat_frames[i])
+            i += 1
+        _stack.scale_f32x8(acc, out, float(factor))
+
     # ---------------------------------------------------------------
-    # Correctness: all three must agree
+    # Correctness: all four must agree
     # ---------------------------------------------------------------
     print("=== Correctness ===")
     ref_batch = numpy_batch()
@@ -424,17 +446,21 @@ def main():
     ea_streaming()
     result_ea = out.reshape(h, w).copy()
 
+    ea_batched()
+    result_ea_batched = out.reshape(h, w).copy()
+
     diff_stream = np.abs(result_np_stream - ref_batch)
     diff_ea = np.abs(result_ea - ref_batch)
-    diff_ea_np = np.abs(result_ea - result_np_stream)
+    diff_batched = np.abs(result_ea_batched - ref_batch)
 
-    print(f"  NumPy stream vs batch : max={diff_stream.max():.2e}  "
+    print(f"  NumPy stream vs batch   : max={diff_stream.max():.2e}  "
           f"mean={diff_stream.mean():.2e}")
-    print(f"  Ea vs NumPy batch     : max={diff_ea.max():.2e}  "
+    print(f"  Ea stream vs NumPy batch: max={diff_ea.max():.2e}  "
           f"mean={diff_ea.mean():.2e}")
-    print(f"  Ea vs NumPy stream    : max={diff_ea_np.max():.2e}  "
-          f"mean={diff_ea_np.mean():.2e}")
-    all_match = diff_ea.max() < 1e-5 and diff_stream.max() < 1e-5
+    print(f"  Ea batched vs NumPy     : max={diff_batched.max():.2e}  "
+          f"mean={diff_batched.mean():.2e}")
+    all_match = (diff_ea.max() < 1e-5 and diff_stream.max() < 1e-5
+                 and diff_batched.max() < 1e-5)
     print(f"  All match: {'YES' if all_match else 'NO'}")
     print()
 
@@ -478,36 +504,55 @@ def main():
     print()
 
     t_batch, s_batch = benchmark(numpy_batch)
-    print(f"  NumPy batch  (np.mean)  : {t_batch:8.2f} ms  +/-{s_batch:.2f}")
+    print(f"  NumPy batch   (np.mean)  : {t_batch:8.2f} ms  +/-{s_batch:.2f}")
 
     t_stream, s_stream = benchmark(numpy_streaming)
-    print(f"  NumPy stream (same algo): {t_stream:8.2f} ms  +/-{s_stream:.2f}")
+    print(f"  NumPy stream  (same algo): {t_stream:8.2f} ms  +/-{s_stream:.2f}")
 
     t_ea, s_ea = benchmark(ea_streaming)
-    print(f"  Ea stream    (SIMD)     : {t_ea:8.2f} ms  +/-{s_ea:.2f}")
+    print(f"  Ea stream     (1 frame)  : {t_ea:8.2f} ms  +/-{s_ea:.2f}")
+
+    t_ea_b, s_ea_b = benchmark(ea_batched)
+    print(f"  Ea batched    (8 frames) : {t_ea_b:8.2f} ms  +/-{s_ea_b:.2f}")
     print()
 
-    print("  Speedup:")
-    print(f"    Ea vs NumPy batch  : {t_batch / t_ea:.2f}x "
-          f"{'faster' if t_ea < t_batch else 'slower'}")
-    print(f"    Ea vs NumPy stream : {t_stream / t_ea:.2f}x "
-          f"{'faster' if t_ea < t_stream else 'slower'} "
-          f"(apples-to-apples, same algorithm)")
+    print("  Speedup (Ea batched vs ...):")
+    print(f"    vs NumPy batch  : {t_batch / t_ea_b:.2f}x")
+    print(f"    vs NumPy stream : {t_stream / t_ea_b:.2f}x")
+    print(f"    vs Ea stream    : {t_ea / t_ea_b:.2f}x")
+    print()
+
+    # Bandwidth analysis
+    bytes_per_pixel = 4  # f32
+    print("=== Bandwidth Analysis ===")
+    # Single-frame: per frame, read acc + read frame + write acc = 3 loads
+    single_bytes = n_frames * 3 * bytes_per_pixel * n_pixels
+    single_gbs = single_bytes / (t_stream / 1000) / 1e9
+    # Batched: 1 read acc + N read frames + 1 write acc = (N+2) loads total
+    batched_bytes = (n_frames + 2) * bytes_per_pixel * n_pixels
+    batched_gbs = batched_bytes / (t_ea_b / 1000) / 1e9
+    print(f"  Single-frame memory traffic: "
+          f"{single_bytes / 1e6:.1f} MB  ({single_gbs:.1f} GB/s)")
+    print(f"  Batched memory traffic:      "
+          f"{batched_bytes / 1e6:.1f} MB  ({batched_gbs:.1f} GB/s)")
+    print(f"  Traffic reduction: {single_bytes / batched_bytes:.1f}x less")
     print()
 
     # Memory
-    print("=== Memory (streaming vs batch) ===")
+    print("=== Memory ===")
     mb_per_frame = n_pixels * 4 / 1024 / 1024
     print(f"  Streaming (Ea or NumPy): {mb_per_frame:.1f} MB "
           f"(one accumulator + one output)")
     print(f"  NumPy batch            : {n_frames * mb_per_frame:.1f} MB "
           f"(all frames in 3D array + output)")
-    print(f"  Note: both streaming variants use the same memory.")
     print()
 
     # --- Summary ---
     print("=== Summary ===")
     print(f"  SNR gain: {snr_ea - snr_single:+.2f} dB from stacking {n_frames} frames")
+    key = "faster" if t_ea_b < t_stream else "slower"
+    print(f"  Ea batched vs NumPy: {t_stream / t_ea_b:.2f}x {key} "
+          f"(same work, better memory access pattern)")
     print()
     print("Output images saved to demo/astro_stack/")
 
