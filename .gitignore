@@ -87,3 +87,4 @@ demo/eastat/csv_parse.py
 demo/eastat/csv_stats.py
 demo/eastat/test_*.csv
 demo/eastat/kernels/*.ea.json
+.worktrees/
