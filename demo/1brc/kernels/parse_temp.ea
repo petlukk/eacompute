@@ -1,0 +1,101 @@
+// Batch temperature parser for 1BRC.
+//
+// Given raw text bytes and newline positions, parse each temperature field
+// to i32 tenths (e.g., "12.3" → 123, "-5.7" → -57). No float arithmetic.
+//
+// For each line: scan backward from newline to find ';' (3-6 bytes back),
+// then parse the digits. Output: semicolon offset (for station name extraction)
+// and temperature as i32 tenths.
+//
+// Cross-platform: pure scalar, works on both x86 and ARM.
+
+const ASCII_MINUS: i32 = 45
+const ASCII_DOT: i32 = 46
+const ASCII_ZERO: i32 = 48
+const ASCII_SEMI: i32 = 59
+
+
+// Parse temperature fields from lines delimited by newline positions.
+//
+// For each line i:
+//   line_start = nl_pos[i-1] + 1  (or text_start for first line)
+//   line_end   = nl_pos[i]
+//   Scan backward from line_end to find ';'
+//   Parse temperature bytes after ';' into i32 tenths
+//
+// out_semi_off[i] = offset of ';' relative to line_start
+// out_temps[i]    = temperature as i32 tenths (-999 to 999)
+export func batch_parse_temps(
+    text: *u8,
+    nl_pos: *i32,
+    n: i32,
+    text_start: i32,
+    out_semi_off: *mut i32,
+    out_temps: *mut i32
+) {
+    let mut i: i32 = 0
+
+    while i < n {
+        // Compute line boundaries
+        let mut line_start: i32 = text_start
+        if i > 0 {
+            line_start = nl_pos[i - 1] + 1
+        }
+        let line_end: i32 = nl_pos[i]
+
+        // Scan backward from line_end to find ';'
+        // Temperature is 3-5 chars (e.g., "1.2", "-1.2", "12.3", "-12.3")
+        // so ';' is at most 6 bytes before newline
+        let mut semi_pos: i32 = line_end - 1
+        let mut searching: i32 = 1
+        while semi_pos >= line_start && searching == 1 {
+            let b: u8 = text[semi_pos]
+            if to_i32(b) == ASCII_SEMI {
+                searching = 0
+            } else {
+                semi_pos = semi_pos - 1
+            }
+        }
+
+        out_semi_off[i] = semi_pos - line_start
+
+        // Parse temperature after semicolon: [-]D[D].D
+        let mut pos: i32 = semi_pos + 1
+        let mut negative: i32 = 0
+        let b_first: u8 = text[pos]
+        if to_i32(b_first) == ASCII_MINUS {
+            negative = 1
+            pos = pos + 1
+        }
+
+        // Read integer digits (1 or 2)
+        let mut int_val: i32 = 0
+        let mut reading_int: i32 = 1
+        while pos < line_end && reading_int == 1 {
+            let b: u8 = text[pos]
+            let bv: i32 = to_i32(b)
+            if bv >= ASCII_ZERO && bv <= ASCII_ZERO + 9 {
+                int_val = int_val * 10 + (bv - ASCII_ZERO)
+                pos = pos + 1
+            } else {
+                reading_int = 0
+            }
+        }
+
+        // Skip '.'
+        pos = pos + 1
+
+        // Read decimal digit (always exactly 1)
+        let dec_byte: u8 = text[pos]
+        let dec_val: i32 = to_i32(dec_byte) - ASCII_ZERO
+
+        // Combine: tenths = int_val * 10 + dec_val
+        let mut temp: i32 = int_val * 10 + dec_val
+        if negative == 1 {
+            temp = 0 - temp
+        }
+
+        out_temps[i] = temp
+        i = i + 1
+    }
+}

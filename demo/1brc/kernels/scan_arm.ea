@@ -1,0 +1,65 @@
+// Newline scanner for ARM (no movemask available on NEON).
+//
+// Two exports:
+//   count_lines     — SIMD u8x16 compare + reduce_add (same as x86)
+//   extract_lines   — scalar byte-by-byte scan (no movemask alternative)
+
+const NEWLINE: i32 = 10
+
+
+// Count newlines using SIMD compare + reduce_add.
+// Works on ARM: u8x16 compare + select + reduce_add are portable.
+export func count_lines(
+    text: *u8,
+    len: i32,
+    out_count: *mut i32
+) {
+    let nl: u8x16 = splat(10)
+    let ones: u8x16 = splat(1)
+    let zeros: u8x16 = splat(0)
+    let mut total: i32 = 0
+    let mut i: i32 = 0
+
+    while i + 16 <= len {
+        let v: u8x16 = load(text, i)
+        let cmp: u8x16 = select(v .== nl, ones, zeros)
+        let chunk_count: i32 = to_i32(reduce_add(cmp))
+        total = total + chunk_count
+        i = i + 16
+    }
+
+    // Scalar tail
+    while i < len {
+        let b: u8 = text[i]
+        if b == 10 {
+            total = total + 1
+        }
+        i = i + 1
+    }
+
+    out_count[0] = total
+}
+
+
+// Extract newline positions — scalar scan.
+// No movemask on ARM, so byte-by-byte is the practical approach.
+export func extract_lines(
+    text: *u8,
+    len: i32,
+    out_pos: *mut i32,
+    out_count: *mut i32
+) {
+    let mut count: i32 = 0
+    let mut i: i32 = 0
+
+    while i < len {
+        let b: u8 = text[i]
+        if b == 10 {
+            out_pos[count] = i
+            count = count + 1
+        }
+        i = i + 1
+    }
+
+    out_count[0] = count
+}
