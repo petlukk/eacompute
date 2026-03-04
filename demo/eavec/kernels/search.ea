@@ -15,7 +15,7 @@ export func batch_dot(
     out: *mut f32
 ) {
     let mut v: i32 = 0
-    while v < n_vecs {
+    for v in 0..n_vecs {
         let base: i32 = v * dim
         prefetch(db, base + dim)
 
@@ -48,7 +48,6 @@ export func batch_dot(
         }
 
         out[v] = dot
-        v = v + 1
     }
 }
 
@@ -84,15 +83,14 @@ export func batch_cosine(
 
     if query_norm == 0.0 {
         let mut z: i32 = 0
-        while z < n_vecs {
+        for z in 0..n_vecs {
             out[z] = 0.0
-            z = z + 1
         }
         return
     }
 
     let mut v: i32 = 0
-    while v < n_vecs {
+    for v in 0..n_vecs {
         let base: i32 = v * dim
         prefetch(db, base + dim)
 
@@ -137,8 +135,6 @@ export func batch_cosine(
         } else {
             out[v] = dot / (query_norm * db_norm)
         }
-
-        v = v + 1
     }
 }
 
@@ -150,7 +146,7 @@ export func batch_l2(
     out: *mut f32
 ) {
     let mut v: i32 = 0
-    while v < n_vecs {
+    for v in 0..n_vecs {
         let base: i32 = v * dim
         prefetch(db, base + dim)
 
@@ -187,7 +183,6 @@ export func batch_l2(
         }
 
         out[v] = dist
-        v = v + 1
     }
 }
 
@@ -198,7 +193,7 @@ export func normalize_vectors(
     out: *mut f32
 ) {
     let mut v: i32 = 0
-    while v < n_vecs {
+    for v in 0..n_vecs {
         let base: i32 = v * dim
 
         // Compute squared norm
@@ -241,8 +236,6 @@ export func normalize_vectors(
             out[base + j] = db[base + j] * inv_norm
             j = j + 1
         }
-
-        v = v + 1
     }
 }
 
@@ -255,12 +248,11 @@ export func threshold_filter(
 ) {
     let mut count: i32 = 0
     let mut i: i32 = 0
-    while i < n {
+    for i in 0..n {
         if scores[i] > threshold {
             out_indices[count] = i
             count = count + 1
         }
-        i = i + 1
     }
     out_count[0] = count
 }
@@ -287,7 +279,7 @@ export func top_k(
     let neg_inf: f32 = -99999999.0
 
     let mut pass: i32 = 0
-    while pass < k {
+    for pass in 0..k {
         // Find max via SIMD
         let mut max_vec: f32x8 = splat(neg_inf)
         let mut j: i32 = 0
@@ -302,9 +294,7 @@ export func top_k(
 
         // Scalar tail for max
         while j < n {
-            if work[j] > best_val {
-                best_val = work[j]
-            }
+            best_val = max(work[j], best_val)
             j = j + 1
         }
 
@@ -322,7 +312,5 @@ export func top_k(
         out_values[pass] = best_val
         out_indices[pass] = best_idx
         work[best_idx] = neg_inf
-
-        pass = pass + 1
     }
 }

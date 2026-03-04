@@ -14,8 +14,8 @@ export func gaussian_blur_3x3(
     let vfour: f32x4 = splat(4.0)
     let inv16: f32x4 = splat(0.0625)
 
-    let mut y: i32 = 1
-    while y < height - 1 {
+    let mut y: i32 = 0
+    for y in 1..(height - 1) {
         let ra: i32 = (y - 1) * width
         let rc: i32 = y * width
         let rb: i32 = (y + 1) * width
@@ -51,7 +51,6 @@ export func gaussian_blur_3x3(
             x = x + 1
         }
 
-        y = y + 1
     }
 }
 
@@ -65,8 +64,8 @@ export func sobel_magnitude(
     let vzero: f32x4 = splat(0.0)
     let vtwo: f32x4 = splat(2.0)
 
-    let mut y: i32 = 1
-    while y < height - 1 {
+    let mut y: i32 = 0
+    for y in 1..(height - 1) {
         let ra: i32 = (y - 1) * width
         let rc: i32 = y * width
         let rb: i32 = (y + 1) * width
@@ -110,7 +109,6 @@ export func sobel_magnitude(
             x = x + 1
         }
 
-        y = y + 1
     }
 }
 
@@ -152,8 +150,8 @@ export func edge_detect_fused(
     let inv16: f32x4 = splat(0.0625)
     let vthresh: f32x4 = splat(thresh)
 
-    let mut y: i32 = 2
-    while y < height - 2 {
+    let mut y: i32 = 0
+    for y in 2..(height - 2) {
         let r0: i32 = (y - 2) * width
         let r1: i32 = (y - 1) * width
         let r2: i32 = y * width
@@ -272,7 +270,6 @@ export func edge_detect_fused(
             x = x + 1
         }
 
-        y = y + 1
     }
 }
 
@@ -287,8 +284,8 @@ export func dilate_3x3(
     let vzero: f32x4 = splat(0.0)
     let vone: f32x4 = splat(1.0)
 
-    let mut y: i32 = 1
-    while y < height - 1 {
+    let mut y: i32 = 0
+    for y in 1..(height - 1) {
         let ra: i32 = (y - 1) * width
         let rc: i32 = y * width
         let rb: i32 = (y + 1) * width
@@ -323,6 +320,5 @@ export func dilate_3x3(
             x = x + 1
         }
 
-        y = y + 1
     }
 }

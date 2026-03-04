@@ -10,18 +10,17 @@ export func threshold_u8x16(src: *u8, dst: *mut u8, n: i32, thresh: u8) {
     let t: u8x16 = splat(thresh)
     let ff: u8x16 = splat(255)
     let zero: u8x16 = splat(0)
-    while i < n {
+    for i in 0..n step 16 {
         let chunk: u8x16 = load(src, i)
         let result: u8x16 = select(chunk .> t, ff, zero)
         store(dst, i, result)
-        i = i + 16
     }
 }
 
 export func normalize_u8_f32x8(src: *u8, dst: *mut f32, n: i32) {
     let mut i: i32 = 0
     let scale: f32x4 = splat(0.00392156863)
-    while i < n {
+    for i in 0..n step 8 {
         let chunk: u8x16 = load(src, i)
         let lo: f32x4 = widen_u8_f32x4(chunk)
         let norm_lo: f32x4 = lo .* scale
@@ -30,6 +29,5 @@ export func normalize_u8_f32x8(src: *u8, dst: *mut f32, n: i32) {
         let hi: f32x4 = widen_u8_f32x4(shifted)
         let norm_hi: f32x4 = hi .* scale
         store(dst, i + 4, norm_hi)
-        i = i + 8
     }
 }

@@ -35,7 +35,7 @@ export func batch_parse_temps(
 ) {
     let mut i: i32 = 0
 
-    while i < n {
+    for i in 0..n {
         // Compute line boundaries
         let mut line_start: i32 = text_start
         if i > 0 {
@@ -96,6 +96,5 @@ export func batch_parse_temps(
         }
 
         out_temps[i] = temp
-        i = i + 1
     }
 }

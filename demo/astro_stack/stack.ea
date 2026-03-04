@@ -326,8 +326,8 @@ export func frame_stats(
     while i < len {
         let v: f32 = data[i]
         total_sum = total_sum + v
-        if v < total_min { total_min = v }
-        if v > total_max { total_max = v }
+        total_min = min(v, total_min)
+        total_max = max(v, total_max)
         i = i + 1
     }
 

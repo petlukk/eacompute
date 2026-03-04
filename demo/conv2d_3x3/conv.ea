@@ -9,36 +9,31 @@
 export func conv2d_3x3_u8i8(src: *u8, wt: *i8, dst: *mut i16, H: i32, W: i32, C_in: i32) {
     let stride: i32 = (W + 2) * C_in
     let mut row: i32 = 0
-    while row < H {
+    for row in 0..H {
         let mut col: i32 = 0
-        while col < W {
+        for col in 0..W {
             let mut acc0: i16x8 = splat(0)
             let mut acc1: i16x8 = splat(0)
             let mut dr: i32 = 0
-            while dr < 3 {
+            for dr in 0..3 {
                 let mut dc: i32 = 0
-                while dc < 3 {
+                for dc in 0..3 {
                     let src_off: i32 = (row + dr) * stride + (col + dc) * C_in
                     let wt_off: i32 = (dr * 3 + dc) * C_in
                     let mut ci: i32 = 0
-                    while ci < C_in {
+                    for ci in 0..C_in step 32 {
                         let a0: u8x16 = load(src, src_off + ci)
                         let b0: i8x16 = load(wt, wt_off + ci)
                         acc0 = acc0 .+ maddubs_i16(a0, b0)
                         let a1: u8x16 = load(src, src_off + ci + 16)
                         let b1: i8x16 = load(wt, wt_off + ci + 16)
                         acc1 = acc1 .+ maddubs_i16(a1, b1)
-                        ci = ci + 32
                     }
-                    dc = dc + 1
                 }
-                dr = dr + 1
             }
             let s: i16 = reduce_add(acc0) + reduce_add(acc1)
             dst[row * W + col] = s
-            col = col + 1
         }
-        row = row + 1
     }
 }
 
@@ -49,35 +44,30 @@ export func conv2d_3x3_u8i8(src: *u8, wt: *i8, dst: *mut i16, H: i32, W: i32, C_
 export func conv2d_3x3_u8i8_safe(src: *u8, wt: *i8, dst: *mut i32, H: i32, W: i32, C_in: i32) {
     let stride: i32 = (W + 2) * C_in
     let mut row: i32 = 0
-    while row < H {
+    for row in 0..H {
         let mut col: i32 = 0
-        while col < W {
+        for col in 0..W {
             let mut acc0: i32x4 = splat(0)
             let mut acc1: i32x4 = splat(0)
             let mut dr: i32 = 0
-            while dr < 3 {
+            for dr in 0..3 {
                 let mut dc: i32 = 0
-                while dc < 3 {
+                for dc in 0..3 {
                     let src_off: i32 = (row + dr) * stride + (col + dc) * C_in
                     let wt_off: i32 = (dr * 3 + dc) * C_in
                     let mut ci: i32 = 0
-                    while ci < C_in {
+                    for ci in 0..C_in step 32 {
                         let a0: u8x16 = load(src, src_off + ci)
                         let b0: i8x16 = load(wt, wt_off + ci)
                         acc0 = acc0 .+ maddubs_i32(a0, b0)
                         let a1: u8x16 = load(src, src_off + ci + 16)
                         let b1: i8x16 = load(wt, wt_off + ci + 16)
                         acc1 = acc1 .+ maddubs_i32(a1, b1)
-                        ci = ci + 32
                     }
-                    dc = dc + 1
                 }
-                dr = dr + 1
             }
             let s: i32 = reduce_add(acc0) + reduce_add(acc1)
             dst[row * W + col] = s
-            col = col + 1
         }
-        row = row + 1
     }
 }

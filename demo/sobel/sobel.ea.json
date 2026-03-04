@@ -1,5 +1,5 @@
 {
-  "library": "libsobel.so",
+  "library": "demo/sobel/libsobel.so",
   "exports": [
     {
       "name": "sobel",

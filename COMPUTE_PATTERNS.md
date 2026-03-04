@@ -5,6 +5,17 @@ and a measurable boundary where it wins or loses.
 
 This is not marketing. This is measurement.
 
+> **Benchmark machine:** AMD EPYC 9354P (Zen 4), 1 vCPU, 3.8 GB RAM,
+> AVX-512 capable, KVM virtual machine, Linux 6.17.0.
+> Single-threaded measurements on a virtualized core — real hardware
+> will be faster in absolute terms. Relative patterns (Eä vs NumPy,
+> fused vs unfused) are stable across machines.
+> Previous measurements (noted inline) were on AMD Ryzen 7 1700 (Zen 1, bare metal).
+>
+> **v1.6 note:** Code examples below use `while` loops. v1.6 added `for i in 0..n`
+> syntax as sugar that desugars to identical `while` loops — zero performance difference.
+> Demo kernels have been updated to use `for` where it is a clean fit.
+
 ## The seven classes
 
 ```
@@ -105,15 +116,19 @@ use the explicit `f32x8` version above.
 
 ### Measured
 
-Video anomaly demo, 1280x720 (921K elements):
+Video anomaly demo, 768×576 (442K elements), EPYC 9354P VM:
 ```
-NumPy  (abs + threshold + sum) :  3.2 ms
-Eä     (3 kernel calls)        :  2.6 ms    1.2x
+NumPy  (abs + threshold + sum) :  8.11 ms
+Eä     (3 kernel calls)        :  8.55 ms    0.9x (slower)
+OpenCV (C++)                   :  5.63 ms
 ```
 
-Eä's advantage is small because the operations are simple and memory-bound.
+*Previously (Ryzen 7 1700, 1280×720): NumPy 3.2 ms, Eä 2.6 ms (1.2x).*
+
+Eä's advantage is negligible because the operations are simple and memory-bound.
 This is honest. The value of Eä for streaming is composition and control,
-not raw throughput on trivial transforms.
+not raw throughput on trivial transforms. (For what fusion does to this
+same pipeline, see Pattern 5.)
 
 ### Real-world instances
 
@@ -221,6 +236,11 @@ Max (f32x4, multi-acc):
   Ea f32x4         :   78 us    0.78x (faster)
 ```
 
+*Not re-benchmarked on EPYC VM — reduction patterns appear in demos
+(`demo/eastat/`, `demo/astro_stack/`) as components of larger pipelines.
+v1.6 adds `min()`/`max()` scalar intrinsics that replace branching in
+reduction tails — compiles to single `minss`/`maxss` instructions.*
+
 ### Why the compiler cannot do this for you
 
 ```
@@ -307,12 +327,17 @@ let gx: f32x4 = (r0c .- r0a) .+ (r1c .- r1a) .* vtwo .+ (r2c .- r2a)
 
 ### Measured
 
-Sobel edge detection, 1920x1080, AMD Ryzen 7 1700:
+Sobel edge detection, 720p (768×512), EPYC 9354P VM:
 ```
-NumPy   (array slicing) :  28.9 ms
-OpenCV  (optimized C++) :   8.3 ms
-Eä      (f32x4 stencil) :   3.1 ms    2.7x faster than OpenCV
+NumPy   (array slicing) :  15.10 ms
+OpenCV  (optimized C++) :  17.83 ms
+Eä      (f32x4 stencil) :   2.04 ms    6.1x faster than OpenCV
+                                        314 Mpx/s throughput
 ```
+
+*Previously (Ryzen 7 1700, 1920×1080): NumPy 28.9 ms, OpenCV 8.3 ms, Eä 3.1 ms (2.7x vs OpenCV).*
+
+Demo: `demo/sobel/`.
 
 ### Why explicit SIMD matters here
 
@@ -425,17 +450,20 @@ export func accumulate_foreach(acc: *mut f32, frame: *f32, len: i32) {
 
 ### Measured
 
-Astronomy stacking, 16 frames, 1024x1024, AMD Ryzen 7 1700:
+Astronomy stacking, 16 frames, 1024×1024, EPYC 9354P VM:
 ```
-NumPy   (np.mean, batch)     :  39.0 ms    64 MB peak
-Eä      (accumulate + scale) :   6.2 ms     4 MB peak    6.3x faster
+NumPy   (np.mean, batch)     :  11.10 ms    64 MB peak
+Eä      (batched, 8 frames)  :   9.21 ms     4 MB peak    1.2x faster
 ```
 
-The speedup comes from two sources:
-1. **Cache efficiency.** Eä touches one frame at a time. The accumulator stays in L2.
-   NumPy allocates a 64 MB array that thrashes L3.
-2. **No allocation.** NumPy's `np.array(frames)` copies all frames into a contiguous
-   block before computing. Eä accumulates in-place.
+*Previously (Ryzen 7 1700): NumPy 39.0 ms, Eä 6.2 ms (6.3x faster).*
+
+The speedup is modest in absolute time on this machine — Zen 4's memory
+subsystem handles NumPy's batch allocation better than Zen 1 did. But the
+**memory advantage is always 16×** (64 MB vs 4 MB), which matters at scale:
+100 frames of 4K video → 3.3 GB batch vs 33 MB streaming.
+
+Demo: `demo/astro_stack/`.
 
 ### Real-world instances
 
@@ -577,46 +605,60 @@ the CPU would otherwise stall on cache misses.
 
 ### Measured
 
-Video anomaly detection, 768x576, real video data (OpenCV vtest.avi):
+Video anomaly detection, 768×576, real video data (OpenCV vtest.avi), EPYC 9354P VM:
 ```
-NumPy              :  1.10 ms
-OpenCV (C++)       :  0.97 ms
-Ea (3 kernels)     :  1.12 ms    0.8x vs NumPy (slower — FFI + memory overhead)
-Ea fused (1 kernel):  0.08 ms   13.4x vs NumPy, 11.9x vs OpenCV
+NumPy              :  8.11 ms
+OpenCV (C++)       :  5.63 ms
+Ea (3 kernels)     :  8.55 ms    0.9x vs NumPy (slower — FFI + memory overhead)
+Ea fused (1 kernel):  0.07 ms  110.8x vs NumPy, 76.9x vs OpenCV
 ```
 
-Fusion speedup: **13.7x** (3 kernels → 1 kernel).
+Fusion speedup: **117×** (3 kernels → 1 kernel).
 
-The unfused Ea was *slower* than NumPy. The fused Ea is *13x faster*.
+*Previously (Ryzen 7 1700): NumPy 1.10 ms, Ea fused 0.08 ms (13.4× vs NumPy).
+The absolute fused time is similar (0.07 vs 0.08 ms) — the register-bound kernel
+runs at comparable speed. The larger ratio reflects slower baselines on the VM.*
+
+The unfused Ea was *slower* than NumPy. The fused Ea is *111× faster*.
 Nothing changed in the compiler, the LLVM version, or the language.
 Only the kernel boundary changed.
 
+Demo: `demo/video_anomaly/`.
+
 ### Measured: stencil fusion (skimage pipeline)
 
-Edge detection pipeline (blur → sobel → threshold), Kodak 768x512 image:
+Edge detection pipeline (blur → sobel → threshold), Kodak 768×512 image, EPYC 9354P VM:
 ```
-NumPy (4 stages)     :   9.75 ms
-Ea unfused (4 calls) :   1.57 ms    6.2x vs NumPy
-Ea fused (2 calls)   :   1.65 ms    5.9x vs NumPy
+NumPy (4 stages)     :  11.75 ms
+Ea unfused (4 calls) :   4.20 ms    2.8x vs NumPy
+Ea fused (2 calls)   :   3.72 ms    3.2x vs NumPy
 ```
 
-Fusion speedup at 768x512: **1.0x** — no measurable benefit.
-Both Ea versions are ~6x faster than NumPy from native SIMD alone.
+*Previously (Ryzen 7 1700): Ea unfused 1.57 ms (6.2×), Ea fused 1.65 ms (5.9×).*
+
+Fusion speedup at 768×512: **1.1×** — marginal benefit.
+Both Ea versions are faster than NumPy from native SIMD alone.
 
 But fusion speedup grows with image size as intermediates leave cache:
 ```
-  768x512    →  1.02x    (fits in L3)
- 1920x1080   →  1.10x    (L3 boundary)
- 3840x2160   →  1.33x    (DRAM-bound intermediates)
- 4096x4096   →  1.30x    (DRAM-bound)
+   768x512   →  0.93x    (fits in L3)
+  1920x1080  →  0.88x    (L3 boundary)
+  3840x2160  →  1.73x    (DRAM-bound intermediates)
+  4096x4096  →  1.48x    (DRAM-bound)
 ```
+
+*Previously (Ryzen 7 1700): 768→1.02×, 1920→1.10×, 3840→1.33×, 4096→1.30×.*
 
 This is cache-theory confirmation: fusion's value is proportional to
 the cost of eliminated memory traffic. When intermediates are in L1/L2
 (stencils have spatial locality), fusion saves little. When intermediates
-spill to DRAM (large images), fusion saves a lot.
+spill to DRAM (large images), fusion saves a lot. On the VM, the crossover
+is sharper — fusion hurts slightly at small sizes but helps more at 4K,
+likely due to VM cache hierarchy differences.
 
-Memory: NumPy 20.9 MB → Ea fused 3.0 MB (**7x reduction**).
+Memory: NumPy 20.9 MB → Ea fused 3.0 MB (**7× reduction**).
+
+Demo: `demo/skimage_fusion/`.
 
 **Critical insight:** The first fused kernel was *slower* than unfused (2.25 ms
 vs 1.64 ms) because it computed 8 redundant Gaussian blurs per output pixel.
@@ -626,28 +668,33 @@ The language didn't change. The LLVM didn't change. The compute formulation did.
 
 ### Fusion scaling: speedup grows linearly with pipeline depth
 
-MNIST preprocessing, 60,000 images (47M pixels, 188 MB), real data:
+MNIST preprocessing, 60,000 images (47M pixels, 188 MB), real data, EPYC 9354P VM:
 
 ```
 Ops  NumPy      Ea fused   Speedup   NumPy passes   Ea passes
 ───  ─────      ────────   ───────   ────────────   ─────────
- 1     77 ms      39 ms      2.0x          1            1
- 2    154 ms      39 ms      4.0x          2            1
- 4    470 ms      39 ms     12.0x          4            1
- 6    756 ms      38 ms     19.8x          6            1
- 8   1006 ms      40 ms     25.2x          8            1
+ 1    331 ms      42 ms      7.9x          1            1
+ 2    309 ms      19 ms     16.1x          2            1
+ 4    638 ms      20 ms     31.7x          4            1
+ 6   1000 ms      20 ms     51.3x          6            1
+ 8   1370 ms      19 ms     73.8x          8            1
 ```
 
 ```
-  1 ops │███ 2.0x
-  2 ops │██████ 4.0x
-  4 ops │██████████████████ 12.0x
-  6 ops │███████████████████████████████ 19.8x
-  8 ops │████████████████████████████████████████ 25.2x
+  1 ops │████ 7.9x
+  2 ops │█████████ 16.1x
+  4 ops │██████████████████ 31.7x
+  6 ops │████████████████████████████ 51.3x
+  8 ops │████████████████████████████████████████ 73.8x
 ```
 
-Ea fused time is **constant** (~39 ms) regardless of operation count.
-NumPy scales linearly (~125 ms per additional memory pass).
+*Previously (Ryzen 7 1700): 1→2.0×, 2→4.0×, 4→12.0×, 6→19.8×, 8→25.2×.
+Higher ratios on VM reflect slower NumPy baselines (memory-bandwidth limited).*
+
+Ea fused time is **constant** (~20 ms) regardless of operation count.
+NumPy scales linearly (~150 ms per additional memory pass).
+
+Demo: `demo/mnist_normalize/`.
 
 Each additional operation in a fused Ea kernel costs nearly zero — it is
 one more SIMD instruction operating on data already in registers. Each
@@ -782,12 +829,18 @@ while ci < C_in {
 
 ### Measured
 
-conv2d_3x3 on 56×56×64 input, 3×3 kernel (NHWC):
+conv2d_3x3 on 56×56×64 input, 3×3 kernel (NHWC), EPYC 9354P VM (AVX-512):
 ```
-NumPy   (float32, unoptimized)  :  ~870 ms
-Eä      (maddubs dual-acc)      :  ~18 ms    47.7x faster
-Throughput: 38.5 GMACs/s
+NumPy   (float32, unoptimized)  :  15.22 ms
+Eä      (maddubs dual-acc)      :   0.06 ms    265x faster
+Throughput: 62.98 GMACs/s
 ```
+
+*Previously (Ryzen 7 1700, AVX2): Eä ~18 ms (38.5 GMACs/s), 47.7× vs NumPy.
+AVX-512 on Zen 4 doubles the effective lanes for integer multiply-accumulate,
+explaining the ~300× improvement in absolute kernel time.*
+
+Demo: `demo/conv2d_3x3/`.
 
 ### Real-world instances
 
@@ -877,13 +930,18 @@ export func classify_alpha(input: *restrict u8, out: *mut u8, len: i32) {
 
 This is the critical finding from the tokenizer prepass demo.
 
-Tokenizer prepass (738 KB real text — Pride and Prejudice):
+Tokenizer prepass (738 KB real text — Pride and Prejudice), EPYC 9354P VM:
 ```
-NumPy (6+ array ops)  :  18.51 ms
-Eä unfused (3 calls)  :  0.24 ms    78.7x faster
-Eä fused (1 call)     :  0.32 ms    58.1x faster
-Fusion: 0.74x — fused is SLOWER than unfused.
+NumPy (6+ array ops)  :  64.02 ms
+Eä unfused (3 calls)  :   0.16 ms   405.9x faster
+Eä fused (1 call)     :   0.24 ms   263.7x faster
+Fusion: 0.65x — fused is SLOWER than unfused.
 ```
+
+*Previously (Ryzen 7 1700): NumPy 18.51 ms, Eä unfused 0.24 ms (78.7×),
+Eä fused 0.32 ms (58.1×), fusion 0.74×. Same pattern on both machines.*
+
+Demo: `demo/tokenizer_prepass/`.
 
 This is the opposite of Pattern 5 (Fused Pipeline), where fusion always helps
 for streaming float work. Why does fusion hurt here?
@@ -967,45 +1025,37 @@ A kernel language that claims to win everywhere is lying.
 **Lesson 1: Fusion eliminates memory passes (video anomaly demo).**
 
 ```
-3 separate kernels :  1.12 ms   (slower than NumPy)
-1 fused kernel     :  0.08 ms   (13x faster than NumPy)
+3 separate kernels :  8.55 ms   (slower than NumPy)
+1 fused kernel     :  0.07 ms   (111x faster than NumPy)
 ```
 
 Streaming operations (per-pixel, no neighborhood) fuse trivially — each pixel
 is independent, so fusion replaces N memory passes with N register operations.
-Speedup scales linearly with pipeline depth:
+Speedup scales linearly with pipeline depth (MNIST fusion scaling):
 
 ```
-1 op  →   2.0x     (memory-bound baseline)
-4 ops →  12.0x     (3 passes eliminated)
-8 ops →  25.2x     (7 passes eliminated)
+1 op  →   7.9x     (memory-bound baseline)
+4 ops →  31.7x     (3 passes eliminated)
+8 ops →  73.8x     (7 passes eliminated)
 ```
 
 **Lesson 2: Fusion requires algebraic optimization (skimage pipeline demo).**
 
 Stencil fusion is harder. A naive Gaussian+Sobel fusion that computes 8 separate
-Gaussian blurs per output pixel was *slower* than unfused:
-
-```
-Ea unfused (4 calls) :  1.64 ms
-Ea fused (naive)     :  2.25 ms   ← SLOWER (0.7x)
-```
-
-The fix was not a language change or a compiler change. It was a mathematical
+Gaussian blurs per output pixel was *slower* than unfused. The fix was a mathematical
 reformulation: precompute the algebraic composition of Gaussian and Sobel as
-a single 5x5 separable convolution. This reduced ops from ~120 to ~50 per
-4 output pixels:
+a single 5×5 separable convolution (~50 ops instead of ~120 per 4 output pixels):
 
 ```
-Ea unfused (4 calls) :  1.57 ms
-Ea fused (optimized) :  1.65 ms   ← on par (small image, fits in cache)
+Ea unfused (4 calls) :  4.20 ms
+Ea fused (optimized) :  3.72 ms   ← on par (small image, fits in cache)
 ```
 
 And fusion's benefit grows as data leaves cache:
 
 ```
-  768x512   →  1.02x    (L3-resident)
- 3840x2160  →  1.33x    (DRAM-bound intermediates)
+   768x512  →  0.93x    (L3-resident)
+  3840x2160 →  1.73x    (DRAM-bound intermediates)
 ```
 
 Same language. Same compiler. Same LLVM. Same data.

@@ -223,9 +223,9 @@ export func render(out: *mut f32, width: i32, height: i32) {
     let fh: f32 = to_f32(height)
 
     let mut py: i32 = 0
-    while py < height {
+    for py in 0..height {
         let mut px: i32 = 0
-        while px < width {
+        for px in 0..width {
             let u: f32 = (to_f32(px) + 0.5 - to_f32(width) * 0.5) / fh
             let v: f32 = -(to_f32(py) + 0.5 - fh * 0.5) / fh
             let rd: Vec3 = v3_normalize(v3(u, v, 1.0))
@@ -237,8 +237,6 @@ export func render(out: *mut f32, width: i32, height: i32) {
             out[idx + 1] = color.y
             out[idx + 2] = color.z
 
-            px = px + 1
         }
-        py = py + 1
     }
 }

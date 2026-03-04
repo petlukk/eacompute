@@ -1,6 +1,7 @@
 #!/bin/bash
-# Build 1BRC Ea kernels with architecture detection.
+# Build 1BRC Ea kernels.
 # Produces .so + .ea.json for Python ctypes loading.
+# scan.ea uses #[cfg(x86_64)] / #[cfg(aarch64)] for platform-specific extract_lines.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -20,18 +21,9 @@ fi
 ARCH=$(uname -m)
 echo "Architecture: $ARCH"
 
-# Select scan kernel based on architecture
-if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-    SCAN_SRC="$KERNEL_DIR/scan_arm.ea"
-    echo "Using ARM scan kernel (scalar extract_lines)"
-else
-    SCAN_SRC="$KERNEL_DIR/scan.ea"
-    echo "Using x86 scan kernel (SIMD movemask extract_lines)"
-fi
-
-# Compile scan kernel
-echo "Compiling scan kernel -> libscan.so"
-(cd "$SCRIPT_DIR" && "$EA" "$SCAN_SRC" --lib -o libscan.so)
+# Compile scan kernel (single file, #[cfg] selects platform-specific extract_lines)
+echo "Compiling scan.ea -> libscan.so"
+(cd "$SCRIPT_DIR" && "$EA" "$KERNEL_DIR/scan.ea" --lib -o libscan.so)
 
 # Compile parse_temp kernel (cross-platform)
 echo "Compiling parse_temp.ea -> libparse_temp.so"

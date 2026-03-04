@@ -1,6 +1,6 @@
 # Eä Benchmarks
 
-Measured on two machines. Full methodology and scripts in `benchmarks/`.
+Measured on three machines. Full methodology and scripts in `benchmarks/`.
 
 **Eä uses strict IEEE floating point — no fast-math flags.** The C reference was
 compiled with `gcc -O3 -march=native -ffast-math`. Eä matching this baseline
@@ -84,6 +84,84 @@ LLVM 18, Linux (WSL2). 1M elements, 100–200 runs, **minimum** time reported.
 | **Ea f32x8**   | **~65**  |
 | Rust f32x8     | ~66      |
 | C f32x8 (AVX2) | ~68      |
+
+---
+
+## AMD EPYC 9354P (Zen 4, AVX-512) — KVM VM, 1 vCPU
+
+GCC 14.2, Clang-14, LLVM 18, Linux 6.17. 1M elements, 100–200 runs, averaged.
+Single virtualized core — expect higher variance than bare-metal results above.
+
+### FMA Kernel
+
+| Implementation       | Avg (us) | vs GCC f32x8 |
+| -------------------- | -------- | ------------ |
+| GCC f32x8 (AVX2)     | 706      | 1.00x        |
+| GCC scalar           | 878      | 1.24x        |
+| **Ea f32x8**         | **664**  | **0.94x**    |
+| **Ea f32x4**         | **715**  | **1.01x**    |
+| Ea foreach           | 653      | 0.93x        |
+| Clang-14 f32x8       | 809      | 1.15x        |
+| ISPC                 | 1128     | 1.60x        |
+| Rust std::simd       | 624      | 0.88x        |
+
+### Sum Reduction
+
+| Implementation       | Avg (us) | vs C scalar  |
+| -------------------- | -------- | ------------ |
+| C scalar             | 133      | 1.00x        |
+| C f32x8 (AVX2)       | 201      | 1.51x        |
+| **Ea f32x8**         | **208**  | **1.57x**    |
+| Ea f32x4             | 314      | 2.36x        |
+| Ea foreach           | 1034     | 7.78x        |
+
+On Zen 4, scalar C beats explicit SIMD for sum reduction — the out-of-order
+engine's deep pipeline hides the dependency chain better than on Zen 1.
+The multi-accumulator pattern still helps within SIMD, but the scalar
+baseline is strong on this microarchitecture.
+
+### Max Reduction (multi-accumulator)
+
+| Implementation  | Avg (us) | vs C scalar  |
+| --------------- | -------- | ------------ |
+| C scalar        | 95       | 1.00x        |
+| C f32x4 (SSE)   | 242      | 2.54x        |
+| **Ea f32x4**    | **85**   | **0.90x**    |
+
+### Min Reduction (multi-accumulator)
+
+| Implementation  | Avg (us) | vs C scalar  |
+| --------------- | -------- | ------------ |
+| C scalar        | 66       | 1.00x        |
+| C f32x4 (SSE)   | 186      | 2.80x        |
+| **Ea f32x4**    | **132**  | **1.98x**    |
+
+---
+
+## v1.6 Features: `for` Loops and `min`/`max` Intrinsics
+
+### `for` vs `while` — identical codegen
+
+v1.6 added `for i in 0..n` as syntactic sugar for counted loops. The desugarer
+transforms `for` into the same `while` + increment pattern, producing identical
+LLVM IR. Verified by comparing IR output of equivalent `for` and `while` loops —
+both emit `while_cond`/`while_body`/`while_exit` basic blocks.
+
+**There is zero performance difference.** `for` is strictly a readability improvement.
+
+### `min()`/`max()` Scalar Intrinsics
+
+v1.6 added `min(a, b)` and `max(a, b)` for scalar `f32`, `f64`, `i32`, `i64`.
+These lower to LLVM `minnum`/`maxnum` (floats) or `smin`/`smax` (integers),
+which emit single instructions (`vminss`/`vmaxss` on x86, `fmin`/`fmax` on ARM).
+
+The branch pattern `if a < b { result = a }` already compiles to the same
+`vminss`/`vmaxss` instructions via LLVM optimization, so the intrinsic
+does not improve codegen. It improves **readability** — replacing 3-line
+branching patterns with a single expression.
+
+Demo kernels now use `min()`/`max()` in reduction tails (see `demo/eastat/`,
+`demo/astro_stack/`, `demo/eavec/`).
 
 ---
 

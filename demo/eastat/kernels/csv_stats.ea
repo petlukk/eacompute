@@ -74,8 +74,8 @@ export func f32_column_stats(
         let v: f32 = data[i]
         total_sum = total_sum + v
         total_sumsq = total_sumsq + v * v
-        if v < total_min { total_min = v }
-        if v > total_max { total_max = v }
+        total_min = min(v, total_min)
+        total_max = max(v, total_max)
         i = i + 1
     }
 
@@ -116,7 +116,7 @@ export func f32_percentiles(
     let mut hi75: f32 = max_val
 
     let mut iter: i32 = 0
-    while iter < 30 {
+    for iter in 0..30 {
         let mid25: f32 = (lo25 + hi25) * 0.5
         let mid50: f32 = (lo50 + hi50) * 0.5
         let mid75: f32 = (lo75 + hi75) * 0.5
@@ -154,8 +154,6 @@ export func f32_percentiles(
         if cnt25 < rank25 { lo25 = mid25 } else { hi25 = mid25 }
         if cnt50 < rank50 { lo50 = mid50 } else { hi50 = mid50 }
         if cnt75 < rank75 { lo75 = mid75 } else { hi75 = mid75 }
-
-        iter = iter + 1
     }
 
     out_p25[0] = (lo25 + hi25) * 0.5

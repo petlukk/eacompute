@@ -15,8 +15,8 @@ export func sobel(
     let vzero: f32x4 = splat(0.0)
     let vtwo: f32x4 = splat(2.0)
 
-    let mut y: i32 = 1
-    while y < height - 1 {
+    let mut y: i32 = 0
+    for y in 1..(height - 1) {
         let row_above: i32 = (y - 1) * width
         let row_curr: i32 = y * width
         let row_below: i32 = (y + 1) * width
@@ -68,7 +68,5 @@ export func sobel(
             out[row_curr + x] = abs_gx + abs_gy
             x = x + 1
         }
-
-        y = y + 1
     }
 }

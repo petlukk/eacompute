@@ -40,10 +40,10 @@ Three workloads benchmarked against industry tools. Warm-cache medians, 20–50 
 | Workload | Compared against | Speedup | Method |
 |----------|-----------------|---------|--------|
 | [Vector search](demo/eavec/) (dim=384) | FAISS IndexFlatIP | **4–8×** | Dual-acc FMA, f32x8, next-vector prefetch |
-| [Sobel edge detection](demo/sobel/) (720p–4K) | OpenCV | **7–10×** (single-threaded) | Stencil f32x4, prefetch, L3 scaling analysis |
+| [Sobel edge detection](demo/sobel/) (720p–4K) | OpenCV | **5–6×** (single-threaded) | Stencil f32x4, prefetch, L3 scaling analysis |
 | [CSV analytics](demo/eastat/) (10–544 MB) | polars | **1.4–2.2×** | Structural scan, SIMD reduction, binary search |
 
-All three use `ea bind` for Python integration — zero manual ctypes. Validated across multiple input sizes. Full methodology and additional demos (conv2d at 57×, tokenizer at 65× vs NumPy) in [`COMPUTE_PATTERNS.md`](COMPUTE_PATTERNS.md).
+All three use `ea bind` for Python integration — zero manual ctypes. Validated across multiple input sizes. Full methodology and additional demos (conv2d at 265×, tokenizer at 406× vs NumPy) in [`COMPUTE_PATTERNS.md`](COMPUTE_PATTERNS.md).
 
 ## `ea bind`
 
@@ -120,8 +120,8 @@ Also: `for i in 0..n step 8 { ... }` counted loops, `foreach (i in 0..n) { ... }
 Fusion eliminates memory round-trips between pipeline stages:
 
 ```
-3 kernels (unfused):  1.58 ms   — 0.96× (slightly slower, FFI + memory overhead)
-1 kernel  (fused):    0.13 ms   — 11.5× faster than NumPy
+3 kernels (unfused):  8.55 ms   — 0.9× (slightly slower, FFI + memory overhead)
+1 kernel  (fused):    0.07 ms   — 111× faster than NumPy
 ```
 
 > If data leaves registers, you probably ended a kernel too early.

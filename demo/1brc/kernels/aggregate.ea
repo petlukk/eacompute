@@ -41,7 +41,7 @@ export func parse_aggregate(
     let mut n_stations: i32 = 0
     let mut i: i32 = 0
 
-    while i < n {
+    for i in 0..n {
         // --- Line boundaries ---
         let mut line_start: i32 = text_start
         if i > 0 {
@@ -151,12 +151,8 @@ export func parse_aggregate(
 
                     if match_flag == 1 {
                         // Match — update stats
-                        if temp < ht_min[slot] {
-                            ht_min[slot] = temp
-                        }
-                        if temp > ht_max[slot] {
-                            ht_max[slot] = temp
-                        }
+                        ht_min[slot] = min(temp, ht_min[slot])
+                        ht_max[slot] = max(temp, ht_max[slot])
                         ht_sum[slot] = ht_sum[slot] + temp
                         ht_count[slot] = ht_count[slot] + 1
                         probing = 0
@@ -170,8 +166,6 @@ export func parse_aggregate(
                 }
             }
         }
-
-        i = i + 1
     }
 
     out_n_stations[0] = n_stations

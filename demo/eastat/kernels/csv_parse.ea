@@ -41,7 +41,7 @@ export func count_positions_quoted(
     let mut header_dc: i32 = -1
     let mut i: i32 = 0
 
-    while i < len {
+    for i in 0..len {
         let b: u8 = text[i]
 
         if b == 34 {
@@ -63,8 +63,6 @@ export func count_positions_quoted(
                 lc = lc + 1
             }
         }
-
-        i = i + 1
     }
 
     if header_dc == -1 {
@@ -96,7 +94,7 @@ export func extract_positions_quoted(
     let mut header_dc: i32 = -1
     let mut i: i32 = 0
 
-    while i < len {
+    for i in 0..len {
         let b: u8 = text[i]
 
         if b == 34 {
@@ -120,8 +118,6 @@ export func extract_positions_quoted(
                 lc = lc + 1
             }
         }
-
-        i = i + 1
     }
 
     if header_dc == -1 {
@@ -263,7 +259,7 @@ export func compute_field_bounds(
     let mut i: i32 = 0
     let last_col: i32 = col_count - 1
 
-    while i < n_rows {
+    for i in 0..n_rows {
         let rs: i32 = row_starts[i]
         let re: i32 = row_ends[i]
         let ndel: i32 = delims_per_row[i]
@@ -299,8 +295,6 @@ export func compute_field_bounds(
                 }
             }
         }
-
-        i = i + 1
     }
 }
 
@@ -321,7 +315,7 @@ export func batch_atof(
     let mut count: i32 = 0
     let mut i: i32 = 0
 
-    while i < n {
+    for i in 0..n {
         let mut pos: i32 = starts[i]
         let end: i32 = ends[i]
 
@@ -420,8 +414,6 @@ export func batch_atof(
                 }
             }
         }
-
-        i = i + 1
     }
 
     out_count[0] = count
@@ -446,21 +438,16 @@ export func field_length_stats(
     let mut valid_count: i32 = 0
     let mut i: i32 = 0
 
-    while i < n {
+    for i in 0..n {
         let len: i32 = ends[i] - starts[i]
         if len <= 0 {
             null_count = null_count + 1
         } else {
             total_len = total_len + len
             valid_count = valid_count + 1
-            if len < min_len {
-                min_len = len
-            }
-            if len > max_len {
-                max_len = len
-            }
+            min_len = min(len, min_len)
+            max_len = max(len, max_len)
         }
-        i = i + 1
     }
 
     if valid_count == 0 {

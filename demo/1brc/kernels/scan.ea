@@ -1,13 +1,13 @@
-// SIMD newline scanner for 1BRC (x86, u8x16 + movemask).
+// SIMD newline scanner for 1BRC.
 //
 // Two exports:
 //   count_lines     — count newlines (for pre-allocation)
 //   extract_lines   — extract newline byte positions into array
 //
-// Uses u8x16 (not u8x32) because movemask on u8x16 produces a 16-bit mask
-// (max 65535), always positive in i32. u8x32 movemask can set bit 31,
-// making the value negative — and / 2 (signed division) gives wrong
-// results for bit extraction. Throughput is the same: memory-bandwidth bound.
+// count_lines is cross-platform (u8x16 compare + reduce_add).
+// extract_lines has two implementations:
+//   x86_64: u8x16 + movemask + bit loop (SIMD)
+//   aarch64: scalar byte-by-byte scan (no movemask on NEON)
 
 const NEWLINE: i32 = 10
 
@@ -55,9 +55,15 @@ export func count_lines(
 //   3. movemask → 16-bit integer (0..65535, always positive)
 //   4. Extract set bits: while m != 0 { if m % 2 == 1 → emit position; m = m / 2 }
 //
+// Uses u8x16 (not u8x32) because movemask on u8x16 produces a 16-bit mask
+// (max 65535), always positive in i32. u8x32 movemask can set bit 31,
+// making the value negative — and / 2 (signed division) gives wrong
+// results for bit extraction. Throughput is the same: memory-bandwidth bound.
+//
 // Bit extraction uses % 2 (LSB test) and / 2 (right shift) because
 // Ea has no scalar bitwise ops. Works correctly because u8x16 movemask
 // produces at most 16 bits, so the i32 value is always non-negative.
+#[cfg(x86_64)]
 export func extract_lines(
     text: *u8,
     len: i32,
@@ -93,6 +99,31 @@ export func extract_lines(
     }
 
     // Scalar tail
+    while i < len {
+        let b: u8 = text[i]
+        if b == 10 {
+            out_pos[count] = i
+            count = count + 1
+        }
+        i = i + 1
+    }
+
+    out_count[0] = count
+}
+
+
+// Extract newline positions — scalar scan.
+// No movemask on ARM, so byte-by-byte is the practical approach.
+#[cfg(aarch64)]
+export func extract_lines(
+    text: *u8,
+    len: i32,
+    out_pos: *mut i32,
+    out_count: *mut i32
+) {
+    let mut count: i32 = 0
+    let mut i: i32 = 0
+
     while i < len {
         let b: u8 = text[i]
         if b == 10 {
