@@ -247,6 +247,8 @@ pub enum TokenKind {
     LeftBracket,
     #[token("]")]
     RightBracket,
+    #[token("#")]
+    Hash,
 
     #[token("\n")]
     Newline,

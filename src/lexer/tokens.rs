@@ -87,6 +87,7 @@ pub fn token_name(kind: &TokenKind) -> &'static str {
         TokenKind::Bang => "!",
         TokenKind::LeftBracket => "[",
         TokenKind::RightBracket => "]",
+        TokenKind::Hash => "#",
         TokenKind::Newline => "newline",
         TokenKind::LineComment => "comment",
     }

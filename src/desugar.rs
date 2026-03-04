@@ -15,6 +15,7 @@ pub fn desugar_kernels(stmts: Vec<Stmt>) -> crate::error::Result<Vec<Stmt>> {
                 return_type,
                 body,
                 export,
+                cfg,
                 span,
             } => {
                 let body = desugar_body(body)?;
@@ -24,6 +25,7 @@ pub fn desugar_kernels(stmts: Vec<Stmt>) -> crate::error::Result<Vec<Stmt>> {
                     return_type,
                     body,
                     export,
+                    cfg,
                     span,
                 });
             }
@@ -212,6 +214,7 @@ fn desugar_kernel(kernel: Stmt) -> crate::error::Result<Stmt> {
         return_type: None,
         body: func_body,
         export,
+        cfg: None,
         span,
     })
 }
@@ -338,4 +341,18 @@ fn check_no_assign_to_var(stmts: &[Stmt], var: &str) -> crate::error::Result<()>
         }
     }
     Ok(())
+}
+
+/// Remove functions whose `#[cfg(target)]` does not match the current target.
+pub fn filter_cfg(stmts: Vec<Stmt>, is_arm: bool) -> Vec<Stmt> {
+    let current_arch = if is_arm { "aarch64" } else { "x86_64" };
+    stmts
+        .into_iter()
+        .filter(|s| match s {
+            Stmt::Function {
+                cfg: Some(target), ..
+            } => target == current_arch,
+            _ => true,
+        })
+        .collect()
 }

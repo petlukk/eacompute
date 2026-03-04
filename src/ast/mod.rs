@@ -286,6 +286,7 @@ pub enum Stmt {
         return_type: Option<TypeAnnotation>,
         body: Vec<Stmt>,
         export: bool,
+        cfg: Option<String>,
         span: Span,
     },
     Let {
@@ -381,7 +382,6 @@ pub enum TailStrategy {
     Mask,
     Pad,
 }
-
 impl Stmt {
     pub fn span(&self) -> &Span {
         match self {
@@ -404,7 +404,6 @@ impl Stmt {
         }
     }
 }
-
 impl fmt::Display for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -413,8 +412,12 @@ impl fmt::Display for Stmt {
                 params,
                 return_type,
                 export,
+                cfg,
                 ..
             } => {
+                if let Some(target) = cfg {
+                    write!(f, "#[cfg({target})] ")?;
+                }
                 if *export {
                     write!(f, "export ")?;
                 }
