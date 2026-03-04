@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""1BRC solver: mmap -> Ea SIMD scan -> Ea parse -> Python dict aggregate -> sort+print"""
+"""1BRC solver: Ea SIMD scan -> Ea fused parse+aggregate kernel -> merge -> sort+print"""
 
 import ctypes
 import os
@@ -36,35 +36,52 @@ def _setup_parse(lib: ctypes.CDLL) -> ctypes.CDLL:
     return lib
 
 
+def _setup_aggregate(lib: ctypes.CDLL) -> ctypes.CDLL:
+    """Configure ctypes signatures for aggregate kernel."""
+    lib.parse_aggregate.argtypes = [
+        ctypes.c_void_p,                    # text
+        ctypes.POINTER(ctypes.c_int),       # nl_pos
+        ctypes.c_int,                       # n
+        ctypes.c_int,                       # text_start
+        ctypes.POINTER(ctypes.c_ubyte),     # ht_keys
+        ctypes.POINTER(ctypes.c_int),       # ht_key_len
+        ctypes.POINTER(ctypes.c_int),       # ht_min
+        ctypes.POINTER(ctypes.c_int),       # ht_max
+        ctypes.POINTER(ctypes.c_int),       # ht_sum
+        ctypes.POINTER(ctypes.c_int),       # ht_count
+        ctypes.POINTER(ctypes.c_int),       # out_n_stations
+    ]
+    lib.parse_aggregate.restype = None
+    return lib
+
+
 # Globals set per-process (cannot pickle ctypes objects)
 _scan_lib = None
-_parse_lib = None
+_agg_lib = None
 
 
 def _init_worker() -> None:
     """Initialize kernel libraries in each worker process."""
-    global _scan_lib, _parse_lib
+    global _scan_lib, _agg_lib
     _scan_lib = _setup_scan(_load_lib("scan"))
-    _parse_lib = _setup_parse(_load_lib("parse_temp"))
+    _agg_lib = _setup_aggregate(_load_lib("aggregate"))
 
 
 def solve_chunk(path: str, start: int, end: int) -> dict:
     """Process one chunk of the file. Returns {name_bytes: [min, max, sum, count]}."""
-    global _scan_lib, _parse_lib
+    global _scan_lib, _agg_lib
     if _scan_lib is None:
         _init_worker()
 
     chunk_len = end - start
 
-    # Read chunk as bytes (immutable, hashable — slicing returns bytes directly).
-    # c_char_p wraps the bytes buffer without copying (zero-copy pointer).
     with open(path, "rb") as f:
         f.seek(start)
         chunk_bytes = f.read(chunk_len)
 
     buf_ptr = ctypes.cast(ctypes.c_char_p(chunk_bytes), ctypes.c_void_p)
 
-    # Count newlines for pre-allocation
+    # Count newlines
     nl_count = ctypes.c_int(0)
     _scan_lib.count_lines(buf_ptr, chunk_len, ctypes.byref(nl_count))
     n_lines = nl_count.value
@@ -78,28 +95,35 @@ def solve_chunk(path: str, start: int, end: int) -> dict:
     _scan_lib.extract_lines(buf_ptr, chunk_len, nl_pos, ctypes.byref(extract_count))
     n_lines = extract_count.value
 
-    # Batch parse temperatures
-    semi_off = IntArray()
-    temps = IntArray()
-    _parse_lib.batch_parse_temps(buf_ptr, nl_pos, n_lines, 0, semi_off, temps)
+    # Allocate hash table arrays
+    TABLE_SIZE = 1024
+    KEY_STRIDE = 64
+    KeyArray = ctypes.c_ubyte * (TABLE_SIZE * KEY_STRIDE)
+    SlotArray = ctypes.c_int * TABLE_SIZE
 
-    # Aggregate: chunk_bytes is bytes so slicing returns bytes (hashable, no copy)
+    ht_keys = KeyArray()
+    ht_key_len = SlotArray()
+    ht_min = SlotArray(*([9999] * TABLE_SIZE))
+    ht_max = SlotArray(*([-9999] * TABLE_SIZE))
+    ht_sum = SlotArray()
+    ht_count = SlotArray()
+    out_n = ctypes.c_int(0)
+
+    # Fused parse + aggregate
+    _agg_lib.parse_aggregate(
+        buf_ptr, nl_pos, n_lines, 0,
+        ht_keys, ht_key_len, ht_min, ht_max, ht_sum, ht_count,
+        ctypes.byref(out_n),
+    )
+
+    # Read back filled slots
     stations: dict[bytes, list] = {}
-    _get = stations.get
-    for i in range(n_lines):
-        ls = 0 if i == 0 else nl_pos[i - 1] + 1
-        name = chunk_bytes[ls : ls + semi_off[i]]
-        t = temps[i]
-        entry = _get(name)
-        if entry is not None:
-            if t < entry[0]:
-                entry[0] = t
-            if t > entry[1]:
-                entry[1] = t
-            entry[2] += t
-            entry[3] += 1
-        else:
-            stations[name] = [t, t, t, 1]
+    for slot in range(TABLE_SIZE):
+        klen = ht_key_len[slot]
+        if klen > 0:
+            base = slot * KEY_STRIDE
+            name = bytes(ht_keys[base : base + klen])
+            stations[name] = [ht_min[slot], ht_max[slot], ht_sum[slot], ht_count[slot]]
 
     return stations
 
@@ -149,7 +173,7 @@ def merge_results(partials: list[dict]) -> dict:
 
 
 def solve(path: str, n_workers: int | None = None) -> dict:
-    """Full 1BRC solve: mmap -> scan -> parse -> aggregate -> merge."""
+    """Full 1BRC solve: scan -> fused parse+aggregate -> merge."""
     if n_workers is None:
         n_workers = os.cpu_count() or 1
     n_workers = min(n_workers, os.cpu_count() or 1)
