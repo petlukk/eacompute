@@ -1,0 +1,155 @@
+// Fused parse + aggregate kernel for 1BRC.
+//
+// Processes raw text + newline positions in one pass:
+//   1. Find semicolon (backward scan from newline)
+//   2. Hash station name (polynomial: h = h * 31 + byte)
+//   3. Parse temperature to i32 tenths
+//   4. Insert/update open-addressing hash table (1024 slots, linear probing)
+//
+// Hash table: 6 parallel arrays, caller-allocated and initialized.
+// ht_keys (1024*64 bytes), ht_key_len (1024 i32, 0=empty),
+// ht_min/ht_max/ht_sum/ht_count (1024 i32 each).
+//
+// Cross-platform: pure scalar, works on both x86 and ARM.
+
+const TABLE_SIZE: i32 = 1024
+const KEY_STRIDE: i32 = 64
+const ASCII_MINUS: i32 = 45
+const ASCII_DOT: i32 = 46
+const ASCII_ZERO: i32 = 48
+const ASCII_SEMI: i32 = 59
+
+
+export func parse_aggregate(
+    text: *u8,
+    nl_pos: *i32,
+    n: i32,
+    text_start: i32,
+    ht_keys: *mut u8,
+    ht_key_len: *mut i32,
+    ht_min: *mut i32,
+    ht_max: *mut i32,
+    ht_sum: *mut i32,
+    ht_count: *mut i32,
+    out_n_stations: *mut i32
+) {
+    let mut n_stations: i32 = 0
+    let mut i: i32 = 0
+
+    while i < n {
+        // --- Line boundaries ---
+        let mut line_start: i32 = text_start
+        if i > 0 {
+            line_start = nl_pos[i - 1] + 1
+        }
+        let line_end: i32 = nl_pos[i]
+
+        // --- Find semicolon (backward scan) ---
+        let mut semi_pos: i32 = line_end - 1
+        let mut searching: i32 = 1
+        while semi_pos >= line_start && searching == 1 {
+            let b: u8 = text[semi_pos]
+            if to_i32(b) == ASCII_SEMI {
+                searching = 0
+            } else {
+                semi_pos = semi_pos - 1
+            }
+        }
+
+        let name_len: i32 = semi_pos - line_start
+
+        // --- Hash station name ---
+        let mut h: i32 = 0
+        let mut j: i32 = line_start
+        while j < semi_pos {
+            h = h * 31 + to_i32(text[j])
+            j = j + 1
+        }
+
+        // --- Parse temperature ---
+        let mut pos: i32 = semi_pos + 1
+        let mut negative: i32 = 0
+        if to_i32(text[pos]) == ASCII_MINUS {
+            negative = 1
+            pos = pos + 1
+        }
+
+        let mut int_val: i32 = 0
+        let mut reading_int: i32 = 1
+        while pos < line_end && reading_int == 1 {
+            let bv: i32 = to_i32(text[pos])
+            if bv >= ASCII_ZERO && bv <= ASCII_ZERO + 9 {
+                int_val = int_val * 10 + (bv - ASCII_ZERO)
+                pos = pos + 1
+            } else {
+                reading_int = 0
+            }
+        }
+        // Skip '.'
+        pos = pos + 1
+        let dec_val: i32 = to_i32(text[pos]) - ASCII_ZERO
+        let mut temp: i32 = int_val * 10 + dec_val
+        if negative == 1 {
+            temp = 0 - temp
+        }
+
+        // --- Hash table probe ---
+        let mut slot: i32 = ((h % TABLE_SIZE) + TABLE_SIZE) % TABLE_SIZE
+        let mut probing: i32 = 1
+
+        while probing == 1 {
+            if ht_key_len[slot] == 0 {
+                // Empty slot — insert
+                let mut k: i32 = 0
+                let key_base: i32 = slot * KEY_STRIDE
+                while k < name_len {
+                    ht_keys[key_base + k] = text[line_start + k]
+                    k = k + 1
+                }
+                ht_key_len[slot] = name_len
+                ht_min[slot] = temp
+                ht_max[slot] = temp
+                ht_sum[slot] = temp
+                ht_count[slot] = 1
+                n_stations = n_stations + 1
+                probing = 0
+            } else {
+                if ht_key_len[slot] == name_len {
+                    // Length match — compare bytes
+                    let mut k: i32 = 0
+                    let key_base: i32 = slot * KEY_STRIDE
+                    let mut match_flag: i32 = 1
+                    while k < name_len && match_flag == 1 {
+                        if ht_keys[key_base + k] != text[line_start + k] {
+                            match_flag = 0
+                        }
+                        k = k + 1
+                    }
+
+                    if match_flag == 1 {
+                        // Match — update stats
+                        if temp < ht_min[slot] {
+                            ht_min[slot] = temp
+                        }
+                        if temp > ht_max[slot] {
+                            ht_max[slot] = temp
+                        }
+                        ht_sum[slot] = ht_sum[slot] + temp
+                        ht_count[slot] = ht_count[slot] + 1
+                        probing = 0
+                    } else {
+                        // Collision — linear probe
+                        slot = (slot + 1) % TABLE_SIZE
+                    }
+                } else {
+                    // Different length — linear probe
+                    slot = (slot + 1) % TABLE_SIZE
+                }
+            }
+        }
+
+        i = i + 1
+    }
+
+    out_n_stations[0] = n_stations
+}

@@ -37,6 +37,10 @@ echo "Compiling scan kernel -> libscan.so"
 echo "Compiling parse_temp.ea -> libparse_temp.so"
 (cd "$SCRIPT_DIR" && "$EA" "$KERNEL_DIR/parse_temp.ea" --lib -o libparse_temp.so)
 
+# Compile aggregate kernel (cross-platform)
+echo "Compiling aggregate.ea -> libaggregate.so"
+(cd "$SCRIPT_DIR" && "$EA" "$KERNEL_DIR/aggregate.ea" --lib -o libaggregate.so)
+
 # Clean up intermediate object files
 rm -f "$SCRIPT_DIR"/*.o
 
