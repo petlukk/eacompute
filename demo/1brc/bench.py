@@ -12,7 +12,7 @@ sys.path.insert(0, script_dir)
 
 from solve import (
     _load_lib,
-    _setup_parse,
+    _setup_aggregate,
     _setup_scan,
     format_results,
     solve,
@@ -22,10 +22,9 @@ from solve import (
 def bench_phases(path: str) -> dict:
     """Single-worker phase breakdown."""
     scan_lib = _setup_scan(_load_lib("scan"))
-    parse_lib = _setup_parse(_load_lib("parse_temp"))
-    size = os.path.getsize(path)
+    agg_lib = _setup_aggregate(_load_lib("aggregate"))
 
-    # Phase 1: Read file as bytes (zero-copy ctypes pointer via c_char_p)
+    # Phase 1: Read
     t0 = time.perf_counter()
     with open(path, "rb") as f:
         chunk_bytes = f.read()
@@ -38,7 +37,6 @@ def bench_phases(path: str) -> dict:
     nl_count = ctypes.c_int(0)
     scan_lib.count_lines(buf_ptr, chunk_len, ctypes.byref(nl_count))
     n_lines = nl_count.value
-
     IntArray = ctypes.c_int * n_lines
     nl_pos = IntArray()
     extract_count = ctypes.c_int(0)
@@ -46,42 +44,45 @@ def bench_phases(path: str) -> dict:
     n_lines = extract_count.value
     t_scan = time.perf_counter() - t0
 
-    # Phase 3: Parse
+    # Phase 3: Parse + Aggregate (fused Ea kernel)
     t0 = time.perf_counter()
-    semi_off = IntArray()
-    temps = IntArray()
-    parse_lib.batch_parse_temps(buf_ptr, nl_pos, n_lines, 0, semi_off, temps)
-    t_parse = time.perf_counter() - t0
+    TABLE_SIZE = 1024
+    KEY_STRIDE = 64
+    KeyArray = ctypes.c_ubyte * (TABLE_SIZE * KEY_STRIDE)
+    SlotArray = ctypes.c_int * TABLE_SIZE
 
-    # Phase 4: Aggregate (bytes slicing returns bytes — hashable, no extra copy)
-    t0 = time.perf_counter()
+    ht_keys = KeyArray()
+    ht_key_len = SlotArray()
+    ht_min = SlotArray(*([9999] * TABLE_SIZE))
+    ht_max = SlotArray(*([-9999] * TABLE_SIZE))
+    ht_sum = SlotArray()
+    ht_count = SlotArray()
+    out_n = ctypes.c_int(0)
+
+    agg_lib.parse_aggregate(
+        buf_ptr, nl_pos, n_lines, 0,
+        ht_keys, ht_key_len, ht_min, ht_max, ht_sum, ht_count,
+        ctypes.byref(out_n),
+    )
+
     stations: dict[bytes, list] = {}
-    _get = stations.get
-    for i in range(n_lines):
-        ls = 0 if i == 0 else nl_pos[i - 1] + 1
-        name = chunk_bytes[ls : ls + semi_off[i]]
-        t = temps[i]
-        entry = _get(name)
-        if entry is not None:
-            if t < entry[0]:
-                entry[0] = t
-            if t > entry[1]:
-                entry[1] = t
-            entry[2] += t
-            entry[3] += 1
-        else:
-            stations[name] = [t, t, t, 1]
+    for slot in range(TABLE_SIZE):
+        klen = ht_key_len[slot]
+        if klen > 0:
+            base = slot * KEY_STRIDE
+            name = bytes(ht_keys[base : base + klen])
+            stations[name] = [ht_min[slot], ht_max[slot], ht_sum[slot], ht_count[slot]]
     t_agg = time.perf_counter() - t0
 
-    # Phase 5: Sort + format
+    # Phase 4: Sort + format
     t0 = time.perf_counter()
     output = format_results(stations)
     t_sort = time.perf_counter() - t0
 
-    t_total = t_read + t_scan + t_parse + t_agg + t_sort
+    t_total = t_read + t_scan + t_agg + t_sort
     return {
-        "read": t_read, "scan": t_scan, "parse": t_parse,
-        "aggregate": t_agg, "sort": t_sort, "total": t_total,
+        "read": t_read, "scan": t_scan, "parse_agg": t_agg,
+        "sort": t_sort, "total": t_total,
         "n_lines": n_lines, "output": output, "results": stations,
     }
 
@@ -133,12 +134,11 @@ def main() -> None:
     p = phases
     t = p["total"]
     print(f"Phase breakdown (Ea, 1 worker):")
-    print(f"  read           : {p['read']*1000:8.1f} ms")
-    print(f"  scan (Ea SIMD) : {p['scan']*1000:8.1f} ms")
-    print(f"  parse (Ea)     : {p['parse']*1000:8.1f} ms")
-    print(f"  aggregate (Py) : {p['aggregate']*1000:8.1f} ms")
-    print(f"  sort+print     : {p['sort']*1000:8.1f} ms")
-    print(f"  total          : {t*1000:8.1f} ms")
+    print(f"  read              : {p['read']*1000:8.1f} ms")
+    print(f"  scan (Ea SIMD)    : {p['scan']*1000:8.1f} ms")
+    print(f"  parse+agg (Ea HT) : {p['parse_agg']*1000:8.1f} ms")
+    print(f"  sort+print        : {p['sort']*1000:8.1f} ms")
+    print(f"  total             : {t*1000:8.1f} ms")
     print()
 
     # Multi-process
@@ -180,13 +180,13 @@ def main() -> None:
         pass
 
     # Bottleneck analysis
-    t_kernels = p["scan"] + p["parse"]
+    t_kernels = p["scan"] + p["parse_agg"]
     if t > 0:
         print(f"Bottleneck analysis:")
-        print(f"  read           : {p['read']/t*100:5.1f}%")
-        print(f"  scan+parse     : {t_kernels/t*100:5.1f}%  (Ea kernels)")
-        print(f"  aggregate      : {p['aggregate']/t*100:5.1f}%  (Python dict)")
-        print(f"  sort+print     : {p['sort']/t*100:5.1f}%")
+        print(f"  read              : {p['read']/t*100:5.1f}%")
+        print(f"  scan (Ea)         : {p['scan']/t*100:5.1f}%")
+        print(f"  parse+agg (Ea)    : {p['parse_agg']/t*100:5.1f}%  (fused kernel)")
+        print(f"  sort+print        : {p['sort']/t*100:5.1f}%")
 
     # Verify correctness: compare Ea vs pure Python
     ea_results = phases["results"]
