@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eavec"
+version = "0.2.0"
+description = "SIMD-accelerated vector similarity search. 3-4x faster than FAISS at dim=384."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.9"
+authors = [{ name = "Peter Lukac" }]
+keywords = ["vector", "search", "simd", "similarity", "embedding", "faiss"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = ["numpy>=1.21"]
+
+[project.urls]
+Homepage = "https://github.com/petlukk/eavec"
+Repository = "https://github.com/petlukk/eavec"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+eavec = ["lib/*.so", "lib/*.dll", "py.typed"]

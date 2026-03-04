@@ -1,0 +1,158 @@
+name: Build & Publish
+
+on:
+  push:
+    tags: ["eavec-v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish to PyPI (false = build only)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write  # OIDC for trusted publishing
+
+env:
+  EA_VERSION: "v1.6.0"
+  EA_REPO: "petlukk/eacompute"
+
+jobs:
+  build-linux-x86_64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ea binary
+        run: |
+          curl -fsSL "https://github.com/$EA_REPO/releases/download/$EA_VERSION/ea-linux-x86_64.tar.gz" -o ea.tar.gz
+          tar xzf ea.tar.gz
+          mv ea-linux-x86_64/ea ./ea
+          chmod +x ea
+
+      - name: Compile kernels
+        run: EA_BIN=./ea ./build_kernels.sh
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build and retag wheel
+        run: |
+          pip install build wheel
+          python -m build --wheel
+          python -m wheel tags \
+            --platform-tag manylinux_2_17_x86_64 \
+            --remove dist/eavec-*.whl
+
+      - name: Test wheel in clean venv
+        run: |
+          python -m venv /tmp/test-venv
+          /tmp/test-venv/bin/pip install dist/*.whl
+          /tmp/test-venv/bin/pip install pytest
+          /tmp/test-venv/bin/pytest tests/ -v
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-linux-x86_64
+          path: dist/*.whl
+
+  build-linux-aarch64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ea binary
+        run: |
+          curl -fsSL "https://github.com/$EA_REPO/releases/download/$EA_VERSION/ea-linux-aarch64.tar.gz" -o ea.tar.gz
+          tar xzf ea.tar.gz
+          mv ea-linux-aarch64/ea ./ea
+          chmod +x ea
+
+      - name: Compile kernels
+        run: EA_BIN=./ea ./build_kernels.sh
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build and retag wheel
+        run: |
+          pip install build wheel
+          python -m build --wheel
+          python -m wheel tags \
+            --platform-tag manylinux_2_17_aarch64 \
+            --remove dist/eavec-*.whl
+
+      - name: Test wheel in clean venv
+        run: |
+          python -m venv /tmp/test-venv
+          /tmp/test-venv/bin/pip install dist/*.whl
+          /tmp/test-venv/bin/pip install pytest
+          /tmp/test-venv/bin/pytest tests/ -v
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-linux-aarch64
+          path: dist/*.whl
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ea binary
+        shell: pwsh
+        run: |
+          Invoke-WebRequest `
+            "https://github.com/$env:EA_REPO/releases/download/$env:EA_VERSION/ea-windows-x86_64.zip" `
+            -OutFile ea.zip
+          Expand-Archive ea.zip -DestinationPath .
+          Move-Item ea-windows-x86_64\ea.exe .\ea.exe
+
+      - name: Compile kernels
+        shell: bash
+        run: EA_BIN=./ea.exe ./build_kernels.sh
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build and retag wheel
+        run: |
+          pip install build wheel
+          python -m build --wheel
+          python -m wheel tags --platform-tag win_amd64 --remove (Get-ChildItem dist\eavec-*.whl).FullName
+        shell: pwsh
+
+      - name: Test wheel in clean venv
+        shell: pwsh
+        run: |
+          python -m venv $env:TEMP\test-venv
+          & $env:TEMP\test-venv\Scripts\pip install (Get-ChildItem dist\*.whl).FullName
+          & $env:TEMP\test-venv\Scripts\pip install pytest
+          & $env:TEMP\test-venv\Scripts\pytest tests\ -v
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-windows
+          path: dist/*.whl
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/eavec-v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    needs: [build-linux-x86_64, build-linux-aarch64, build-windows]
+    runs-on: ubuntu-24.04
+    environment: pypi
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: List wheels
+        run: ls -la dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
