@@ -16,6 +16,7 @@ pub fn token_name(kind: &TokenKind) -> &'static str {
         TokenKind::Restrict => "restrict",
         TokenKind::Unroll => "unroll",
         TokenKind::ForEach => "foreach",
+        TokenKind::For => "for",
         TokenKind::In => "in",
         TokenKind::Const => "const",
         TokenKind::I8 => "i8",

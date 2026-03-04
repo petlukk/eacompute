@@ -360,6 +360,14 @@ pub enum Stmt {
         export: bool,
         span: Span,
     },
+    For {
+        var: String,
+        start: Expr,
+        end: Expr,
+        step: Option<u32>,
+        body: Vec<Stmt>,
+        span: Span,
+    },
     StaticAssert {
         condition: Expr,
         message: String,
@@ -391,6 +399,7 @@ impl Stmt {
             Stmt::FieldAssign { span, .. } => span,
             Stmt::Const { span, .. } => span,
             Stmt::Kernel { span, .. } => span,
+            Stmt::For { span, .. } => span,
             Stmt::StaticAssert { span, .. } => span,
         }
     }
@@ -447,14 +456,8 @@ impl fmt::Display for Stmt {
             Stmt::Unroll { count, .. } => write!(f, "unroll({count}) {{ ... }}"),
             Stmt::ForEach { var, .. } => write!(f, "foreach ({var} in ...) {{ ... }}"),
             Stmt::Struct { name, fields, .. } => {
-                write!(f, "struct {name} {{ ")?;
-                for (i, field) in fields.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{field}")?;
-                }
-                write!(f, " }}")
+                let fs: Vec<_> = fields.iter().map(|f2| format!("{f2}")).collect();
+                write!(f, "struct {name} {{ {} }}", fs.join(", "))
             }
             Stmt::FieldAssign { object, field, .. } => write!(f, "{object}.{field} = ..."),
             Stmt::Const {
@@ -466,10 +469,13 @@ impl fmt::Display for Stmt {
                 range_bound,
                 step,
                 ..
-            } => write!(
-                f,
-                "kernel {name}(...) over {range_var} in {range_bound} step {step}"
-            ),
+            } => {
+                write!(
+                    f,
+                    "kernel {name}(...) over {range_var} in {range_bound} step {step}"
+                )
+            }
+            Stmt::For { var, .. } => write!(f, "for {var} in .. {{ ... }}"),
             Stmt::StaticAssert { message, .. } => {
                 write!(f, "static_assert(..., \"{message}\")")
             }

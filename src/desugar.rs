@@ -2,22 +2,135 @@ use crate::ast::*;
 use crate::error::CompileError;
 use crate::lexer::Span;
 
-/// Desugar `Stmt::Kernel` into `Stmt::Function` with a generated loop.
-///
-/// After this pass, the AST contains only `Stmt::Function` at the top level
-/// (plus `Stmt::Struct` and `Stmt::Const`). All downstream phases — type
-/// checking, codegen, metadata, header, bindings — handle functions only.
+/// Desugar `Stmt::Kernel` into `Stmt::Function` and `Stmt::For` into
+/// `let + while`. After this pass, no `Kernel` or `For` nodes remain.
 pub fn desugar_kernels(stmts: Vec<Stmt>) -> crate::error::Result<Vec<Stmt>> {
-    stmts
-        .into_iter()
-        .map(|stmt| {
-            if matches!(stmt, Stmt::Kernel { .. }) {
-                desugar_kernel(stmt)
-            } else {
-                Ok(stmt)
+    let mut out = Vec::new();
+    for stmt in stmts {
+        match stmt {
+            Stmt::Kernel { .. } => out.push(desugar_kernel(stmt)?),
+            Stmt::Function {
+                name,
+                params,
+                return_type,
+                body,
+                export,
+                span,
+            } => {
+                let body = desugar_body(body)?;
+                out.push(Stmt::Function {
+                    name,
+                    params,
+                    return_type,
+                    body,
+                    export,
+                    span,
+                });
             }
-        })
-        .collect()
+            other => out.push(other),
+        }
+    }
+    Ok(out)
+}
+
+/// Recursively desugar `Stmt::For` inside a statement body.
+fn desugar_body(stmts: Vec<Stmt>) -> crate::error::Result<Vec<Stmt>> {
+    let mut out = Vec::new();
+    for stmt in stmts {
+        match stmt {
+            Stmt::For {
+                var,
+                start,
+                end,
+                step,
+                body,
+                span,
+            } => {
+                let body = desugar_body(body)?;
+                let s = &span;
+                let step_val = step.unwrap_or(1) as i64;
+                let let_var = Stmt::Let {
+                    name: var.clone(),
+                    ty: TypeAnnotation::Named("i32".to_string(), s.clone()),
+                    value: start,
+                    mutable: true,
+                    span: s.clone(),
+                };
+                let cond = Expr::Binary(
+                    Box::new(Expr::Variable(var.clone(), s.clone())),
+                    BinaryOp::Less,
+                    Box::new(end),
+                    s.clone(),
+                );
+                let mut while_body = body;
+                while_body.push(make_increment(&var, step_val, s));
+                let while_stmt = Stmt::While {
+                    condition: cond,
+                    body: while_body,
+                    span: s.clone(),
+                };
+                out.push(let_var);
+                out.push(while_stmt);
+            }
+            Stmt::If {
+                condition,
+                then_body,
+                else_body,
+                span,
+            } => {
+                let then_body = desugar_body(then_body)?;
+                let else_body = match else_body {
+                    Some(eb) => Some(desugar_body(eb)?),
+                    None => None,
+                };
+                out.push(Stmt::If {
+                    condition,
+                    then_body,
+                    else_body,
+                    span,
+                });
+            }
+            Stmt::While {
+                condition,
+                body,
+                span,
+            } => {
+                let body = desugar_body(body)?;
+                out.push(Stmt::While {
+                    condition,
+                    body,
+                    span,
+                });
+            }
+            Stmt::ForEach {
+                var,
+                start,
+                end,
+                body,
+                span,
+            } => {
+                let body = desugar_body(body)?;
+                out.push(Stmt::ForEach {
+                    var,
+                    start,
+                    end,
+                    body,
+                    span,
+                });
+            }
+            Stmt::Unroll { count, body, span } => {
+                let desugared = desugar_body(vec![*body])?;
+                let inner = desugared.into_iter().next().unwrap();
+                out.push(Stmt::Unroll {
+                    count,
+                    body: Box::new(inner),
+                    span,
+                });
+            }
+            other => out.push(other),
+        }
+    }
+    Ok(out)
 }
 
 fn desugar_kernel(kernel: Stmt) -> crate::error::Result<Stmt> {
@@ -72,6 +185,12 @@ fn desugar_kernel(kernel: Stmt) -> crate::error::Result<Stmt> {
         value: Expr::Literal(Literal::Integer(0), s.clone()),
         mutable: true,
         span: s.clone(),
+    };
+
+    let body = desugar_body(body)?;
+    let tail_body = match tail_body {
+        Some(tb) => Some(desugar_body(tb)?),
+        None => None,
     };
 
     let main_loop = build_main_loop(&range_var, &range_bound, step, body, &s);
@@ -213,6 +332,7 @@ fn check_no_assign_to_var(stmts: &[Stmt], var: &str) -> crate::error::Result<()>
             }
             Stmt::While { body, .. } => check_no_assign_to_var(body, var)?,
             Stmt::ForEach { body, .. } => check_no_assign_to_var(body, var)?,
+            Stmt::For { body, .. } => check_no_assign_to_var(body, var)?,
             Stmt::Unroll { body, .. } => check_no_assign_to_var(&[*body.clone()], var)?,
             _ => {}
         }

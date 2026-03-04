@@ -1,4 +1,5 @@
 mod expressions;
+mod loops;
 mod statements;
 
 use crate::ast::{Stmt, TypeAnnotation};

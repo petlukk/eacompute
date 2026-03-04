@@ -102,6 +102,8 @@ pub enum TokenKind {
     Unroll,
     #[token("foreach")]
     ForEach,
+    #[token("for")]
+    For,
     #[token("in")]
     In,
     #[token("const")]
