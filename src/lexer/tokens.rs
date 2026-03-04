@@ -38,6 +38,8 @@ pub fn token_name(kind: &TokenKind) -> &'static str {
         TokenKind::F32x8 => "f32x8",
         TokenKind::I32x8 => "i32x8",
         TokenKind::F32x16 => "f32x16",
+        TokenKind::F64x2 => "f64x2",
+        TokenKind::F64x4 => "f64x4",
         TokenKind::Splat => "splat",
         TokenKind::Identifier => "identifier",
         TokenKind::HexLiteral => "hex integer",
