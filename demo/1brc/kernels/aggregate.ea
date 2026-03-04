@@ -10,7 +10,12 @@
 // ht_keys (1024*64 bytes), ht_key_len (1024 i32, 0=empty),
 // ht_min/ht_max/ht_sum/ht_count (1024 i32 each).
 //
-// Cross-platform: pure scalar, works on both x86 and ARM.
+// Key comparison uses SIMD u8x16: load 16 bytes from each side, compare
+// via select + reduce_add to count matching bytes. ht_keys is zero-padded,
+// text has non-zero bytes (';') after name, so match_count >= name_len is
+// exact. Covers 99% of stations in one vector op (max name is 18 bytes).
+//
+// Cross-platform: u8x16 ops work on both x86 (SSE2) and ARM (NEON).
 
 const TABLE_SIZE: i32 = 1024
 const KEY_STRIDE: i32 = 64
@@ -115,15 +120,33 @@ export func parse_aggregate(
                 probing = 0
             } else {
                 if ht_key_len[slot] == name_len {
-                    // Length match — compare bytes
-                    let mut k: i32 = 0
+                    // Length match — SIMD compare (u8x16)
                     let key_base: i32 = slot * KEY_STRIDE
-                    let mut match_flag: i32 = 1
-                    while k < name_len && match_flag == 1 {
-                        if ht_keys[key_base + k] != text[line_start + k] {
-                            match_flag = 0
+                    let k1: u8x16 = load(ht_keys, key_base)
+                    let k2: u8x16 = load(text, line_start)
+                    let ones: u8x16 = splat(1)
+                    let zeros: u8x16 = splat(0)
+                    let matched: u8x16 = select(k1 .== k2, ones, zeros)
+                    let match_count: i32 = to_i32(reduce_add(matched))
+                    // For names <= 16: match_count >= name_len means all bytes match
+                    // For names > 16: match_count == 16 means first 16 bytes match
+                    let mut check_len: i32 = name_len
+                    if check_len > 16 {
+                        check_len = 16
+                    }
+                    let mut match_flag: i32 = 0
+                    if match_count >= check_len {
+                        match_flag = 1
+                    }
+                    // Scalar tail for names > 16 bytes (2 of 352 stations)
+                    if name_len > 16 && match_flag == 1 {
+                        let mut k: i32 = 16
+                        while k < name_len && match_flag == 1 {
+                            if ht_keys[key_base + k] != text[line_start + k] {
+                                match_flag = 0
+                            }
+                            k = k + 1
                         }
-                        k = k + 1
                     }
 
                     if match_flag == 1 {
