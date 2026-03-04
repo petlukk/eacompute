@@ -84,22 +84,22 @@ python -c "import kernel; print(kernel.vscale([1.0, 2.0, 3.0], 10.0))"
 # Run a demo
 cd demo/eastat && python run.py
 
-# Tests (375 passing)
+# Tests (420 passing)
 cargo test --features=llvm
 ```
 
 ## SIMD types and operations
 
-`f32x4`, `f32x8`, `f32x16`¹, `i32x4`, `i32x8`, `i8x16`, `i8x32`, `u8x16`, `i16x8`, `i16x16`
+`f32x4`, `f32x8`, `f32x16`¹, `f64x2`, `f64x4`, `i32x4`, `i32x8`, `i8x16`, `i8x32`, `u8x16`, `i16x8`, `i16x16`
 
 `load`, `store`, `splat`, `fma`, `shuffle`, `select`, `load_masked`, `store_masked`, `gather`, `scatter`¹, `prefetch`
 
-`reduce_add`, `reduce_max`, `reduce_min`
+`reduce_add`, `reduce_max`, `reduce_min`, `min`, `max`
 
 `maddubs_i16(u8x16, i8x16) -> i16x8` — SSSE3 pmaddubsw, 16 pairs/cycle
 `maddubs_i32(u8x16, i8x16) -> i32x4` — pmaddubsw+pmaddwd, safe i32 accumulation
 
-`widen_u8_f32x4`, `widen_i8_f32x4`, `narrow_f32x4_i8`, `sqrt`, `rsqrt`, `to_f32`, `to_i32`
+`widen_u8_f32x4`, `widen_i8_f32x4`, `narrow_f32x4_i8`, `sqrt`, `rsqrt`, `to_f32`, `to_i32`, `to_f64`, `to_i64`
 
 Bitwise: `.&`, `.|`, `.^` on integer vectors. Restrict pointers: `*restrict T`, `*mut restrict T`.
 
@@ -113,7 +113,7 @@ export kernel name(...) over i in n step N tail <strategy> { ... }
 
 Tail strategies: `tail scalar { ... }` (scalar fallback), `tail mask { ... }` (masked SIMD), `tail pad` (caller pads input). Output annotations (`out name: *mut T [cap: expr]`) drive auto-allocation in bindings.
 
-Also: `foreach (i in 0..n) { ... }` for element-wise loops (LLVM auto-vectorizes at O2+), `unroll(N)`, compile-time `const`, `static_assert`, C-compatible structs, multi-kernel files.
+Also: `for i in 0..n step 8 { ... }` counted loops, `foreach (i in 0..n) { ... }` element-wise loops (LLVM auto-vectorizes at O2+), `unroll(N)`, compile-time `const`, `static_assert`, `#[cfg(x86_64)]` / `#[cfg(aarch64)]` conditional compilation, C-compatible structs, multi-kernel files, pointer-to-pointer `**T` parameters.
 
 ## Kernel fusion
 
@@ -139,9 +139,9 @@ Explicit over implicit. SIMD width, loop stepping, and memory access are program
                                                                       -> .ea.json -> ea bind
 ```
 
-~10,300 lines of Rust. 375 tests covering SIMD ops, C interop, structs, kernel constructs, tail strategies, binding generation, ARM targets. CI on x86-64, AArch64, Windows.
+~10,900 lines of Rust. 420 tests covering SIMD ops, C interop, structs, kernel constructs, tail strategies, binding generation, ARM targets. CI on x86-64, AArch64, Windows.
 
-[`BENCHMARKS.md`](BENCHMARKS.md) — performance tables. [`CHANGELOG.md`](CHANGELOG.md) — version history.
+[`BENCHMARKS.md`](BENCHMARKS.md) — performance tables. [`CHANGELOG.md`](CHANGELOG.md) — version history. [`1.6.md`](1.6.md) — language specification.
 
 ## License
 

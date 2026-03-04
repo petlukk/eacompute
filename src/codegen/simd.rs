@@ -48,6 +48,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "to_i64"
                 | "prefetch"
                 | "movemask"
+                | "min"
+                | "max"
         )
     }
 
@@ -96,6 +98,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             }
             "prefetch" => self.compile_prefetch(args, function),
             "movemask" => self.compile_movemask(args, function),
+            "min" | "max" => self.compile_min_max(args, name, function),
             _ => Err(CompileError::codegen_error(format!(
                 "unknown SIMD intrinsic '{name}'"
             ))),

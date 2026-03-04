@@ -45,6 +45,7 @@ impl TypeChecker {
             "stream_store" => Some(self.check_store(args, locals, span)),
             "store_masked" => Some(self.check_store_masked(args, locals, span)),
             "movemask" => Some(self.check_movemask(args, locals, span)),
+            "min" | "max" => Some(self.check_min_max(name, args, locals, span)),
             _ => None,
         }
     }

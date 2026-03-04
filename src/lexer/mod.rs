@@ -102,6 +102,8 @@ pub enum TokenKind {
     Unroll,
     #[token("foreach")]
     ForEach,
+    #[token("for")]
+    For,
     #[token("in")]
     In,
     #[token("const")]
@@ -147,6 +149,10 @@ pub enum TokenKind {
     I32x8,
     #[token("f32x16")]
     F32x16,
+    #[token("f64x2")]
+    F64x2,
+    #[token("f64x4")]
+    F64x4,
     #[token("splat")]
     Splat,
 
@@ -241,6 +247,8 @@ pub enum TokenKind {
     LeftBracket,
     #[token("]")]
     RightBracket,
+    #[token("#")]
+    Hash,
 
     #[token("\n")]
     Newline,

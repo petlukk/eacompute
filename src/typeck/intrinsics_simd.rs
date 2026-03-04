@@ -427,6 +427,38 @@ impl TypeChecker {
         }
     }
 
+    pub(super) fn check_min_max(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 2 arguments"),
+                span.clone(),
+            ));
+        }
+        let t1 = self.check_expr(&args[0], locals)?;
+        let t2 = self.check_expr(&args[1], locals)?;
+        match (&t1, &t2) {
+            (Type::I32, Type::I32)
+            | (Type::I32, Type::IntLiteral)
+            | (Type::IntLiteral, Type::I32) => Ok(Type::I32),
+            (Type::F32, Type::F32)
+            | (Type::F32, Type::FloatLiteral)
+            | (Type::FloatLiteral, Type::F32) => Ok(Type::F32),
+            (Type::F64, Type::F64)
+            | (Type::F64, Type::FloatLiteral)
+            | (Type::FloatLiteral, Type::F64) => Ok(Type::F64),
+            _ => Err(CompileError::type_error(
+                format!("{name} expects (i32,i32), (f32,f32), or (f64,f64), got ({t1}, {t2})"),
+                span.clone(),
+            )),
+        }
+    }
+
     pub(super) fn check_movemask(
         &self,
         args: &[Expr],

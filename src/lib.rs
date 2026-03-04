@@ -117,6 +117,7 @@ pub fn compile_with_options(
 
     let tokens = tokenize(source)?;
     let stmts = parse(tokens)?;
+    let stmts = desugar::filter_cfg(stmts, opts.is_arm());
     let stmts = desugar(stmts)?;
     check_types(&stmts)?;
 
@@ -227,15 +228,21 @@ pub fn compile_with_options(
 
 #[cfg(feature = "llvm")]
 pub fn compile_to_ir(source: &str) -> error::Result<String> {
-    init_llvm(); // Thread-safe one-time initialization
+    compile_to_ir_with_options(source, CompileOptions::default())
+}
+
+#[cfg(feature = "llvm")]
+pub fn compile_to_ir_with_options(source: &str, opts: CompileOptions) -> error::Result<String> {
+    init_llvm();
 
     let tokens = tokenize(source)?;
     let stmts = parse(tokens)?;
+    let stmts = desugar::filter_cfg(stmts, opts.is_arm());
     let stmts = desugar(stmts)?;
     check_types(&stmts)?;
 
     let context = inkwell::context::Context::create();
-    let mut cg = codegen::CodeGenerator::new(&context, "ea_module", &CompileOptions::default());
+    let mut cg = codegen::CodeGenerator::new(&context, "ea_module", &opts);
     cg.compile_program(&stmts)?;
 
     Ok(cg.print_ir())
@@ -250,6 +257,7 @@ pub fn inspect_source(
 
     let tokens = tokenize(source)?;
     let stmts = parse(tokens)?;
+    let stmts = desugar::filter_cfg(stmts, opts.is_arm());
     let stmts = desugar(stmts)?;
     check_types(&stmts)?;
 

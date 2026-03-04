@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.6.0 — Profile-driven consolidation
+
+Every feature motivated by `perf stat` analysis across 6 demos. Profile first, feature second, two proofs before merge.
+
+**Scalar `min` / `max`** — branchless min/max for i32, f32, f64. Lowers to `llvm.smin`/`llvm.smax` (CMOVcc) and `llvm.minnum`/`llvm.maxnum` (MINSS/CSEL). Attacks the 25.6% branch mispredict tax identified in 1BRC microarchitectural analysis.
+
+**`f64x4` / `f64x2` vector types** — double-precision SIMD for statistical accumulators. f64x4 on x86 AVX2, f64x2 on ARM NEON. All existing intrinsics (load, store, splat, reduce_add, fma, select, dot operators) work on f64 vectors.
+
+**`for` loop syntax** — `for i in 0..n step 8 { }`. Desugared to while loop in the same pass as kernel→func. Half-open range `[start, end)`, optional step clause.
+
+**`#[cfg(x86_64)]` / `#[cfg(aarch64)]` conditional compilation** — merge platform-specific kernels into one file. Evaluated at desugar time. Eliminates the scan.ea/scan_arm.ea file duplication pattern.
+
+**Pointer-to-pointer `**T`** — recursive pointer parsing for batch operations. `frames: **f32` gives clean signatures for multi-buffer workloads like astro_stack batch accumulation.
+
+**`i32x8` verification** — token and parser support already existed. Full operation coverage confirmed: load, store, splat, reduce_add, select, arithmetic, multiply.
+
+420 tests (45 new), all files ≤500 lines, clippy/fmt clean.
+
 ## v1.5.4 — Freestanding kernel correctness
 
 **Disable LLVM loop-idiom libcalls** — LLVM's LoopIdiomRecognize pass silently replaces store-loops with `memset`/`memcpy` calls. For freestanding kernels with no C runtime, this causes linker failures on Windows (`/NODEFAULTLIB`) and hides what the programmer actually wrote on all platforms. The optimizer now sets `-disable-loop-idiom-memset` and `-disable-loop-idiom-memcpy` via `LLVMParseCommandLineOptions` before running passes. Kernels contain exactly the code the programmer wrote — no synthesized libcalls, on any platform.

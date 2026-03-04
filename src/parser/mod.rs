@@ -1,4 +1,5 @@
 mod expressions;
+mod loops;
 mod statements;
 
 use crate::ast::{Stmt, TypeAnnotation};
@@ -24,6 +25,30 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> crate::error::Result<Stmt> {
+        // Parse optional #[cfg(...)] attribute
+        let cfg = if self.check(TokenKind::Hash) {
+            let start = self.current_position();
+            self.advance(); // consume #
+            self.expect_kind(TokenKind::LeftBracket, "expected '[' after '#'")?;
+            let attr = self.expect_kind(TokenKind::Identifier, "expected attribute name")?;
+            if attr.lexeme != "cfg" {
+                let name = attr.lexeme.clone();
+                return Err(CompileError::parse_error(
+                    format!("unknown attribute '{name}', expected 'cfg'"),
+                    start,
+                ));
+            }
+            self.expect_kind(TokenKind::LeftParen, "expected '(' after 'cfg'")?;
+            let target =
+                self.expect_kind(TokenKind::Identifier, "expected target (x86_64 or aarch64)")?;
+            let target_name = target.lexeme.clone();
+            self.expect_kind(TokenKind::RightParen, "expected ')'")?;
+            self.expect_kind(TokenKind::RightBracket, "expected ']'")?;
+            Some(target_name)
+        } else {
+            None
+        };
+
         if self.check(TokenKind::Export) {
             let start = self.current_position();
             self.advance();
@@ -35,12 +60,12 @@ impl Parser {
                 TokenKind::Func,
                 "expected 'func' or 'kernel' after 'export'",
             )?;
-            return self.function(true, start);
+            return self.function(true, start, cfg);
         }
         if self.check(TokenKind::Func) {
             let start = self.current_position();
             self.advance();
-            return self.function(false, start);
+            return self.function(false, start, cfg);
         }
         if self.check_identifier("kernel") {
             let start = self.current_position();
@@ -68,7 +93,12 @@ impl Parser {
         ))
     }
 
-    fn function(&mut self, export: bool, start: Position) -> crate::error::Result<Stmt> {
+    fn function(
+        &mut self,
+        export: bool,
+        start: Position,
+        cfg: Option<String>,
+    ) -> crate::error::Result<Stmt> {
         let name_token = self.expect_kind(TokenKind::Identifier, "expected function name")?;
         let name = name_token.lexeme.clone();
 
@@ -94,6 +124,7 @@ impl Parser {
             return_type,
             body,
             export,
+            cfg,
             span: Span::new(start, end),
         })
     }
@@ -178,6 +209,8 @@ impl Parser {
             (TokenKind::F32x8, "f32", 8),
             (TokenKind::I32x8, "i32", 8),
             (TokenKind::F32x16, "f32", 16),
+            (TokenKind::F64x2, "f64", 2),
+            (TokenKind::F64x4, "f64", 4),
         ];
         for (tk, elem_name, width) in vec_types {
             if self.check(tk.clone()) {

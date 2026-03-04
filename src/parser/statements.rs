@@ -33,6 +33,10 @@ impl Parser {
             return self.parse_foreach();
         }
 
+        if self.check(TokenKind::For) {
+            return self.parse_for_loop();
+        }
+
         if self.check(TokenKind::While) {
             return self.parse_while();
         }
@@ -165,10 +169,10 @@ impl Parser {
 
         let inner = self.statement()?;
         match &inner {
-            Stmt::While { .. } | Stmt::ForEach { .. } => {}
+            Stmt::While { .. } | Stmt::ForEach { .. } | Stmt::For { .. } => {}
             _ => {
                 return Err(crate::error::CompileError::parse_error(
-                    "unroll must be followed by a loop (while or foreach)",
+                    "unroll must be followed by a loop (while, foreach, or for)",
                     self.current_position(),
                 ));
             }
@@ -177,45 +181,6 @@ impl Parser {
         Ok(Stmt::Unroll {
             count,
             body: Box::new(inner),
-            span: Span::new(start, end),
-        })
-    }
-
-    fn parse_foreach(&mut self) -> crate::error::Result<Stmt> {
-        let start = self.current_position();
-        self.advance(); // consume 'foreach'
-        self.expect_kind(TokenKind::LeftParen, "expected '(' after 'foreach'")?;
-        let var_token = self.expect_kind(TokenKind::Identifier, "expected loop variable name")?;
-        let var = var_token.lexeme.clone();
-        self.expect_kind(TokenKind::In, "expected 'in' after loop variable")?;
-        let start_expr = self.expression()?;
-        self.expect_kind(TokenKind::DotDot, "expected '..' in range")?;
-        let end_expr = self.expression()?;
-        self.expect_kind(TokenKind::RightParen, "expected ')' after range")?;
-        self.expect_kind(TokenKind::LeftBrace, "expected '{' after foreach header")?;
-        let body = self.parse_block()?;
-        self.expect_kind(TokenKind::RightBrace, "expected '}' after foreach body")?;
-        let end = self.previous_position();
-        Ok(Stmt::ForEach {
-            var,
-            start: start_expr,
-            end: end_expr,
-            body,
-            span: Span::new(start, end),
-        })
-    }
-
-    fn parse_while(&mut self) -> crate::error::Result<Stmt> {
-        let start = self.current_position();
-        self.advance(); // consume 'while'
-        let condition = self.expression()?;
-        self.expect_kind(TokenKind::LeftBrace, "expected '{' after while condition")?;
-        let body = self.parse_block()?;
-        self.expect_kind(TokenKind::RightBrace, "expected '}' after while body")?;
-        let end = self.previous_position();
-        Ok(Stmt::While {
-            condition,
-            body,
             span: Span::new(start, end),
         })
     }

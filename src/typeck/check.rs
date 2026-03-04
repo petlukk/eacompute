@@ -242,6 +242,12 @@ impl TypeChecker {
                         span.clone(),
                     ));
                 }
+                Stmt::For { span, .. } => {
+                    return Err(CompileError::type_error(
+                        "for loop should have been desugared before type checking",
+                        span.clone(),
+                    ));
+                }
                 Stmt::StaticAssert { .. } => {
                     // Evaluated in check_program, not inside function bodies
                 }

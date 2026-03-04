@@ -286,6 +286,7 @@ pub enum Stmt {
         return_type: Option<TypeAnnotation>,
         body: Vec<Stmt>,
         export: bool,
+        cfg: Option<String>,
         span: Span,
     },
     Let {
@@ -360,6 +361,14 @@ pub enum Stmt {
         export: bool,
         span: Span,
     },
+    For {
+        var: String,
+        start: Expr,
+        end: Expr,
+        step: Option<u32>,
+        body: Vec<Stmt>,
+        span: Span,
+    },
     StaticAssert {
         condition: Expr,
         message: String,
@@ -373,7 +382,6 @@ pub enum TailStrategy {
     Mask,
     Pad,
 }
-
 impl Stmt {
     pub fn span(&self) -> &Span {
         match self {
@@ -391,11 +399,11 @@ impl Stmt {
             Stmt::FieldAssign { span, .. } => span,
             Stmt::Const { span, .. } => span,
             Stmt::Kernel { span, .. } => span,
+            Stmt::For { span, .. } => span,
             Stmt::StaticAssert { span, .. } => span,
         }
     }
 }
-
 impl fmt::Display for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -404,8 +412,12 @@ impl fmt::Display for Stmt {
                 params,
                 return_type,
                 export,
+                cfg,
                 ..
             } => {
+                if let Some(target) = cfg {
+                    write!(f, "#[cfg({target})] ")?;
+                }
                 if *export {
                     write!(f, "export ")?;
                 }
@@ -447,14 +459,8 @@ impl fmt::Display for Stmt {
             Stmt::Unroll { count, .. } => write!(f, "unroll({count}) {{ ... }}"),
             Stmt::ForEach { var, .. } => write!(f, "foreach ({var} in ...) {{ ... }}"),
             Stmt::Struct { name, fields, .. } => {
-                write!(f, "struct {name} {{ ")?;
-                for (i, field) in fields.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{field}")?;
-                }
-                write!(f, " }}")
+                let fs: Vec<_> = fields.iter().map(|f2| format!("{f2}")).collect();
+                write!(f, "struct {name} {{ {} }}", fs.join(", "))
             }
             Stmt::FieldAssign { object, field, .. } => write!(f, "{object}.{field} = ..."),
             Stmt::Const {
@@ -466,10 +472,13 @@ impl fmt::Display for Stmt {
                 range_bound,
                 step,
                 ..
-            } => write!(
-                f,
-                "kernel {name}(...) over {range_var} in {range_bound} step {step}"
-            ),
+            } => {
+                write!(
+                    f,
+                    "kernel {name}(...) over {range_var} in {range_bound} step {step}"
+                )
+            }
+            Stmt::For { var, .. } => write!(f, "for {var} in .. {{ ... }}"),
             Stmt::StaticAssert { message, .. } => {
                 write!(f, "static_assert(..., \"{message}\")")
             }
