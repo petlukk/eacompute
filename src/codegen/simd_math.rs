@@ -92,6 +92,70 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
+    /// min(a, b) / max(a, b) for scalar i32, f32, f64.
+    pub(super) fn compile_min_max(
+        &mut self,
+        args: &[Expr],
+        name: &str,
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let a = self.compile_expr(&args[0], function)?;
+        let b = self.compile_expr(&args[1], function)?;
+        match (a, b) {
+            (BasicValueEnum::IntValue(av), BasicValueEnum::IntValue(bv)) => {
+                let int_ty = av.get_type();
+                let intrinsic_name = if name == "min" {
+                    "llvm.smin.i32"
+                } else {
+                    "llvm.smax.i32"
+                };
+                let fn_type = int_ty.fn_type(&[int_ty.into(), int_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function(intrinsic_name)
+                    .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
+                let result = self
+                    .builder
+                    .build_call(intrinsic, &[av.into(), bv.into()], name)
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .left()
+                    .ok_or_else(|| {
+                        CompileError::codegen_error(format!("{name} did not return a value"))
+                    })?;
+                Ok(result)
+            }
+            (BasicValueEnum::FloatValue(av), BasicValueEnum::FloatValue(bv)) => {
+                let float_ty = av.get_type();
+                let type_suffix = if float_ty == self.context.f32_type() {
+                    "f32"
+                } else {
+                    "f64"
+                };
+                let op = if name == "min" { "minnum" } else { "maxnum" };
+                let intrinsic_name = format!("llvm.{op}.{type_suffix}");
+                let fn_type = float_ty.fn_type(&[float_ty.into(), float_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function(&intrinsic_name)
+                    .unwrap_or_else(|| self.module.add_function(&intrinsic_name, fn_type, None));
+                let result = self
+                    .builder
+                    .build_call(intrinsic, &[av.into(), bv.into()], name)
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .left()
+                    .ok_or_else(|| {
+                        CompileError::codegen_error(format!("{name} did not return a value"))
+                    })?;
+                Ok(result)
+            }
+            _ => Err(CompileError::codegen_error(format!(
+                "{name} expects matching scalar types"
+            ))),
+        }
+    }
+
     /// Type conversion intrinsics: to_f32, to_f64, to_i32, to_i64.
     pub(super) fn compile_conversion(
         &mut self,
