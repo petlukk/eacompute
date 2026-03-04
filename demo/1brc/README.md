@@ -1,8 +1,8 @@
-# 1BRC: One Billion Row Challenge with Ea SIMD Kernels
+# 1BRC: One Billion Row Challenge with Ea Kernels
 
 The [1 Billion Row Challenge](https://1brc.dev/): parse a 13GB CSV with 1 billion rows of `StationName;Temperature\n`, compute min/mean/max per station, print sorted.
 
-This demo showcases Ea's SIMD byte-processing capabilities — newline scanning via `u8x16 + movemask`, integer temperature parsing, and the limits of kernel-accelerated Python.
+This demo showcases Ea's byte-processing capabilities — SIMD newline scanning, integer temperature parsing, and a native open-addressing hash table that eliminates the Python aggregation bottleneck.
 
 ## Architecture
 
@@ -10,14 +10,15 @@ This demo showcases Ea's SIMD byte-processing capabilities — newline scanning 
 kernels/
   scan.ea           — SIMD newline scanner (x86, u8x16 + movemask)
   scan_arm.ea       — scalar newline scanner (ARM fallback)
-  parse_temp.ea     — batch temperature parser (cross-platform, scalar)
+  parse_temp.ea     — standalone temperature parser (cross-platform)
+  aggregate.ea      — fused parse + aggregate with hash table (cross-platform)
 build_kernels.sh    — compile with arch detection
 generate.py         — generate test data (configurable row count)
-solve.py            — main solver: read → scan → parse → aggregate → print
+solve.py            — main solver: read → scan → parse+aggregate → print
 bench.py            — benchmark: phase breakdown + pure Python + polars
 ```
 
-Pipeline: `file read → Ea scan (find newlines) → Ea parse (semicolons + temperatures) → Python dict aggregate → sort + print`
+Pipeline: `file read → Ea scan (find newlines) → Ea parse+aggregate (hash table) → sort + print`
 
 ## Kernels
 
@@ -39,67 +40,78 @@ Two exports: `count_lines` and `extract_lines`.
 
 **extract_lines** (ARM): Scalar byte-by-byte scan. No `movemask` equivalent on NEON, and without scalar bitwise ops, there's no fast way to extract bit positions from a SIMD comparison result.
 
+### aggregate.ea (cross-platform)
+
+Export: `parse_aggregate`. Fused parse + aggregate kernel with an open-addressing hash table. For each line delimited by newline positions:
+
+1. **Find semicolon** — backward scan from newline (3-6 bytes)
+2. **Hash station name** — polynomial hash: `h = h * 31 + byte`, slot via `((h % 1024) + 1024) % 1024`
+3. **Parse temperature** — integer parsing to `i32` tenths, no floats
+4. **Hash table insert/update** — 1024-slot open-addressing table with linear probing, byte-by-byte key comparison
+
+The hash table uses 6 parallel arrays (all caller-allocated):
+- `ht_keys` (1024 × 64 bytes) — station name storage
+- `ht_key_len` (1024 × i32) — name length per slot (0 = empty)
+- `ht_min/ht_max/ht_sum/ht_count` (1024 × i32 each) — aggregation stats
+
+Total: ~84KB — fits L2 cache. With ~400 stations in 1024 slots (load factor 0.4), most lookups hit on first probe.
+
 ### parse_temp.ea (cross-platform)
 
-Export: `batch_parse_temps`. For each line delimited by newline positions:
-1. Scan backward from newline to find `;` (3-6 bytes, faster than forward scan)
-2. Parse temperature bytes after `;` into `i32` tenths: `"12.3" → 123`, `"-5.7" → -57`
-3. Output: semicolon offset (for Python name extraction) + temperature in tenths
-
-No float arithmetic — pure integer. The 1BRC temperature format is always `[-]D[D].D` (one decimal digit), so `i32` tenths are exact.
+Standalone temperature parser, kept for reference. The fused `aggregate.ea` kernel inlines this logic.
 
 ## Benchmark Results (10M rows, 131 MB)
 
 ```
 Phase breakdown (Ea, 1 worker):
-  read           :    344 ms
-  scan (Ea SIMD) :    394 ms   — find newline positions
-  parse (Ea)     :    487 ms   — batch_parse_temps (i32 tenths)
-  aggregate (Py) :   7737 ms   — Python dict accumulation ← bottleneck
-  sort+print     :      1 ms
-  total          :   8963 ms
+  read              :    370 ms
+  scan (Ea SIMD)    :    244 ms   — find newline positions
+  parse+agg (Ea HT) :    446 ms   — fused hash table kernel
+  sort+print        :      0 ms
+  total             :   1061 ms
 
 Comparison:
-  Pure Python    :  11230 ms   (line-by-line, float())
-  Ea speedup     :    1.3x
-  Polars         :   2630 ms
-
-Bottleneck analysis:
-  scan+parse     :   9.8%  (Ea kernels)
-  aggregate      :  86.3%  (Python dict — the bottleneck)
+  Pure Python    :   6384 ms   (line-by-line, float())
+  Ea speedup     :    6.0x
+  Polars         :   2949 ms
+  Ea vs Polars   :    2.8x faster
 ```
 
-**1.3x faster than pure Python.** The Ea kernels process 131 MB in ~881 ms (scan + parse, ~149 MB/s). The speedup comes from:
-1. **Integer temperature parsing** — Ea parses all 10M temperatures to `i32` tenths in 487ms, vs Python's `float()` + `round()` + `int()` per row
-2. **SIMD newline scanning** — u8x16 compare + movemask finds all 10M positions in 394ms
-3. **Zero-copy pointer passing** — `ctypes.c_char_p` wraps the `bytes` buffer without copying
+**6.0x faster than pure Python, 2.8x faster than Polars.** The fused parse+aggregate kernel processes all 10M rows in 446ms — down from 7,737ms when aggregation was a Python dict loop (17x improvement on that phase alone).
 
-The bottleneck is the per-row Python aggregation loop (86%) — dict lookups, min/max/sum updates. On multi-core machines, `ProcessPoolExecutor` scales this near-linearly by splitting the file into chunks aligned to newline boundaries.
+### v1 → v2 comparison
+
+| Metric | v1 (Python dict) | v2 (Ea hash table) | Change |
+|--------|-------------------|---------------------|--------|
+| Total (1 worker) | 8,963 ms | 1,061 ms | **8.5x faster** |
+| vs Pure Python | 1.3x | 6.0x | |
+| vs Polars | 3.4x slower | 2.8x faster | |
+| Aggregate phase | 7,737 ms (86%) | 446 ms (42%) | **17x faster** |
 
 ## Optimizations Applied
 
 | # | Optimization | Where | Impact |
 |---|---|---|---|
-| 1 | SIMD newline scanning | scan.ea | ~4x vs scalar (but not the bottleneck) |
-| 2 | Integer temps (i32 tenths) | parse_temp.ea | Avoids `float()`, exact arithmetic |
-| 3 | Backward `;` scan | parse_temp.ea | 4-6 byte scan vs full line scan |
-| 4 | Two-pass scan (count → extract) | scan.ea | Pre-allocate exact array sizes |
-| 5 | Multi-process parallelism | solve.py | ~Nx on N cores for aggregate phase |
-| 6 | `dict.get()` instead of `in` + `[]` | solve.py | One hash lookup per row instead of two |
-| 7 | Prefetch in scan loop | scan.ea | Hides memory latency |
-| 8 | Chunk boundary alignment | solve.py | Clean line boundaries, no partial lines |
-| 9 | `memoryview` for name extraction | solve.py | Avoids intermediate bytearray copies |
-| 10 | Buffered data generation | generate.py | 64KB write batches |
+| 1 | Fused parse+aggregate kernel | aggregate.ea | Eliminates 10M Python dict lookups |
+| 2 | Open-addressing hash table | aggregate.ea | 84KB, L2-resident, 0.4 load factor |
+| 3 | Polynomial hash (h*31+byte) | aggregate.ea | No bitwise ops needed, good distribution |
+| 4 | SIMD newline scanning | scan.ea | u8x16 compare + movemask |
+| 5 | Integer temps (i32 tenths) | aggregate.ea | No float arithmetic, exact |
+| 6 | Backward `;` scan | aggregate.ea | 4-6 byte scan vs full line |
+| 7 | Two-pass scan (count → extract) | scan.ea | Pre-allocate exact array sizes |
+| 8 | Multi-process parallelism | solve.py | ~Nx on N cores, per-worker hash tables |
+| 9 | Prefetch in scan loop | scan.ea | Hides memory latency |
+| 10 | Chunk boundary alignment | solve.py | Clean line boundaries, no partial lines |
 
 ## Ea Language Constraints
 
 This demo exercises several Ea constraints:
 
-- **No scalar bitwise ops** — bit extraction from `movemask` uses `% 2` and `/ 2`
+- **No scalar bitwise ops** — hash function uses `* 31 + byte` (polynomial), bit extraction uses `% 2` and `/ 2`
 - **No ctz/popcnt** — bit scanning is a loop
-- **No hash map** — aggregation must be in Python (but Python `dict` IS a C hash table)
+- **No allocator** — hash table arrays are caller-provided (Python ctypes)
 - **movemask is x86-only** — ARM variant uses scalar scan for position extraction
-- **All memory caller-provided** — numpy/ctypes allocate, Ea fills
+- **No break/continue** — hash table probing uses flag variables
 
 ## Usage
 
