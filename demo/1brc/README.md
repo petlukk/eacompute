@@ -47,7 +47,7 @@ Export: `parse_aggregate`. Fused parse + aggregate kernel with an open-addressin
 1. **Find semicolon** — backward scan from newline (3-6 bytes)
 2. **Hash station name** — polynomial hash: `h = h * 31 + byte`, slot via `((h % 1024) + 1024) % 1024`
 3. **Parse temperature** — integer parsing to `i32` tenths, no floats
-4. **Hash table insert/update** — 1024-slot open-addressing table with linear probing, byte-by-byte key comparison
+4. **Hash table insert/update** — 1024-slot open-addressing table with linear probing, SIMD key comparison (u8x16 `.==` + `reduce_add` — covers 99% of station names in one vector op)
 
 The hash table uses 6 parallel arrays (all caller-allocated):
 - `ht_keys` (1024 × 64 bytes) — station name storage
@@ -102,6 +102,47 @@ Comparison:
 | 8 | Multi-process parallelism | solve.py | ~Nx on N cores, per-worker hash tables |
 | 9 | Prefetch in scan loop | scan.ea | Hides memory latency |
 | 10 | Chunk boundary alignment | solve.py | Clean line boundaries, no partial lines |
+| 11 | SIMD key compare (u8x16) | aggregate.ea | 16-byte vector compare replaces scalar byte loop |
+
+## Microarchitectural Analysis (AMD EPYC 9354P, Zen 4)
+
+`perf stat` on the isolated `parse_aggregate` kernel (10M rows, 131 MB):
+
+```
+THROUGHPUT
+  cycles/row           : 125
+  instructions/row     : 223
+  IPC                  : 1.79  (30% of 6-wide pipeline)
+  Throughput           : 303 MB/s
+  ns/row               : 43 ns
+
+BRANCHES
+  branches/row         : 33.7
+  misses/row           : 2.13
+  miss rate            : 6.3%
+  miss penalty         : 25.6% of total cycles
+
+MEMORY HIERARCHY
+  L1 loads/row         : 51.6
+  L1 miss rate         : 4.6%  (text + nl_pos stream through L3)
+  L2 bandwidth         : 1.5% of peak  (hash table fits in L2)
+  DRAM accesses/row    : 0.17
+
+TOPDOWN
+  Frontend bound       : 17%
+  Backend bound        : 21%  (CPU 7%, Memory 14%)
+  Retiring (useful)    : 62%
+```
+
+**The kernel is branch-mispredict bound.** 2.13 mispredicts/row × ~15 cycle penalty = 25.6% of all cycles wasted. The semicolon backward scan, temperature digit loop, and hash probe exit all have unpredictable branch targets. The serialized hash chain (`h = h * 31 + byte`, loop-carried dependency, no ILP) is the secondary bottleneck.
+
+The hash table (84KB) lives entirely in L2 — only 1.5% of L2 bandwidth is used. Text data (131MB) streams from L3 at 303 MB/s, well below L3 peak. This workload is not memory-bound.
+
+### What Ea is and isn't
+
+Going faster on 1BRC would require branchless techniques: SWAR byte scanning (`(x - 0x0101...) & ~x & 0x8080...`), branchless min/max via conditional moves, and shift-xor hashing. These all need scalar bitwise operators that Ea deliberately doesn't have.
+
+Ea is designed for **branch-light, data-parallel, cache-aware numerics** — not bit-manipulation and parser-heavy string processing. The fact that a SIMD numerics language hits 125 cycles/row and beats Polars on a fundamentally branch-heavy workload shows the hash table design is sound. The remaining 25% branch tax is the cost of doing string parsing without bitwise ops, and that's an acceptable trade-off for a language that stays true to its design.
 
 ## Ea Language Constraints
 
