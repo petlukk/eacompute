@@ -150,6 +150,56 @@ mod tests {
         );
     }
 
+    // --- ARM rejection tests ---
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_gather_rejects_arm() {
+        let result = ea_compiler::compile_to_ir_with_options(
+            r#"
+            export func test(data: *f32, idx: *i32, out: *mut f32) {
+                let indices: i32x4 = load(idx, 0)
+                let gathered: f32x4 = gather(data, indices)
+                store(out, 0, gathered)
+            }
+        "#,
+            ea_compiler::CompileOptions {
+                target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+                ..Default::default()
+            },
+        );
+        assert!(result.is_err(), "gather should fail on ARM target");
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("NEON"),
+            "error should mention NEON, got: {err}"
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_scatter_rejects_arm() {
+        let result = ea_compiler::compile_to_ir_with_options(
+            r#"
+            export func test(data: *mut f32, idx: *i32, vals: *f32) {
+                let indices: i32x4 = load(idx, 0)
+                let values: f32x4 = load(vals, 0)
+                scatter(data, indices, values)
+            }
+        "#,
+            ea_compiler::CompileOptions {
+                target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+                ..Default::default()
+            },
+        );
+        assert!(result.is_err(), "scatter should fail on ARM target");
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("NEON"),
+            "error should mention NEON, got: {err}"
+        );
+    }
+
     // --- Type error tests ---
 
     #[test]

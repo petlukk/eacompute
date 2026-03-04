@@ -127,4 +127,57 @@ mod tests {
             "IR should use llvm.smax: {ir}"
         );
     }
+
+    #[test]
+    fn test_scalar_min_f64() {
+        assert_output(
+            r#"
+            export func main() {
+                let a: f64 = 3.14159
+                let b: f64 = 2.71828
+                println(min(a, b))
+            }
+            "#,
+            "2.71828",
+        );
+    }
+
+    #[test]
+    fn test_scalar_max_f64() {
+        assert_output(
+            r#"
+            export func main() {
+                let a: f64 = 3.14159
+                let b: f64 = 2.71828
+                println(max(a, b))
+            }
+            "#,
+            "3.14159",
+        );
+    }
+
+    #[test]
+    fn test_reduce_min_i32x4() {
+        assert_c_interop(
+            r#"
+            export func test(data: *i32, out: *mut i32) {
+                let v: i32x4 = load(data, 0)
+                out[0] = reduce_min(v)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            #include <stdint.h>
+            extern void test(const int32_t*, int32_t*);
+            int main() {
+                int32_t data[] = {7, -3, 15, 2};
+                int32_t out;
+                test(data, &out);
+                printf("%d\n", out);
+                return 0;
+            }
+            "#,
+            "-3",
+        );
+    }
 }

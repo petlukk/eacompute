@@ -213,6 +213,9 @@ impl<'ctx> CodeGenerator<'ctx> {
                 "gather has no NEON equivalent; use a scalar loop on ARM",
             ));
         }
+        // gather requires AVX2 on x86 (vpgatherdd/vgatherdps).
+        // Eä targets AVX2 by default, so this is a documentation guard —
+        // if a future --no-avx2 mode is added, this must become a hard gate.
         let base = self.compile_expr(&args[0], function)?.into_pointer_value();
         let indices = self.compile_expr(&args[1], function)?.into_vector_value();
         let vec_ty = self.infer_load_vector_type(&args[0], type_hint);

@@ -228,9 +228,13 @@ pub fn compile_with_options(
 
 #[cfg(feature = "llvm")]
 pub fn compile_to_ir(source: &str) -> error::Result<String> {
-    init_llvm(); // Thread-safe one-time initialization
+    compile_to_ir_with_options(source, CompileOptions::default())
+}
 
-    let opts = CompileOptions::default();
+#[cfg(feature = "llvm")]
+pub fn compile_to_ir_with_options(source: &str, opts: CompileOptions) -> error::Result<String> {
+    init_llvm();
+
     let tokens = tokenize(source)?;
     let stmts = parse(tokens)?;
     let stmts = desugar::filter_cfg(stmts, opts.is_arm());
