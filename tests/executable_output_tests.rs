@@ -6,7 +6,12 @@ mod tests {
     #[test]
     fn test_output_mode_executable() {
         let dir = TempDir::new().expect("failed to create temp dir");
-        let exe_path = dir.path().join("test_exe");
+        let exe_name = if cfg!(target_os = "windows") {
+            "test_exe.exe"
+        } else {
+            "test_exe"
+        };
+        let exe_path = dir.path().join(exe_name);
 
         ea_compiler::compile(
             r#"

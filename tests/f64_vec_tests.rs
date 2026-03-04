@@ -6,6 +6,7 @@ mod tests {
     use super::common::*;
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn test_f64x4_splat_reduce() {
         assert_c_interop(
             r#"
@@ -30,6 +31,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn test_f64x4_load_store() {
         assert_c_interop(
             r#"
@@ -81,6 +83,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn test_f64x4_fma() {
         assert_c_interop(
             r#"
@@ -110,6 +113,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn test_f64x4_select() {
         assert_c_interop(
             r#"
