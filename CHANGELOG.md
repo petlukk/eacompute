@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.7.0 — exp intrinsic, multi-width widen, i32x16
+
+**`exp()` intrinsic** — scalar f32/f64 plus all float vector widths (f32x4, f32x8, f32x16, f64x2, f64x4). Maps to `llvm.exp.*`. Motivated by softmax/attention kernels (eakv GQA) that need exponentiation in the hot path.
+
+**Multi-width widen intrinsics** — `widen_u8_f32x8`, `widen_i8_f32x8`, `widen_u8_f32x16`, `widen_i8_f32x16`, `widen_u8_i32x4`, `widen_u8_i32x8`, `widen_u8_i32x16`. Extends the existing `widen_u8_f32x4`/`widen_i8_f32x4` pair to all practical SIMD widths. Enables wider quantized-to-float conversion pipelines without manual lane splitting.
+
+**`i32x16` vector type** — 512-bit integer vector. Requires `--avx512`. Completes the i32 vector width progression (i32x4 → i32x8 → i32x16).
+
+420 tests, all files ≤500 lines, clippy/fmt clean.
+
 ## v1.6.0 — Profile-driven consolidation
 
 Every feature motivated by `perf stat` analysis across 6 demos. Profile first, feature second, two proofs before merge.

@@ -90,7 +90,7 @@ cargo test --features=llvm
 
 ## SIMD types and operations
 
-`f32x4`, `f32x8`, `f32x16`¹, `f64x2`, `f64x4`, `i32x4`, `i32x8`, `i8x16`, `i8x32`, `u8x16`, `i16x8`, `i16x16`
+`f32x4`, `f32x8`, `f32x16`¹, `f64x2`, `f64x4`, `i32x4`, `i32x8`, `i32x16`¹, `i8x16`, `i8x32`, `u8x16`, `i16x8`, `i16x16`
 
 `load`, `store`, `splat`, `fma`, `shuffle`, `select`, `load_masked`, `store_masked`, `gather`, `scatter`¹, `prefetch`
 
@@ -99,7 +99,7 @@ cargo test --features=llvm
 `maddubs_i16(u8x16, i8x16) -> i16x8` — SSSE3 pmaddubsw, 16 pairs/cycle
 `maddubs_i32(u8x16, i8x16) -> i32x4` — pmaddubsw+pmaddwd, safe i32 accumulation
 
-`widen_u8_f32x4`, `widen_i8_f32x4`, `narrow_f32x4_i8`, `sqrt`, `rsqrt`, `to_f32`, `to_i32`, `to_f64`, `to_i64`
+`widen_u8_f32x4`, `widen_i8_f32x4`, `widen_u8_f32x8`, `widen_i8_f32x8`, `widen_u8_f32x16`¹, `widen_i8_f32x16`¹, `widen_u8_i32x4`, `widen_u8_i32x8`, `widen_u8_i32x16`¹, `narrow_f32x4_i8`, `sqrt`, `rsqrt`, `exp`, `to_f32`, `to_i32`, `to_f64`, `to_i64`
 
 Bitwise: `.&`, `.|`, `.^` on integer vectors. Restrict pointers: `*restrict T`, `*mut restrict T`.
 
@@ -139,7 +139,7 @@ Explicit over implicit. SIMD width, loop stepping, and memory access are program
                                                                       -> .ea.json -> ea bind
 ```
 
-~10,900 lines of Rust. 420 tests covering SIMD ops, C interop, structs, kernel constructs, tail strategies, binding generation, ARM targets. CI on x86-64, AArch64, Windows.
+~10,900 lines of Rust. 420+ tests covering SIMD ops, C interop, structs, kernel constructs, tail strategies, binding generation, ARM targets. CI on x86-64, AArch64, Windows.
 
 [`BENCHMARKS.md`](BENCHMARKS.md) — performance tables. [`CHANGELOG.md`](CHANGELOG.md) — version history. [`1.6.md`](1.6.md) — language specification.
 
