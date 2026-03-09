@@ -58,6 +58,58 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
+    /// exp(x) for scalar f32/f64 and float vectors.
+    pub(super) fn compile_exp(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let val = self.compile_expr(&args[0], function)?;
+        match val {
+            BasicValueEnum::FloatValue(fv) => {
+                let float_ty = fv.get_type();
+                let intrinsic_name = if float_ty == self.context.f32_type() {
+                    "llvm.exp.f32"
+                } else {
+                    "llvm.exp.f64"
+                };
+                let fn_type = float_ty.fn_type(&[float_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function(intrinsic_name)
+                    .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
+                let result = self
+                    .builder
+                    .build_call(intrinsic, &[fv.into()], "exp")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .left()
+                    .ok_or_else(|| CompileError::codegen_error("exp did not return a value"))?;
+                Ok(result)
+            }
+            BasicValueEnum::VectorValue(vv) => {
+                let vec_ty = vv.get_type();
+                let intrinsic_name = self.llvm_vector_intrinsic_name("llvm.exp", vec_ty);
+                let fn_type = vec_ty.fn_type(&[vec_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function(&intrinsic_name)
+                    .unwrap_or_else(|| self.module.add_function(&intrinsic_name, fn_type, None));
+                let result = self
+                    .builder
+                    .build_call(intrinsic, &[vv.into()], "vexp")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .left()
+                    .ok_or_else(|| CompileError::codegen_error("exp did not return a value"))?;
+                Ok(result)
+            }
+            _ => Err(CompileError::codegen_error(
+                "exp expects float or float vector",
+            )),
+        }
+    }
+
     /// rsqrt(x) = 1.0 / sqrt(x). Accurate; LLVM may lower to vrsqrtps + refinement.
     pub(super) fn compile_rsqrt(
         &mut self,

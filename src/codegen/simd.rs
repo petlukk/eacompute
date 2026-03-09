@@ -32,6 +32,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "fma"
                 | "sqrt"
                 | "rsqrt"
+                | "exp"
                 | "reduce_add"
                 | "reduce_max"
                 | "reduce_min"
@@ -92,6 +93,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "fma" => self.compile_fma(args, function),
             "sqrt" => self.compile_sqrt(args, function),
             "rsqrt" => self.compile_rsqrt(args, function),
+            "exp" => self.compile_exp(args, function),
             "reduce_add" | "reduce_max" | "reduce_min" => self.compile_reduce(args, name, function),
             "shuffle" => self.compile_shuffle(args, function),
             "select" => self.compile_select(args, function),

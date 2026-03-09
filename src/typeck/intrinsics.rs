@@ -23,7 +23,7 @@ impl TypeChecker {
             "load" => Some(self.check_load(args, locals, type_hint, span)),
             "store" => Some(self.check_store(args, locals, span)),
             "fma" => Some(self.check_fma(args, locals, span)),
-            "sqrt" | "rsqrt" => Some(self.check_sqrt(name, args, locals, span)),
+            "sqrt" | "rsqrt" | "exp" => Some(self.check_sqrt(name, args, locals, span)),
             "to_f32" | "to_f64" | "to_i32" | "to_i64" => {
                 Some(self.check_conversion(name, args, locals, span))
             }
