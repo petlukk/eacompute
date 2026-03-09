@@ -33,8 +33,17 @@ impl TypeChecker {
             "shuffle" => Some(self.check_shuffle(args, locals, span)),
             "select" => Some(self.check_select(args, locals, span)),
             "widen_i8_f32x4" | "widen_u8_f32x4" => {
-                Some(self.check_widen_i8_f32x4(name, args, locals, span))
+                Some(self.check_widen_i8_f32(name, args, locals, span, 4))
             }
+            "widen_i8_f32x8" | "widen_u8_f32x8" => {
+                Some(self.check_widen_i8_f32(name, args, locals, span, 8))
+            }
+            "widen_i8_f32x16" | "widen_u8_f32x16" => {
+                Some(self.check_widen_i8_f32(name, args, locals, span, 16))
+            }
+            "widen_u8_i32x4" => Some(self.check_widen_u8_i32(name, args, locals, span, 4)),
+            "widen_u8_i32x8" => Some(self.check_widen_u8_i32(name, args, locals, span, 8)),
+            "widen_u8_i32x16" => Some(self.check_widen_u8_i32(name, args, locals, span, 16)),
             "narrow_f32x4_i8" => Some(self.check_narrow_f32x4_i8(args, locals, span)),
             "maddubs_i16" => Some(self.check_maddubs_i16(args, locals, span)),
             "maddubs_i32" => Some(self.check_maddubs_i32(args, locals, span)),

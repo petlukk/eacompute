@@ -8,16 +8,17 @@ use super::TypeChecker;
 use super::types::Type;
 
 impl TypeChecker {
-    pub(super) fn check_widen_i8_f32x4(
+    pub(super) fn check_widen_i8_f32(
         &self,
         name: &str,
         args: &[Expr],
         locals: &HashMap<String, (Type, bool)>,
         span: &Span,
+        output_width: usize,
     ) -> crate::error::Result<Type> {
         if args.len() != 1 {
             return Err(CompileError::type_error(
-                format!("{name} expects 1 argument (i8x16 vector)"),
+                format!("{name} expects 1 argument (i8x16 or u8x16 vector)"),
                 span.clone(),
             ));
         }
@@ -26,11 +27,40 @@ impl TypeChecker {
             Type::Vector { elem, width: 16 } if matches!(elem.as_ref(), Type::I8 | Type::U8) => {
                 Ok(Type::Vector {
                     elem: Box::new(Type::F32),
-                    width: 4,
+                    width: output_width,
                 })
             }
             _ => Err(CompileError::type_error(
                 format!("{name} expects i8x16 or u8x16, got {arg_type}"),
+                args[0].span().clone(),
+            )),
+        }
+    }
+
+    pub(super) fn check_widen_u8_i32(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+        output_width: usize,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 1 argument (u8x16 vector)"),
+                span.clone(),
+            ));
+        }
+        let arg_type = self.check_expr(&args[0], locals)?;
+        match &arg_type {
+            Type::Vector { elem, width: 16 } if matches!(elem.as_ref(), Type::U8) => {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::I32),
+                    width: output_width,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("{name} expects u8x16, got {arg_type}"),
                 args[0].span().clone(),
             )),
         }

@@ -154,46 +154,78 @@ impl<'ctx> CodeGenerator<'ctx> {
         Ok(result)
     }
 
-    /// Widen lower 4 bytes of i8x16/u8x16 to f32x4.
+    /// Widen lower N bytes of i8x16/u8x16 to f32xN (N = 4, 8, or 16).
     /// unsigned=true uses zero-extension (for u8); false uses sign-extension (for i8).
-    pub(super) fn compile_widen_i8_f32x4(
+    pub(super) fn compile_widen_i8_f32(
         &mut self,
         args: &[Expr],
         unsigned: bool,
+        output_width: u32,
         function: FunctionValue<'ctx>,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         let vec16 = self.compile_expr(&args[0], function)?.into_vector_value();
 
-        // Extract lower 4 bytes via shufflevector: <16 x i8> → <4 x i8>
+        // Extract lower N bytes via shufflevector: <16 x i8> → <N x i8>
         let undef16 = vec16.get_type().get_undef();
-        let mask_vals: Vec<_> = (0u64..4)
+        let mask_vals: Vec<_> = (0u64..output_width as u64)
             .map(|i| self.context.i32_type().const_int(i, false))
             .collect();
         let mask = VectorType::const_vector(&mask_vals);
-        let lower4 = self
+        let lower_n = self
             .builder
-            .build_shuffle_vector(vec16, undef16, mask, "widen_lower4")
+            .build_shuffle_vector(vec16, undef16, mask, "widen_lower")
             .map_err(|e| CompileError::codegen_error(e.to_string()))?;
 
-        // Extend <4 x i8> to <4 x i32>
-        let i32x4_type = self.context.i32_type().vec_type(4);
-        let i32x4 = if unsigned {
+        // Extend <N x i8> to <N x i32>
+        let i32xn_type = self.context.i32_type().vec_type(output_width);
+        let i32xn = if unsigned {
             self.builder
-                .build_int_z_extend(lower4, i32x4_type, "zext_i8_i32")
+                .build_int_z_extend(lower_n, i32xn_type, "zext_i8_i32")
         } else {
             self.builder
-                .build_int_s_extend(lower4, i32x4_type, "sext_i8_i32")
+                .build_int_s_extend(lower_n, i32xn_type, "sext_i8_i32")
         }
         .map_err(|e| CompileError::codegen_error(e.to_string()))?;
 
-        // Convert <4 x i32> to <4 x float>
-        let f32x4_type = self.context.f32_type().vec_type(4);
-        let f32x4 = self
+        // Convert <N x i32> to <N x float>
+        let f32xn_type = self.context.f32_type().vec_type(output_width);
+        let f32xn = self
             .builder
-            .build_signed_int_to_float(i32x4, f32x4_type, "sitofp_i32_f32")
+            .build_signed_int_to_float(i32xn, f32xn_type, "sitofp_i32_f32")
             .map_err(|e| CompileError::codegen_error(e.to_string()))?;
 
-        Ok(BasicValueEnum::VectorValue(f32x4))
+        Ok(BasicValueEnum::VectorValue(f32xn))
+    }
+
+    /// Widen lower N bytes of u8x16 to i32xN (N = 4, 8, or 16).
+    /// Zero-extends only — no float conversion. Useful for gather indices.
+    pub(super) fn compile_widen_u8_i32(
+        &mut self,
+        args: &[Expr],
+        output_width: u32,
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let vec16 = self.compile_expr(&args[0], function)?.into_vector_value();
+
+        // Extract lower N bytes via shufflevector: <16 x i8> → <N x i8>
+        let undef16 = vec16.get_type().get_undef();
+        let mask_vals: Vec<_> = (0u64..output_width as u64)
+            .map(|i| self.context.i32_type().const_int(i, false))
+            .collect();
+        let mask = VectorType::const_vector(&mask_vals);
+        let lower_n = self
+            .builder
+            .build_shuffle_vector(vec16, undef16, mask, "widen_lower")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+        // Zero-extend <N x i8> to <N x i32>
+        let i32xn_type = self.context.i32_type().vec_type(output_width);
+        let i32xn = self
+            .builder
+            .build_int_z_extend(lower_n, i32xn_type, "zext_u8_i32")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+        Ok(BasicValueEnum::VectorValue(i32xn))
     }
 
     /// Narrow f32x4 to i8x16 (lower 4 elements are the narrowed values, rest undef).

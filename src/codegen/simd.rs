@@ -39,6 +39,13 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "select"
                 | "widen_i8_f32x4"
                 | "widen_u8_f32x4"
+                | "widen_i8_f32x8"
+                | "widen_u8_f32x8"
+                | "widen_i8_f32x16"
+                | "widen_u8_f32x16"
+                | "widen_u8_i32x4"
+                | "widen_u8_i32x8"
+                | "widen_u8_i32x16"
                 | "narrow_f32x4_i8"
                 | "maddubs_i16"
                 | "maddubs_i32"
@@ -88,8 +95,15 @@ impl<'ctx> CodeGenerator<'ctx> {
             "reduce_add" | "reduce_max" | "reduce_min" => self.compile_reduce(args, name, function),
             "shuffle" => self.compile_shuffle(args, function),
             "select" => self.compile_select(args, function),
-            "widen_i8_f32x4" => self.compile_widen_i8_f32x4(args, false, function),
-            "widen_u8_f32x4" => self.compile_widen_i8_f32x4(args, true, function),
+            "widen_i8_f32x4" => self.compile_widen_i8_f32(args, false, 4, function),
+            "widen_u8_f32x4" => self.compile_widen_i8_f32(args, true, 4, function),
+            "widen_i8_f32x8" => self.compile_widen_i8_f32(args, false, 8, function),
+            "widen_u8_f32x8" => self.compile_widen_i8_f32(args, true, 8, function),
+            "widen_i8_f32x16" => self.compile_widen_i8_f32(args, false, 16, function),
+            "widen_u8_f32x16" => self.compile_widen_i8_f32(args, true, 16, function),
+            "widen_u8_i32x4" => self.compile_widen_u8_i32(args, 4, function),
+            "widen_u8_i32x8" => self.compile_widen_u8_i32(args, 8, function),
+            "widen_u8_i32x16" => self.compile_widen_u8_i32(args, 16, function),
             "narrow_f32x4_i8" => self.compile_narrow_f32x4_i8(args, function),
             "maddubs_i16" => self.compile_maddubs_i16(args, function),
             "maddubs_i32" => self.compile_maddubs_i32(args, function),
