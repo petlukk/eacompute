@@ -161,4 +161,45 @@ mod tests {
         "#;
         assert_c_interop(ea_source, c_source, "11 22 33 44 55");
     }
+
+    // === FCmp type mismatch regression (float literal in comparison with complex expr) ===
+
+    #[test]
+    fn test_fcmp_float_literal_type_inference() {
+        // Regression: `y * (1.0 - y) > 0.0` generated `fcmp ogt float %val, double 0.0`
+        // because the `0.0` literal had no type hint when the LHS was a complex expression.
+        assert_output(
+            r#"
+            export func main() {
+                let y: f32 = 0.5
+                let product: f32 = y * (1.0 - y)
+                if product > 0.0 {
+                    println(1)
+                } else {
+                    println(0)
+                }
+            }
+            "#,
+            "1",
+        );
+    }
+
+    #[test]
+    fn test_fcmp_nested_binary_type_inference() {
+        // Ensure deeply nested binary expressions propagate type hints to float literals.
+        assert_output(
+            r#"
+            export func main() {
+                let a: f32 = 2.0
+                let b: f32 = 3.0
+                if a * b - 5.0 > 0.0 {
+                    println(1)
+                } else {
+                    println(0)
+                }
+            }
+            "#,
+            "1",
+        );
+    }
 }

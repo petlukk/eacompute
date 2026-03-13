@@ -282,22 +282,46 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
+    fn infer_expr_type(&self, expr: &Expr) -> Option<Type> {
+        let ty = match expr {
+            Expr::Variable(name, _) => {
+                if let Some((_, ty)) = self.variables.get(name) {
+                    Some(ty.clone())
+                } else if let Some((ty, _)) = self.constants.get(name) {
+                    Some(ty.clone())
+                } else {
+                    None
+                }
+            }
+            Expr::Binary(lhs, _, rhs, _) => self
+                .infer_expr_type(lhs)
+                .or_else(|| self.infer_expr_type(rhs)),
+            Expr::Negate(inner, _) => self.infer_expr_type(inner),
+            _ => None,
+        };
+        // Only return scalar numeric types — struct/vector types are not useful hints
+        ty.filter(|t| {
+            matches!(
+                t,
+                Type::F32
+                    | Type::F64
+                    | Type::I32
+                    | Type::I64
+                    | Type::I16
+                    | Type::I8
+                    | Type::U8
+                    | Type::U16
+                    | Type::U32
+            )
+        })
+    }
+
     fn infer_binary_hint(&self, lhs: &Expr, rhs: &Expr, outer_hint: Option<&Type>) -> Option<Type> {
-        if let Expr::Variable(name, _) = lhs {
-            if let Some((_, ty)) = self.variables.get(name) {
-                return Some(ty.clone());
-            }
-            if let Some((ty, _)) = self.constants.get(name) {
-                return Some(ty.clone());
-            }
+        if let Some(ty) = self.infer_expr_type(lhs) {
+            return Some(ty);
         }
-        if let Expr::Variable(name, _) = rhs {
-            if let Some((_, ty)) = self.variables.get(name) {
-                return Some(ty.clone());
-            }
-            if let Some((ty, _)) = self.constants.get(name) {
-                return Some(ty.clone());
-            }
+        if let Some(ty) = self.infer_expr_type(rhs) {
+            return Some(ty);
         }
         outer_hint.cloned()
     }
