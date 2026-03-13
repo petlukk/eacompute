@@ -1,5 +1,4 @@
 // SAXPY: y[i] = a * x[i] + y[i]
-// Bandwidth-bound: scalar broadcast + FMA + in-place read-modify-write
 
 const LANE_4: i32 = 4
 const LANE_8: i32 = 8
@@ -22,13 +21,20 @@ export func saxpy_f32x4(a: f32, x: *restrict f32, y: *restrict mut f32, len: i32
 }
 
 export func saxpy_f32x8(a: f32, x: *restrict f32, y: *restrict mut f32, len: i32) {
-    let va: f32x8 = splat(a)
+    let va8: f32x8 = splat(a)
+    let va4: f32x4 = splat(a)
     let mut i: i32 = 0
     while i + LANE_8 <= len {
         let vx: f32x8 = load(x, i)
         let vy: f32x8 = load(y, i)
-        store(y, i, fma(va, vx, vy))
+        store(y, i, fma(va8, vx, vy))
         i = i + LANE_8
+    }
+    while i + LANE_4 <= len {
+        let vx: f32x4 = load(x, i)
+        let vy: f32x4 = load(y, i)
+        store(y, i, fma(va4, vx, vy))
+        i = i + LANE_4
     }
     while i < len {
         y[i] = a * x[i] + y[i]

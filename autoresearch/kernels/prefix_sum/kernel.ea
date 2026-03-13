@@ -1,0 +1,9 @@
+export func prefix_sum_f32(data: *f32, out: *mut f32, len: i32) {
+    if len <= 0 { return }
+    out[0] = data[0]
+    let mut i: i32 = 1
+    while i < len {
+        out[i] = out[i - 1] + data[i]
+        i = i + 1
+    }
+}
