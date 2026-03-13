@@ -19,13 +19,17 @@ BASELINES="$LOOP_A_DIR/baselines.json"
 AGENT_OUTPUT="$LOOP_A_DIR/agent_output.txt"
 HYPOTHESIS_FILE="$LOOP_A_DIR/hypothesis.txt"
 
-# Feature request source files (for vector min/max)
-FEATURE_REQUEST="Extend min/max intrinsics to accept SIMD float vector types (f32x4, f32x8, f32x16, f64x2, f64x4). Currently min/max only accept scalars. Lower to llvm.minnum/llvm.maxnum vector variants. This will allow the clamp kernel to use min(max(v, lo), hi) instead of select-based clamping."
-SOURCE_FILES=(
-    "src/typeck/intrinsics_simd.rs"
-    "src/codegen/simd_math.rs"
-    "tests/min_max_tests.rs"
-)
+# Feature request — override with FEATURE_REQUEST env var
+FEATURE_REQUEST="${FEATURE_REQUEST:-Explore the codegen pipeline for optimization opportunities. Look at how LLVM IR is generated for common patterns (loops, FMA, load/store, select, reductions) and propose changes that produce better machine code. Focus on patterns used by the 8 benchmark kernels: FMA, reduction, dot product, SAXPY, clamp, matmul, prefix sum, histogram.}"
+
+# Source files for agent context — override with SOURCE_FILES env var (space-separated)
+if [ ${#SOURCE_FILES[@]} -eq 0 ] 2>/dev/null; then
+    SOURCE_FILES=(
+        "src/codegen/expressions.rs"
+        "src/codegen/simd.rs"
+        "src/codegen/simd_arithmetic.rs"
+    )
+fi
 
 export EA_BINARY
 unset CLAUDECODE 2>/dev/null || true
