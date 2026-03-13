@@ -16,13 +16,23 @@ Edit `dot_f32x8` to improve performance. You MUST output a HYPOTHESIS line and t
 5. Other variants (f32x4, foreach) may be included but are not measured.
 6. No dead code. No comments longer than one line.
 
-## The Eä Way (optimization priority)
+## Strategy Space
 
-1. Use the widest SIMD type available (f32x8 > f32x4 > scalar on AVX2)
-2. Write explicit vector loops with load/store — don't rely on auto-vectorization
-3. Use explicit tail handling for remainder elements
-4. Prefer intrinsics (fma, reduce_add) over manual scalar equivalents
-5. foreach/unroll are fallbacks, not first choices
+You are free to choose any implementation strategy. The benchmark decides — not convention.
+
+**Width is a dimension, not a default:**
+- Scalar loops (plain `while` with `f32` arithmetic)
+- f32x4 (128-bit SSE)
+- f32x8 (256-bit AVX2)
+- Mixed widths (e.g., f32x8 main loop + f32x4 tail)
+
+Wider SIMD is not always faster. With two input arrays, register pressure limits how many accumulators fit. Scalar with many accumulators might beat wide SIMD with few. Let the benchmark prove which width wins.
+
+**Other dimensions to explore:**
+- Accumulator count (1, 2, 3, 4 FMA chains)
+- Prefetch (none, one array, both arrays, various distances)
+- Loop unrolling
+- Load/compute ordering
 
 ## Dot Product Optimization Strategies
 

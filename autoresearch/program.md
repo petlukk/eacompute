@@ -16,13 +16,25 @@ Edit `fma_kernel_f32x8` to improve performance. You MUST output a HYPOTHESIS lin
 5. Other variants (f32x4, foreach, foreach+unroll) may be included but are not measured.
 6. No dead code. No comments longer than one line.
 
-## The Eä Way (optimization priority)
+## Strategy Space
 
-1. Use the widest SIMD type available (f32x8 > f32x4 > scalar on AVX2)
-2. Write explicit vector loops with load/store — don't rely on auto-vectorization
-3. Use explicit tail handling for remainder elements
-4. Prefer intrinsics (fma, reduce_add) over manual scalar equivalents
-5. foreach/unroll are fallbacks, not first choices
+You are free to choose any implementation strategy. The benchmark decides — not convention.
+
+**Width is a dimension, not a default:**
+- Scalar loops (plain `while` with `f32` arithmetic)
+- f32x4 (128-bit SSE)
+- f32x8 (256-bit AVX2)
+- f32x16 (512-bit AVX-512, requires `--avx512`)
+- Mixed widths (e.g., f32x8 main loop + f32x4 tail)
+
+Wider SIMD is not always faster. Bandwidth-bound kernels may see no benefit. Dependency-bound kernels may prefer scalar with more ILP. Let the benchmark prove which width wins.
+
+**Other dimensions to explore:**
+- Loop unrolling (1x, 2x, 4x, 8x)
+- Prefetch (none, near, far, multi-level)
+- Store strategy (store vs stream_store)
+- Accumulator count (for reductions)
+- Instruction ordering (interleaved vs batched)
 
 ## Available Eä Features
 

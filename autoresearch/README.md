@@ -147,6 +147,19 @@ The agent implicitly learned an empirical model of the Zen 4 microarchitecture:
 
 Key insights: (1) latency hiding via multi-accumulator works, (2) register pressure limits accumulator count based on input arity, (3) hardware prefetch handles sequential access — manual prefetch adds noise, not speed, (4) bandwidth-bound kernels can't be optimized with compute tricks, (5) missing vector min/max forces suboptimal select codegen.
 
+### Width as a Dimension
+
+The agent is free to choose any vector width — including pure scalar. Width is treated as an optimization dimension, not a default:
+
+| Width | When it wins |
+|-------|-------------|
+| Scalar | Dependency chains, small data, branch-heavy |
+| f32x4 | Moderate parallelism, lower register pressure |
+| f32x8 | High parallelism, compute-bound, AVX2 |
+| f32x16 | Extreme parallelism, AVX-512 only |
+
+The benchmark decides which width is best. Wider SIMD is not assumed to be faster.
+
 ## Loop A: Compiler Optimization
 
 Loop A modifies the Eä compiler itself (Rust source) to improve codegen quality. All 5 Loop B benchmarks serve as a regression gate — compiler changes are only accepted if no kernel gets slower and at least one gets faster.
