@@ -15,7 +15,7 @@ This spec covers **Loop B (kernel optimization)** — the first of three planned
 orchestrator.sh (bash loop)
 │
 ├─ claude -p "..."         # AI agent modifies kernel.ea (headless CLI)
-├─ ea kernel.ea --lib      # compile (no AI)
+├─ ea kernel.ea --lib --opt-level=3  # compile (no AI)
 ├─ python3 bench_kernel.py # measure + correctness check (no AI)
 ├─ evaluate: keep/discard  # compare against best
 └─ log to history.json     # record attempt
@@ -29,15 +29,22 @@ The agent has no control over measurement. The shell orchestrator handles compil
 1. **Correctness**: kernel output must match C reference within rtol=1e-5
 2. **No regression**: must beat or match current best time
 
+### Target Function
+The optimization target is `fma_kernel_f32x8` — the widest SIMD variant, the "Eä way". Other variants (f32x4, foreach, foreach+unroll) may remain in the kernel for comparison but are not measured by the loop.
+
 ### Metrics
-- **Primary**: average wall time (µs) over 100 runs, 1M f32 elements
+- **Primary**: median wall time (µs) over 100 runs, 1M f32 elements
 - **Secondary**: lines of code (fewer is better at equal performance)
+
+Median is used instead of mean to reduce sensitivity to scheduler jitter and cache noise.
 
 ### Acceptance Criteria
 A new kernel is accepted if:
 - Correctness check passes, AND
-- Time is faster than current best, OR
-- Time is equal (within 0.1%) and LOC is lower
+- Time is at least 0.5% faster than current best, OR
+- Time is within 0.5% and LOC is strictly lower
+
+The 0.5% threshold prevents accepting changes based on measurement noise.
 
 ## Starting Benchmark: FMA
 
@@ -118,8 +125,15 @@ The agent receives these rules each iteration:
 **Other:** const, static_assert, *restrict, *restrict mut
 
 ### Output Format
-- Line 1: `HYPOTHESIS: <what you're trying and why>`
-- Line 2 onwards: complete kernel.ea content
+```
+HYPOTHESIS: <what you're trying and why>
+
+```ea
+<complete kernel.ea content>
+```
+```
+
+The agent wraps kernel source in a fenced code block (` ```ea `). The parser extracts content between the first code fence pair, making it robust to preamble text or trailing commentary.
 
 ### Context Provided Each Iteration
 - The full program.md rules
@@ -146,9 +160,21 @@ for each iteration (max 20, 3-minute timeout):
 - **History window**: last 10 attempts passed to agent
 - **Benchmark runs**: 100 per measurement
 - **Array size**: 1,000,000 f32 elements
+- **Ea binary**: `./target/release/ea` (orchestrator runs `cargo build --release` at setup)
+- **Compile flags**: `--lib --opt-level=3` (fixed for all iterations)
+- **Improvement threshold**: 0.5% (minimum improvement to accept)
 
-## bench_kernel.py Output Format
+## bench_kernel.py
 
+### Interface
+- **Input**: path to `kernel.ea` and path to pre-built `reference.so`
+- **Compiles**: `ea kernel.ea --lib --opt-level=3` (release-quality codegen)
+- **Loads**: the compiled `.so` and the pre-built `reference.so` via ctypes
+- **Measures**: calls `fma_kernel_f32x8` specifically (the optimization target)
+- **Correctness**: runs both Ea and C on same input, compares output (rtol=1e-5)
+- **Timing**: 100 runs, reports median and min
+
+### Output (JSON to stdout)
 ```json
 {
   "correct": true,
@@ -159,7 +185,12 @@ for each iteration (max 20, 3-minute timeout):
 }
 ```
 
-Always outputs valid JSON, even on compile failure or correctness error. The orchestrator never needs to parse stderr.
+### Failure modes
+- **Compile error**: `{"correct": false, "time_us": null, "min_us": null, "loc": null, "error": "compile: <message>"}`
+- **Correctness failure**: `{"correct": false, "time_us": null, "min_us": null, "loc": null, "error": "correctness: max diff 0.5 at index 42"}`
+- **Runtime crash**: `{"correct": false, "time_us": null, "min_us": null, "loc": null, "error": "crash: <signal>"}`
+
+Always outputs exactly one JSON line to stdout. The orchestrator never needs to parse stderr.
 
 ## Helper Scripts
 
@@ -167,10 +198,10 @@ Always outputs valid JSON, even on compile failure or correctness error. The orc
 Reads program.md, current best kernel, and history.json. Assembles a single prompt string with the current best score, LOC, and last 10 history entries injected into the template.
 
 ### parse_agent_output.py
-Splits agent output on the `HYPOTHESIS:` line. Writes the hypothesis to `hypothesis.txt` and the kernel source to `kernel.ea`. Exits non-zero if the output can't be parsed.
+Extracts the `HYPOTHESIS:` line and the content between the first code fence pair (` ```ea ` or ` ``` `). Writes the hypothesis to `hypothesis.txt` and the kernel source to `kernel.ea`. Only overwrites `kernel.ea` on successful parse — if extraction fails, exits non-zero and `kernel.ea` remains unchanged (best_kernel.ea is the revert source).
 
 ### log_result.py
-Appends a JSON object to the history array: `{iteration, hypothesis, time_us, loc, correct, accepted}`.
+Appends a JSON object to the history array: `{iteration, hypothesis, time_us, loc, correct, accepted, kernel_hash}`. The `kernel_hash` (SHA-256 of kernel source) enables detecting duplicate attempts without storing full source in the log.
 
 ## Future Expansion
 
