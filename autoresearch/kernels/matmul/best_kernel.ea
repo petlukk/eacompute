@@ -1,0 +1,17 @@
+export func matmul_f32(a: *f32, b: *f32, c: *mut f32, n: i32) {
+    let mut i: i32 = 0
+    while i < n {
+        let mut j: i32 = 0
+        while j < n {
+            let mut sum: f32 = 0.0
+            let mut k: i32 = 0
+            while k < n {
+                sum = sum + a[i * n + k] * b[k * n + j]
+                k = k + 1
+            }
+            c[i * n + j] = sum
+            j = j + 1
+        }
+        i = i + 1
+    }
+}

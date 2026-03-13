@@ -11,7 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-KERNELS = ["fma", "reduction", "dot_product", "saxpy", "clamp"]
+KERNELS = ["fma", "reduction", "dot_product", "saxpy", "clamp",
+           "matmul", "prefix_sum", "histogram"]
 
 
 def main():
@@ -53,7 +54,7 @@ def main():
         try:
             proc = subprocess.run(
                 ["python3", str(bench_script), str(kernel_ea), str(ref_so)],
-                capture_output=True, text=True, timeout=120,
+                capture_output=True, text=True, timeout=300,
             )
             if proc.returncode != 0:
                 results[kernel] = {"error": proc.stderr.strip()[:200]}
