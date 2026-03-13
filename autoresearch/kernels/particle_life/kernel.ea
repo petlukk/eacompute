@@ -1,0 +1,47 @@
+// N-body particle life: fused force + velocity + position update.
+export func particle_life_step(
+    px: *restrict mut f32, py: *restrict mut f32,
+    vx: *restrict mut f32, vy: *restrict mut f32,
+    types: *restrict i32,
+    matrix: *restrict f32,
+    n: i32, num_types: i32,
+    r_max: f32, dt: f32, friction: f32, size: f32
+) {
+    let r_max2: f32 = r_max * r_max
+    let r_max_inv: f32 = 1.0 / r_max
+    let mut i: i32 = 0
+    for i in 0..n {
+        let xi: f32 = px[i]
+        let yi: f32 = py[i]
+        let ti: i32 = types[i]
+        let ti_off: i32 = ti * num_types
+        let mut fx: f32 = 0.0
+        let mut fy: f32 = 0.0
+
+        let mut j: i32 = 0
+        for j in 0..n {
+            let dx: f32 = px[j] - xi
+            let dy: f32 = py[j] - yi
+            let dist2: f32 = dx * dx + dy * dy
+            if dist2 > 0.0 && dist2 < r_max2 {
+                let dist: f32 = sqrt(dist2)
+                let strength: f32 = matrix[ti_off + types[j]]
+                let f_over_d: f32 = strength * (1.0 - dist * r_max_inv) / dist
+                fx = fx + f_over_d * dx
+                fy = fy + f_over_d * dy
+            }
+        }
+
+        vx[i] = (vx[i] + fx * dt) * friction
+        vy[i] = (vy[i] + fy * dt) * friction
+        px[i] = px[i] + vx[i]
+        py[i] = py[i] + vy[i]
+
+        let cur_px: f32 = px[i]
+        let cur_py: f32 = py[i]
+        if cur_px < 0.0 { px[i] = cur_px + size }
+        if cur_px >= size { px[i] = cur_px - size }
+        if cur_py < 0.0 { py[i] = cur_py + size }
+        if cur_py >= size { py[i] = cur_py - size }
+    }
+}
