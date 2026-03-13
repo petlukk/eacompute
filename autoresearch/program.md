@@ -38,7 +38,7 @@ Edit `fma_kernel_f32x8` to improve performance. You MUST output a HYPOTHESIS lin
 | u8x16   | u8x32   |         |
 
 **Intrinsics:**
-- Memory: load, store, stream_store, gather, scatter
+- Memory: load, store, stream_store, gather, scatter, prefetch(ptr, offset)
 - Arithmetic: fma, sqrt, rsqrt, exp, min, max
 - Reduction: reduce_add, reduce_max, reduce_min
 - Construction: splat, select
