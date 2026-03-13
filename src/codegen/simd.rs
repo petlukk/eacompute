@@ -4,6 +4,7 @@ use inkwell::values::{BasicValueEnum, FunctionValue};
 use crate::ast::{Expr, TypeAnnotation};
 use crate::error::CompileError;
 use crate::typeck::Type;
+use crate::typeck::types as typeck_types;
 
 use super::CodeGenerator;
 
@@ -58,7 +59,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "movemask"
                 | "min"
                 | "max"
-        )
+        ) || typeck_types::parse_typed_load(name).is_some()
     }
 
     pub(crate) fn compile_simd_call(
@@ -115,6 +116,10 @@ impl<'ctx> CodeGenerator<'ctx> {
             "prefetch" => self.compile_prefetch(args, function),
             "movemask" => self.compile_movemask(args, function),
             "min" | "max" => self.compile_min_max(args, name, function),
+            _ if typeck_types::parse_typed_load(name).is_some() => {
+                let vec_type = typeck_types::parse_typed_load(name).unwrap();
+                self.compile_load(args, Some(&vec_type), function)
+            }
             _ => Err(CompileError::codegen_error(format!(
                 "unknown SIMD intrinsic '{name}'"
             ))),

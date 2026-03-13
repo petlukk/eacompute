@@ -281,6 +281,82 @@ mod tests {
 
     #[test]
     #[cfg(target_arch = "x86_64")]
+    fn test_load_f32x8_typed_intrinsic() {
+        assert_c_interop(
+            r#"
+            export func dot(a: *f32, b: *f32, n: i32) -> f32 {
+                let mut acc: f32x8 = splat(0.0)
+                let mut i: i32 = 0
+                while i + 8 <= n {
+                    acc = fma(load_f32x8(a, i), load_f32x8(b, i), acc)
+                    i = i + 8
+                }
+                return reduce_add(acc)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            extern float dot(const float*, const float*, int);
+            int main() {
+                float a[] = {1,2,3,4,5,6,7,8};
+                float b[] = {1,1,1,1,1,1,1,1};
+                printf("%.0f\n", dot(a, b, 8));
+            }
+            "#,
+            "36",
+        );
+    }
+
+    #[test]
+    fn test_load_f32x4_typed_intrinsic() {
+        assert_c_interop(
+            r#"
+            export func sum4(a: *f32) -> f32 {
+                let v: f32x4 = load_f32x4(a, 0)
+                return reduce_add(v)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            extern float sum4(const float*);
+            int main() {
+                float a[] = {10, 20, 30, 40};
+                printf("%.0f\n", sum4(a));
+            }
+            "#,
+            "100",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_load_i32x8_typed_intrinsic() {
+        assert_c_interop(
+            r#"
+            export func sum_i32(a: *i32, n: i32) -> i32 {
+                let mut acc: i32x8 = splat(0)
+                let mut i: i32 = 0
+                while i + 8 <= n {
+                    acc = acc .+ load_i32x8(a, i)
+                    i = i + 8
+                }
+                return reduce_add(acc)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            extern int sum_i32(const int*, int);
+            int main() {
+                int a[] = {1,2,3,4,5,6,7,8};
+                printf("%d\n", sum_i32(a, 8));
+            }
+            "#,
+            "36",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
     fn test_i32x8_literal() {
         assert_output(
             r#"

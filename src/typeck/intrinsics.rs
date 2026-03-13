@@ -55,6 +55,10 @@ impl TypeChecker {
             "store_masked" => Some(self.check_store_masked(args, locals, span)),
             "movemask" => Some(self.check_movemask(args, locals, span)),
             "min" | "max" => Some(self.check_min_max(name, args, locals, span)),
+            _ if types::parse_typed_load(name).is_some() => {
+                let vec_type = types::parse_typed_load(name).unwrap();
+                Some(self.check_load(args, locals, Some(&vec_type), span))
+            }
             _ => None,
         }
     }

@@ -56,7 +56,7 @@ Wider SIMD is not always faster. Clamp is compute-light — loop overhead and pr
 | u8x16   | u8x32   |         |
 
 **Intrinsics:**
-- Memory: load, store, stream_store, gather, scatter, prefetch(ptr, offset)
+- Memory: load, load_f32x4, load_f32x8, load_i32x8 (typed variants for all vector types), store, stream_store, gather, scatter, prefetch(ptr, offset)
 - Arithmetic: fma, sqrt, rsqrt, exp, min, max
 - Reduction: reduce_add, reduce_max, reduce_min
 - Construction: splat, select

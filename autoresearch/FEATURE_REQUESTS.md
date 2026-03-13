@@ -19,8 +19,8 @@ These are concrete limitations the agent hit that prevented it from generating f
 **Impact:** Agent wrote `load(a, i)` expecting f32x8 inference from the FMA context, but load inferred f32x4. Agent hit this twice with the same mistake — a UX signal.
 **Fix:** Consider inferring load width from usage context, or provide clearer error message suggesting explicit type annotation: `load::<f32x8>(a, i)` or `let v: f32x8 = load(a, i)`.
 **Loop:** A (compiler) or C (language design)
-**Status:** PARTIAL (commit 6f90da2). Error message now includes hint: "load() defaults to width 4; use `let v: f32x8 = load(ptr, i)` for wider vectors". Full context-based inference (propagating type from fma argument) deferred — explicit annotation is more aligned with Eä's design philosophy.
-**Update (matmul 30-iteration run):** Escalated from 2/10 to **13/25 iterations** hitting this. The agent sees the hint but cannot learn the `let v: f32x8 = load(...)` pattern across iterations. This blocked ijk loop reorder (register-resident C accumulators) which would likely yield another ~2x improvement. The hint-based approach is insufficient — the agent needs either (a) context-based width inference, or (b) explicit `load_f32x8(ptr, i)` named intrinsics that don't require type annotations.
+**Status:** DONE. Named typed load intrinsics implemented: `load_f32x4`, `load_f32x8`, `load_i32x8`, etc. for all vector types. No type annotation needed — `fma(load_f32x8(a, i), load_f32x8(b, i), acc)` just works. Error hint updated to reference new intrinsics.
+**History:** PARTIAL (commit 6f90da2) added hint message. Escalated from 2/10 to 13/25 iterations in matmul. Resolved with named intrinsics (option b) — most aligned with Eä's explicit-over-implicit philosophy.
 
 ## Unordered (fast-math) reduce_add
 

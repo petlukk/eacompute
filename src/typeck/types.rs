@@ -163,7 +163,7 @@ pub fn unify_vector(left: &Type, right: &Type, span: Span) -> crate::error::Resu
         ) => {
             if l_width != r_width {
                 let hint = if *l_width == 4 || *r_width == 4 {
-                    " (hint: load() defaults to width 4; use `let v: f32x8 = load(ptr, i)` for wider vectors)"
+                    " (hint: load() defaults to width 4; use load_f32x8(ptr, i) for wider vectors)"
                 } else {
                     ""
                 };
@@ -232,6 +232,33 @@ pub fn conversion_hint(from: &Type, to: &Type) -> Option<String> {
         _ => return None,
     };
     Some(format!("Use {func} to convert"))
+}
+
+/// Parses a typed load intrinsic name like `load_f32x8` into its vector type.
+/// Returns `None` if the name doesn't match the `load_<type>` pattern.
+pub fn parse_typed_load(name: &str) -> Option<Type> {
+    let suffix = name.strip_prefix("load_")?;
+    let (elem, width) = parse_vector_suffix(suffix)?;
+    Some(Type::Vector {
+        elem: Box::new(elem),
+        width,
+    })
+}
+
+/// Parses a vector type suffix like `f32x8` into (elem_type, width).
+fn parse_vector_suffix(s: &str) -> Option<(Type, usize)> {
+    let (elem_str, width_str) = s.rsplit_once('x')?;
+    let width: usize = width_str.parse().ok()?;
+    let elem = match elem_str {
+        "f32" => Type::F32,
+        "f64" => Type::F64,
+        "i32" => Type::I32,
+        "i16" => Type::I16,
+        "i8" => Type::I8,
+        "u8" => Type::U8,
+        _ => return None,
+    };
+    Some((elem, width))
 }
 
 pub fn resolve_type(ty: &TypeAnnotation) -> crate::error::Result<Type> {
