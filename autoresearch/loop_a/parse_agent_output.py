@@ -40,32 +40,36 @@ def extract(text):
 
 
 def apply_diffs(diffs, repo_root):
-    """Apply all diffs. Returns None on success, error string on failure."""
-    # Combine all diffs into one patch
-    combined = ""
+    """Apply diffs one at a time. Returns None on success, error string on failure."""
+    applied = []
     for filepath, content in diffs:
-        # Ensure diff has proper a/b prefix
-        if not content.startswith("---"):
-            combined += f"--- a/{filepath}\n+++ b/{filepath}\n{content}"
-        else:
-            combined += content
-        if not combined.endswith("\n"):
-            combined += "\n"
+        patch = content
+        if not patch.startswith("---"):
+            patch = f"--- a/{filepath}\n+++ b/{filepath}\n{patch}"
+        if not patch.endswith("\n"):
+            patch += "\n"
 
-    # Write to temp file and apply
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".patch", delete=False) as f:
-        f.write(combined)
-        patch_path = f.name
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".patch", delete=False) as f:
+            f.write(patch)
+            patch_path = f.name
 
-    result = subprocess.run(
-        ["git", "apply", "--allow-empty", patch_path],
-        capture_output=True, text=True, cwd=repo_root,
-    )
+        # --recount fixes bad hunk line counts from LLM-generated diffs
+        result = subprocess.run(
+            ["git", "apply", "--recount", "--allow-empty", patch_path],
+            capture_output=True, text=True, cwd=repo_root,
+        )
+        Path(patch_path).unlink()
 
-    Path(patch_path).unlink()
+        if result.returncode != 0:
+            # Revert already-applied diffs
+            for prev_file in applied:
+                subprocess.run(
+                    ["git", "checkout", "--", prev_file],
+                    cwd=repo_root, capture_output=True,
+                )
+            return f"git apply failed for {filepath}: {result.stderr.strip()}"
+        applied.append(filepath)
 
-    if result.returncode != 0:
-        return f"git apply failed: {result.stderr.strip()}"
     return None
 
 

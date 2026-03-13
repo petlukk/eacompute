@@ -100,6 +100,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
 
     # Agent turn
     if ! timeout "$TIMEOUT" claude -p "$PROMPT" --output-format text \
+        --tools "" \
         > "$AGENT_OUTPUT" 2>/dev/null; then
         echo "  TIMEOUT or agent error"
         python3 "$LOOP_A_DIR/log_result.py" "$HISTORY" "$i" \
@@ -119,14 +120,8 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     HYPOTHESIS=$(cat "$HYPOTHESIS_FILE")
     echo "  Hypothesis: $HYPOTHESIS"
 
-    # Quality gate: fmt
-    if ! (cd "$REPO_ROOT" && cargo fmt --check 2>/dev/null); then
-        echo "  REJECTED: cargo fmt failed"
-        git -C "$REPO_ROOT" checkout -- src/ tests/
-        python3 "$LOOP_A_DIR/log_result.py" "$HISTORY" "$i" \
-            "$HYPOTHESIS" "false" "cargo fmt failed"
-        continue
-    fi
+    # Auto-format before checking (LLM diffs rarely match rustfmt exactly)
+    (cd "$REPO_ROOT" && cargo fmt 2>/dev/null)
 
     # Quality gate: clippy
     if ! (cd "$REPO_ROOT" && cargo clippy --all-targets --all-features -- -D warnings 2>/dev/null); then
