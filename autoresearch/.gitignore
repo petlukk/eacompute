@@ -1,0 +1,7 @@
+# Generated artifacts
+*.so
+*.ea.json
+history.json
+agent_output.txt
+hypothesis.txt
+results/
