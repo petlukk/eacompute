@@ -1,16 +1,54 @@
 export func matmul_f32(a: *f32, b: *f32, c: *mut f32, n: i32) {
     let mut i: i32 = 0
-    while i < n {
-        let mut j: i32 = 0
-        while j < n {
-            let mut sum: f32 = 0.0
-            let mut k: i32 = 0
-            while k < n {
-                sum = sum + a[i * n + k] * b[k * n + j]
-                k = k + 1
+    while i < n - 3 {
+        let mut k: i32 = 0
+        while k < n {
+            let a_0k: f32x8 = splat(a[i * n + k])
+            let a_1k: f32x8 = splat(a[(i + 1) * n + k])
+            let a_2k: f32x8 = splat(a[(i + 2) * n + k])
+            let a_3k: f32x8 = splat(a[(i + 3) * n + k])
+            let next_k: i32 = k + 1
+            let mut j: i32 = 0
+            while j < n - 7 {
+                prefetch(b, next_k * n + j)
+                let b_vec: f32x8 = load(b, k * n + j)
+                let c0: f32x8 = load(c, i * n + j)
+                let c1: f32x8 = load(c, (i + 1) * n + j)
+                let c2: f32x8 = load(c, (i + 2) * n + j)
+                let c3: f32x8 = load(c, (i + 3) * n + j)
+                store(c, i * n + j, fma(a_0k, b_vec, c0))
+                store(c, (i + 1) * n + j, fma(a_1k, b_vec, c1))
+                store(c, (i + 2) * n + j, fma(a_2k, b_vec, c2))
+                store(c, (i + 3) * n + j, fma(a_3k, b_vec, c3))
+                j = j + 8
             }
-            c[i * n + j] = sum
-            j = j + 1
+            while j < n {
+                c[i * n + j] = c[i * n + j] + a[i * n + k] * b[k * n + j]
+                c[(i + 1) * n + j] = c[(i + 1) * n + j] + a[(i + 1) * n + k] * b[k * n + j]
+                c[(i + 2) * n + j] = c[(i + 2) * n + j] + a[(i + 2) * n + k] * b[k * n + j]
+                c[(i + 3) * n + j] = c[(i + 3) * n + j] + a[(i + 3) * n + k] * b[k * n + j]
+                j = j + 1
+            }
+            k = k + 1
+        }
+        i = i + 4
+    }
+    while i < n {
+        let mut k: i32 = 0
+        while k < n {
+            let a_ik: f32x8 = splat(a[i * n + k])
+            let mut j: i32 = 0
+            while j < n - 7 {
+                let b_vec: f32x8 = load(b, k * n + j)
+                let c_vec: f32x8 = load(c, i * n + j)
+                store(c, i * n + j, fma(a_ik, b_vec, c_vec))
+                j = j + 8
+            }
+            while j < n {
+                c[i * n + j] = c[i * n + j] + a[i * n + k] * b[k * n + j]
+                j = j + 1
+            }
+            k = k + 1
         }
         i = i + 1
     }
