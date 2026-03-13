@@ -10,7 +10,7 @@ These are concrete limitations the agent hit that prevented it from generating f
 **Impact:** Agent can't use `min(max(v, lo), hi)` for clamp — forced to use `select` which generates 4 instructions (`vcmpps` + `vblendvps` × 2) instead of C's 2-instruction `vmaxps`/`vminps`. Measured ~2x instruction count overhead in the hot loop.
 **Fix:** Extend `min`/`max` intrinsics to accept all SIMD float types (f32x4, f32x8, f32x16, f64x2, f64x4). Lower to `llvm.maxnum`/`llvm.minnum` vector variants.
 **Loop:** A (compiler) — first Loop A target
-**Status:** Loop A smoke test proved agent can generate correct implementation (type checker + codegen + tests). Rejected by benchmark gate because existing clamp kernel doesn't use min/max yet. Needs clamp kernel update to exercise the feature.
+**Status:** DONE (commit 6ca5767). Implemented vector min/max, updated clamp kernel from select to min(max(v,lo),hi). Result: 91.4 → 81.2 µs = 11% improvement. First complete A→B feedback cycle.
 
 ## load() type inference for overloaded widths
 
@@ -19,3 +19,4 @@ These are concrete limitations the agent hit that prevented it from generating f
 **Impact:** Agent wrote `load(a, i)` expecting f32x8 inference from the FMA context, but load inferred f32x4. Agent hit this twice with the same mistake — a UX signal.
 **Fix:** Consider inferring load width from usage context, or provide clearer error message suggesting explicit type annotation: `load::<f32x8>(a, i)` or `let v: f32x8 = load(a, i)`.
 **Loop:** A (compiler) or C (language design)
+**Status:** PARTIAL (commit 6f90da2). Error message now includes hint: "load() defaults to width 4; use `let v: f32x8 = load(ptr, i)` for wider vectors". Full context-based inference (propagating type from fma argument) deferred — explicit annotation is more aligned with Eä's design philosophy.
