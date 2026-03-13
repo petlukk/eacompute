@@ -1,0 +1,100 @@
+// 3x3 depthwise-separable-style int8 convolution, NHWC layout.
+// Two variants: i16 accumulator (fast, overflow risk) and i32 accumulator (safe).
+
+// i16 accumulator variant — fast, but can overflow for large C_in * weight products
+export func conv2d_3x3_u8i8(src: *u8, wt: *i8, dst: *mut i16, H: i32, W: i32, C_in: i32) {
+    let stride: i32 = (W + 2) * C_in
+    let mut row: i32 = 0
+    for row in 0..H {
+        let mut col: i32 = 0
+        for col in 0..W {
+            let mut acc0: i16x8 = splat(0)
+            let mut acc1: i16x8 = splat(0)
+            let mut dr: i32 = 0
+            for dr in 0..3 {
+                let mut dc: i32 = 0
+                for dc in 0..3 {
+                    let src_off: i32 = (row + dr) * stride + (col + dc) * C_in
+                    let wt_off: i32 = (dr * 3 + dc) * C_in
+                    let mut ci: i32 = 0
+                    for ci in 0..C_in step 32 {
+                        let a0: u8x16 = load(src, src_off + ci)
+                        let b0: i8x16 = load(wt, wt_off + ci)
+                        acc0 = acc0 .+ maddubs_i16(a0, b0)
+                        let a1: u8x16 = load(src, src_off + ci + 16)
+                        let b1: i8x16 = load(wt, wt_off + ci + 16)
+                        acc1 = acc1 .+ maddubs_i16(a1, b1)
+                    }
+                }
+            }
+            let s: i16 = reduce_add(acc0) + reduce_add(acc1)
+            dst[row * W + col] = s
+        }
+    }
+}
+
+// i32 accumulator variant — immune to accumulator overflow, 2x col unroll
+export func conv2d_3x3_u8i8_safe(src: *u8, wt: *i8, dst: *mut i32, H: i32, W: i32, C_in: i32) {
+    let stride: i32 = (W + 2) * C_in
+    let W_even: i32 = W - (W % 2)
+    let mut row: i32 = 0
+    for row in 0..H {
+        let row_base: i32 = row * stride
+        let mut col: i32 = 0
+        for col in 0..W_even step 2 {
+            let mut p0_acc0: i32x4 = splat(0)
+            let mut p0_acc1: i32x4 = splat(0)
+            let mut p1_acc0: i32x4 = splat(0)
+            let mut p1_acc1: i32x4 = splat(0)
+            let mut dr: i32 = 0
+            for dr in 0..3 {
+                let row_off: i32 = (row + dr) * stride
+                let mut dc: i32 = 0
+                for dc in 0..3 {
+                    let p0_src_off: i32 = row_off + (col + dc) * C_in
+                    let p1_src_off: i32 = row_off + (col + 1 + dc) * C_in
+                    let wt_off: i32 = (dr * 3 + dc) * C_in
+                    let mut ci: i32 = 0
+                    for ci in 0..C_in step 32 {
+                        let w0: i8x16 = load(wt, wt_off + ci)
+                        let w1: i8x16 = load(wt, wt_off + ci + 16)
+                        let a0: u8x16 = load(src, p0_src_off + ci)
+                        p0_acc0 = p0_acc0 .+ maddubs_i32(a0, w0)
+                        let a1: u8x16 = load(src, p0_src_off + ci + 16)
+                        p0_acc1 = p0_acc1 .+ maddubs_i32(a1, w1)
+                        let c0: u8x16 = load(src, p1_src_off + ci)
+                        p1_acc0 = p1_acc0 .+ maddubs_i32(c0, w0)
+                        let c1: u8x16 = load(src, p1_src_off + ci + 16)
+                        p1_acc1 = p1_acc1 .+ maddubs_i32(c1, w1)
+                    }
+                }
+            }
+            let dst_off: i32 = row * W + col
+            dst[dst_off] = reduce_add(p0_acc0) + reduce_add(p0_acc1)
+            dst[dst_off + 1] = reduce_add(p1_acc0) + reduce_add(p1_acc1)
+        }
+        let mut col2: i32 = W_even
+        for col2 in W_even..W {
+            let mut acc0: i32x4 = splat(0)
+            let mut acc1: i32x4 = splat(0)
+            let mut dr: i32 = 0
+            for dr in 0..3 {
+                let mut dc: i32 = 0
+                for dc in 0..3 {
+                    let src_off: i32 = (row + dr) * stride + (col2 + dc) * C_in
+                    let wt_off: i32 = (dr * 3 + dc) * C_in
+                    let mut ci: i32 = 0
+                    for ci in 0..C_in step 32 {
+                        let a0: u8x16 = load(src, src_off + ci)
+                        let b0: i8x16 = load(wt, wt_off + ci)
+                        acc0 = acc0 .+ maddubs_i32(a0, b0)
+                        let a1: u8x16 = load(src, src_off + ci + 16)
+                        let b1: i8x16 = load(wt, wt_off + ci + 16)
+                        acc1 = acc1 .+ maddubs_i32(a1, b1)
+                    }
+                }
+            }
+            dst[row * W + col2] = reduce_add(acc0) + reduce_add(acc1)
+        }
+    }
+}
