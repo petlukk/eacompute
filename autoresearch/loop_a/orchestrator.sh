@@ -23,7 +23,7 @@ HYPOTHESIS_FILE="$LOOP_A_DIR/hypothesis.txt"
 FEATURE_REQUEST="${FEATURE_REQUEST:-Explore the codegen pipeline for optimization opportunities. Look at how LLVM IR is generated for common patterns (loops, FMA, load/store, select, reductions) and propose changes that produce better machine code. Focus on patterns used by the 8 benchmark kernels: FMA, reduction, dot product, SAXPY, clamp, matmul, prefix sum, histogram.}"
 
 # Source files for agent context — override with SOURCE_FILES env var (space-separated)
-if [ ${#SOURCE_FILES[@]} -eq 0 ] 2>/dev/null; then
+if [ -z "${SOURCE_FILES+x}" ]; then
     SOURCE_FILES=(
         "src/codegen/expressions.rs"
         "src/codegen/simd.rs"
