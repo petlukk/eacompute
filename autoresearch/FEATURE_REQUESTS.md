@@ -20,3 +20,14 @@ These are concrete limitations the agent hit that prevented it from generating f
 **Fix:** Consider inferring load width from usage context, or provide clearer error message suggesting explicit type annotation: `load::<f32x8>(a, i)` or `let v: f32x8 = load(a, i)`.
 **Loop:** A (compiler) or C (language design)
 **Status:** PARTIAL (commit 6f90da2). Error message now includes hint: "load() defaults to width 4; use `let v: f32x8 = load(ptr, i)` for wider vectors". Full context-based inference (propagating type from fma argument) deferred — explicit annotation is more aligned with Eä's design philosophy.
+**Update (matmul 30-iteration run):** Escalated from 2/10 to **13/25 iterations** hitting this. The agent sees the hint but cannot learn the `let v: f32x8 = load(...)` pattern across iterations. This blocked ijk loop reorder (register-resident C accumulators) which would likely yield another ~2x improvement. The hint-based approach is insufficient — the agent needs either (a) context-based width inference, or (b) explicit `load_f32x8(ptr, i)` named intrinsics that don't require type annotations.
+
+## Unordered (fast-math) reduce_add
+
+**Source:** Loop A generell exploration, iterations 1-5
+**Observation:** Agent attempted tree reduction for `reduce_add` in all 5 iterations. Currently `reduce_add` on floats uses `llvm.vector.reduce.fadd` with an ordered start value (0.0), forcing LLVM to emit width-many sequential dependent `fadd` instructions. The agent proposed replacing this with log2(width) shuffle+add pairs (tree reduction), where each level's additions are independent and can be pipelined.
+**Blocked by:** `test_reduce_add_ir` asserts the vector reduce intrinsic appears in IR. Iteration 3 passed clippy + compilation but failed this test. Iterations 1,2,4 failed clippy. Iteration 5 timed out.
+**Impact:** Reduction kernel (39.7µs) and dot product (95.9µs) are both latency-bound by the sequential reduce. Tree reduction would enable parallel execution of adds across their ~4-cycle latency.
+**Design question:** Ordered reduce guarantees deterministic floating-point results. Unordered reduce is faster but non-deterministic across runs. Options: (a) default to fast-math unordered reduce, (b) add `reduce_add_fast()` as separate intrinsic, (c) compiler flag `--fast-math` that switches all reduces to unordered.
+**Loop:** C (language design) — requires a design decision about floating-point semantics
+**Status:** NEW
