@@ -1,15 +1,7 @@
-// FMA Kernel: Fused Multiply-Add benchmark
-// Computes: result[i] = a[i] * b[i] + c[i]
-// Explicit SIMD widths: f32x4 (128-bit) and f32x8 (256-bit)
-
 const SSE_WIDTH: i32 = 4
 const AVX_WIDTH: i32 = 8
 
 static_assert(AVX_WIDTH % SSE_WIDTH == 0, "AVX width must be multiple of SSE")
-
-// ============================================================
-// f32x4 version (128-bit SIMD)
-// ============================================================
 
 export func fma_kernel_f32x4(
     a: *restrict f32,
@@ -24,24 +16,16 @@ export func fma_kernel_f32x4(
         let va: f32x4 = load(a, i)
         let vb: f32x4 = load(b, i)
         let vc: f32x4 = load(c, i)
-
         let vresult: f32x4 = fma(va, vb, vc)
-
         store(result, i, vresult)
         i = i + SSE_WIDTH
     }
     
-    // Scalar remainder
     while i < len {
         result[i] = a[i] * b[i] + c[i]
         i = i + 1
     }
 }
-
-
-// ============================================================
-// f32x8 version (256-bit SIMD)
-// ============================================================
 
 export func fma_kernel_f32x8(
     a: *restrict f32,
@@ -51,29 +35,43 @@ export func fma_kernel_f32x8(
     len: i32
 ) {
     let mut i: i32 = 0
+    let stride: i32 = AVX_WIDTH * 4
+
+    while i + stride <= len {
+        let va0: f32x8 = load(a, i)
+        let vb0: f32x8 = load(b, i)
+        let vc0: f32x8 = load(c, i)
+        let va1: f32x8 = load(a, i + AVX_WIDTH)
+        let vb1: f32x8 = load(b, i + AVX_WIDTH)
+        let vc1: f32x8 = load(c, i + AVX_WIDTH)
+        let va2: f32x8 = load(a, i + AVX_WIDTH * 2)
+        let vb2: f32x8 = load(b, i + AVX_WIDTH * 2)
+        let vc2: f32x8 = load(c, i + AVX_WIDTH * 2)
+        let va3: f32x8 = load(a, i + AVX_WIDTH * 3)
+        let vb3: f32x8 = load(b, i + AVX_WIDTH * 3)
+        let vc3: f32x8 = load(c, i + AVX_WIDTH * 3)
+
+        store(result, i, fma(va0, vb0, vc0))
+        store(result, i + AVX_WIDTH, fma(va1, vb1, vc1))
+        store(result, i + AVX_WIDTH * 2, fma(va2, vb2, vc2))
+        store(result, i + AVX_WIDTH * 3, fma(va3, vb3, vc3))
+
+        i = i + stride
+    }
 
     while i + AVX_WIDTH <= len {
         let va: f32x8 = load(a, i)
         let vb: f32x8 = load(b, i)
         let vc: f32x8 = load(c, i)
-
-        let vresult: f32x8 = fma(va, vb, vc)
-
-        store(result, i, vresult)
+        store(result, i, fma(va, vb, vc))
         i = i + AVX_WIDTH
     }
 
-    // Scalar remainder
     while i < len {
         result[i] = a[i] * b[i] + c[i]
         i = i + 1
     }
 }
-
-
-// ============================================================
-// foreach version (scalar — relies on LLVM auto-vectorization)
-// ============================================================
 
 export func fma_kernel_foreach(
     a: *restrict f32,
@@ -86,11 +84,6 @@ export func fma_kernel_foreach(
         result[i] = a[i] * b[i] + c[i]
     }
 }
-
-
-// ============================================================
-// foreach + unroll(4) version
-// ============================================================
 
 export func fma_kernel_foreach_unroll(
     a: *restrict f32,
