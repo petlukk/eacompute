@@ -21,6 +21,10 @@ export func matmul_f32(a: *f32, b: *f32, c: *mut f32, n: i32) {
             let a_3k3: f32x8 = splat(a[(i + 3) * n + k + 3])
             let mut j: i32 = 0
             while j < n - 7 {
+                prefetch(b, (k + 4) * n + j)
+                prefetch(b, (k + 5) * n + j)
+                prefetch(b, (k + 6) * n + j)
+                prefetch(b, (k + 7) * n + j)
                 let b0: f32x8 = load(b, k * n + j)
                 let b1: f32x8 = load(b, (k + 1) * n + j)
                 let b2: f32x8 = load(b, (k + 2) * n + j)
