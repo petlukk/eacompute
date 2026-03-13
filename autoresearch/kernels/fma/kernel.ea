@@ -35,26 +35,48 @@ export func fma_kernel_f32x8(
     len: i32
 ) {
     let mut i: i32 = 0
-    let stride: i32 = AVX_WIDTH * 4
+    let stride: i32 = AVX_WIDTH * 8
 
     while i + stride <= len {
         let va0: f32x8 = load(a, i)
         let vb0: f32x8 = load(b, i)
         let vc0: f32x8 = load(c, i)
+        stream_store(result, i, fma(va0, vb0, vc0))
+
         let va1: f32x8 = load(a, i + AVX_WIDTH)
         let vb1: f32x8 = load(b, i + AVX_WIDTH)
         let vc1: f32x8 = load(c, i + AVX_WIDTH)
+        stream_store(result, i + AVX_WIDTH, fma(va1, vb1, vc1))
+
         let va2: f32x8 = load(a, i + AVX_WIDTH * 2)
         let vb2: f32x8 = load(b, i + AVX_WIDTH * 2)
         let vc2: f32x8 = load(c, i + AVX_WIDTH * 2)
+        stream_store(result, i + AVX_WIDTH * 2, fma(va2, vb2, vc2))
+
         let va3: f32x8 = load(a, i + AVX_WIDTH * 3)
         let vb3: f32x8 = load(b, i + AVX_WIDTH * 3)
         let vc3: f32x8 = load(c, i + AVX_WIDTH * 3)
+        stream_store(result, i + AVX_WIDTH * 3, fma(va3, vb3, vc3))
 
-        store(result, i, fma(va0, vb0, vc0))
-        store(result, i + AVX_WIDTH, fma(va1, vb1, vc1))
-        store(result, i + AVX_WIDTH * 2, fma(va2, vb2, vc2))
-        store(result, i + AVX_WIDTH * 3, fma(va3, vb3, vc3))
+        let va4: f32x8 = load(a, i + AVX_WIDTH * 4)
+        let vb4: f32x8 = load(b, i + AVX_WIDTH * 4)
+        let vc4: f32x8 = load(c, i + AVX_WIDTH * 4)
+        stream_store(result, i + AVX_WIDTH * 4, fma(va4, vb4, vc4))
+
+        let va5: f32x8 = load(a, i + AVX_WIDTH * 5)
+        let vb5: f32x8 = load(b, i + AVX_WIDTH * 5)
+        let vc5: f32x8 = load(c, i + AVX_WIDTH * 5)
+        stream_store(result, i + AVX_WIDTH * 5, fma(va5, vb5, vc5))
+
+        let va6: f32x8 = load(a, i + AVX_WIDTH * 6)
+        let vb6: f32x8 = load(b, i + AVX_WIDTH * 6)
+        let vc6: f32x8 = load(c, i + AVX_WIDTH * 6)
+        stream_store(result, i + AVX_WIDTH * 6, fma(va6, vb6, vc6))
+
+        let va7: f32x8 = load(a, i + AVX_WIDTH * 7)
+        let vb7: f32x8 = load(b, i + AVX_WIDTH * 7)
+        let vc7: f32x8 = load(c, i + AVX_WIDTH * 7)
+        stream_store(result, i + AVX_WIDTH * 7, fma(va7, vb7, vc7))
 
         i = i + stride
     }
