@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Compile and benchmark an Eä FMA kernel. Outputs one JSON line to stdout."""
+"""Compile and benchmark an Eä FMA kernel. Outputs one JSON line to stdout.
+
+Runs across multiple dataset sizes (64K, 256K, 1M, 16M) to prevent
+overfitting to a single cache/memory behavior. The reported time_us
+is the median across all dataset sizes.
+"""
 
 import json
 import os
@@ -10,7 +15,7 @@ import ctypes
 import numpy as np
 from pathlib import Path
 
-ARRAY_SIZE = 1_000_000
+DATASET_SIZES = [64_000, 256_000, 1_000_000, 16_000_000]
 NUM_RUNS = 100
 WARMUP_RUNS = 10
 SEED = 42
@@ -31,17 +36,61 @@ def count_loc(path):
     return count
 
 
-def output(correct, time_us=None, min_us=None, loc=None, error=None):
+def output(correct, time_us=None, min_us=None, loc=None, error=None,
+           breakdown=None):
     """Print JSON result and exit."""
-    print(json.dumps({
+    result = {
         "correct": correct,
         "time_us": time_us,
         "min_us": min_us,
         "loc": loc,
         "error": error,
-    }))
+    }
+    if breakdown:
+        result["breakdown"] = breakdown
+    print(json.dumps(result))
     sys.exit(0)
 
+
+def bench_at_size(ea_func, ref_func, size):
+    """Benchmark at a specific array size. Returns (median_us, min_us) or error string."""
+    np.random.seed(SEED)
+    a = np.random.uniform(-1, 1, size).astype(np.float32)
+    b = np.random.uniform(-1, 1, size).astype(np.float32)
+    c = np.random.uniform(-1, 1, size).astype(np.float32)
+    ea_result = np.zeros(size, dtype=np.float32)
+    ref_result = np.zeros(size, dtype=np.float32)
+
+    ap = a.ctypes.data_as(FLOAT_PTR)
+    bp = b.ctypes.data_as(FLOAT_PTR)
+    cp = c.ctypes.data_as(FLOAT_PTR)
+    ea_rp = ea_result.ctypes.data_as(FLOAT_PTR)
+    ref_rp = ref_result.ctypes.data_as(FLOAT_PTR)
+    n = I32(size)
+
+    # Correctness check
+    ref_func(ap, bp, cp, ref_rp, n)
+    ea_func(ap, bp, cp, ea_rp, n)
+
+    if not np.allclose(ea_result, ref_result, rtol=1e-5):
+        diff = np.abs(ea_result - ref_result)
+        max_idx = np.argmax(diff)
+        return f"correctness: max diff {diff[max_idx]:.6f} at index {max_idx} (size={size})"
+
+    # Benchmark
+    for _ in range(WARMUP_RUNS):
+        ea_func(ap, bp, cp, ea_rp, n)
+
+    times = []
+    for _ in range(NUM_RUNS):
+        start = time.perf_counter()
+        ea_func(ap, bp, cp, ea_rp, n)
+        times.append(time.perf_counter() - start)
+
+    times.sort()
+    median_us = times[len(times) // 2] * 1e6
+    min_us = times[0] * 1e6
+    return (round(median_us, 1), round(min_us, 1))
 
 
 def main():
@@ -71,7 +120,6 @@ def main():
         error_msg = result.stderr.strip() or result.stdout.strip()
         output(False, error=f"compile: {error_msg}")
 
-    # Find the compiled .so (ea places it in cwd)
     if not so_path.exists():
         output(False, error="compile: .so not found after compilation")
 
@@ -93,46 +141,30 @@ def main():
     except AttributeError as e:
         output(False, error=f"symbol: {e}")
 
-    # --- Prepare data ---
-    np.random.seed(SEED)
-    a = np.random.uniform(-1, 1, ARRAY_SIZE).astype(np.float32)
-    b = np.random.uniform(-1, 1, ARRAY_SIZE).astype(np.float32)
-    c = np.random.uniform(-1, 1, ARRAY_SIZE).astype(np.float32)
-    ea_result = np.zeros(ARRAY_SIZE, dtype=np.float32)
-    ref_result = np.zeros(ARRAY_SIZE, dtype=np.float32)
+    # --- Benchmark across all dataset sizes ---
+    breakdown = {}
+    all_medians = []
 
-    ap = a.ctypes.data_as(FLOAT_PTR)
-    bp = b.ctypes.data_as(FLOAT_PTR)
-    cp = c.ctypes.data_as(FLOAT_PTR)
-    ea_rp = ea_result.ctypes.data_as(FLOAT_PTR)
-    ref_rp = ref_result.ctypes.data_as(FLOAT_PTR)
-    n = I32(ARRAY_SIZE)
+    for size in DATASET_SIZES:
+        label = f"{size // 1000}K" if size < 1_000_000 else f"{size // 1_000_000}M"
+        result = bench_at_size(ea_func, ref_func, size)
 
-    # --- Correctness check ---
-    ref_func(ap, bp, cp, ref_rp, n)
-    ea_func(ap, bp, cp, ea_rp, n)
+        if isinstance(result, str):
+            output(False, error=result)
 
-    if not np.allclose(ea_result, ref_result, rtol=1e-5):
-        diff = np.abs(ea_result - ref_result)
-        max_idx = np.argmax(diff)
-        output(False, error=f"correctness: max diff {diff[max_idx]:.6f} at index {max_idx}")
+        median_us, min_us = result
+        breakdown[label] = {"median_us": median_us, "min_us": min_us}
+        all_medians.append(median_us)
+        print(f"  {label}: {median_us} µs median, {min_us} µs min", file=sys.stderr)
 
-    # --- Benchmark (no fork needed — correctness already verified) ---
-    for _ in range(WARMUP_RUNS):
-        ea_func(ap, bp, cp, ea_rp, n)
-
-    times = []
-    for _ in range(NUM_RUNS):
-        start = time.perf_counter()
-        ea_func(ap, bp, cp, ea_rp, n)
-        times.append(time.perf_counter() - start)
-
-    times.sort()
-    median_us = times[len(times) // 2] * 1e6
-    min_us = times[0] * 1e6
+    # Aggregate: median of medians across all sizes
+    all_medians.sort()
+    aggregate_median = all_medians[len(all_medians) // 2]
+    aggregate_min = min(m["min_us"] for m in breakdown.values())
     loc = count_loc(kernel_path)
 
-    output(True, time_us=round(median_us, 1), min_us=round(min_us, 1), loc=loc)
+    output(True, time_us=aggregate_median, min_us=aggregate_min, loc=loc,
+           breakdown=breakdown)
 
 
 if __name__ == "__main__":
