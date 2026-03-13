@@ -147,10 +147,45 @@ The agent implicitly learned an empirical model of the Zen 4 microarchitecture:
 
 Key insights: (1) latency hiding via multi-accumulator works, (2) register pressure limits accumulator count based on input arity, (3) hardware prefetch handles sequential access — manual prefetch adds noise, not speed, (4) bandwidth-bound kernels can't be optimized with compute tricks, (5) missing vector min/max forces suboptimal select codegen.
 
+## Loop A: Compiler Optimization
+
+Loop A modifies the Eä compiler itself (Rust source) to improve codegen quality. All 5 Loop B benchmarks serve as a regression gate — compiler changes are only accepted if no kernel gets slower and at least one gets faster.
+
+### Pipeline
+
+1. **Agent turn** — Claude Code CLI receives a feature request, relevant compiler source files, a compiler guide (showing how to add intrinsics), and performance history. It outputs unified diffs.
+2. **Auto-format** — `cargo fmt` normalizes the agent's code.
+3. **Quality gate** — `cargo clippy` + all ~424 tests must pass.
+4. **Release build** — The compiler is rebuilt with the agent's changes.
+5. **Benchmark gate** — All 5 Loop B kernels are benchmarked. No kernel may regress >0.5%, and at least one must improve ≥0.5%.
+6. **Accept/reject** — On rejection, `git checkout -- src/ tests/` reverts changes and the original binary is restored.
+
+### Running
+
+```bash
+# Default: 20 iterations, 600s timeout
+bash autoresearch/loop_a/orchestrator.sh
+
+# Customize
+MAX_ITERATIONS=5 TIMEOUT=300 bash autoresearch/loop_a/orchestrator.sh
+```
+
+### Smoke Test Results
+
+First successful end-to-end run: the agent proposed vector min/max intrinsics (correct code, all 424 tests passed including 3 new ones). Rejected by benchmark gate because no existing kernel uses min/max yet — correct behavior.
+
+### Configuration
+
+The orchestrator has a hardcoded `FEATURE_REQUEST` and `SOURCE_FILES` array. To change the target:
+
+1. Edit `FEATURE_REQUEST` in `orchestrator.sh`
+2. Update `SOURCE_FILES` to point at relevant compiler source files
+3. The agent receives these files as context along with `compiler_guide.md`
+
 ## Design
 
-See `docs/superpowers/specs/2026-03-13-autoresearch-design.md` for the full spec. This is Loop B (kernel optimization) — the first of three planned loops:
+See `docs/superpowers/specs/2026-03-13-autoresearch-design.md` for the full spec.
 
-- **Loop B** (this): Agent optimizes `.ea` kernel code
-- **Loop A** (future): Agent optimizes compiler internals, using Loop B benchmarks as regression gate
-- **Loop C** (future): Agent explores language design, using Loop B benchmarks as regression gate
+- **Loop B**: Agent optimizes `.ea` kernel code (5 benchmarks working)
+- **Loop A**: Agent optimizes compiler internals, using Loop B benchmarks as regression gate (infrastructure complete)
+- **Loop C** (future): Agent explores language design

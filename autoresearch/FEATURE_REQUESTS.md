@@ -9,7 +9,8 @@ These are concrete limitations the agent hit that prevented it from generating f
 **Error:** `max expects (i32,i32), (f32,f32), or (f64,f64), got (f32x4, f32x4)`
 **Impact:** Agent can't use `min(max(v, lo), hi)` for clamp — forced to use `select` which generates 4 instructions (`vcmpps` + `vblendvps` × 2) instead of C's 2-instruction `vmaxps`/`vminps`. Measured ~2x instruction count overhead in the hot loop.
 **Fix:** Extend `min`/`max` intrinsics to accept all SIMD float types (f32x4, f32x8, f32x16, f64x2, f64x4). Lower to `llvm.maxnum`/`llvm.minnum` vector variants.
-**Loop:** C (language design)
+**Loop:** A (compiler) — first Loop A target
+**Status:** Loop A smoke test proved agent can generate correct implementation (type checker + codegen + tests). Rejected by benchmark gate because existing clamp kernel doesn't use min/max yet. Needs clamp kernel update to exercise the feature.
 
 ## load() type inference for overloaded widths
 
