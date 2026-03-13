@@ -32,6 +32,8 @@ Requires: Eä compiler (built automatically), GCC, Python 3 with numpy, Claude C
 bash autoresearch/orchestrator.sh              # FMA (throughput-bound)
 bash autoresearch/orchestrator_reduction.sh    # Horizontal reduction (latency-bound)
 bash autoresearch/orchestrator_dot_product.sh  # Dot product (hybrid)
+bash autoresearch/orchestrator_saxpy.sh        # SAXPY (bandwidth-bound)
+bash autoresearch/orchestrator_clamp.sh        # Clamp (select/masking)
 ```
 
 ### Iteration Budget
@@ -97,6 +99,40 @@ Target: `result = sum(a[i] * b[i])` — FMA + reduction in one kernel.
 
 Hybrid kernel: 34.5% gain from 2 accumulators. With two input arrays (vs one for reduction), register pressure kicks in at 4 accumulators instead of 8. The improvement falls between pure throughput (FMA +6%) and pure latency (reduction +61%).
 
+### SAXPY (bandwidth-bound)
+
+Target: `y[i] = a * x[i] + y[i]` — scalar broadcast + FMA + in-place write.
+
+5-iteration run on AMD EPYC 9354P:
+
+| # | Hypothesis | Time (µs) | LOC | Result |
+|---|-----------|-----------|-----|--------|
+| — | Baseline (simple f32x8 loop) | 98.2 | 36 | — |
+| 1 | 4x unroll + prefetch | 106.2 | 54 | Rejected (+8% slower) |
+| 2 | 2x unroll + stream_store | 384.8 | 46 | Rejected (4x slower!) |
+| 3 | Prefetch only | 125.2 | 38 | Rejected |
+| 4 | 2x unroll, no prefetch | 114.3 | 46 | Rejected |
+| 5 | stream_store only | 312.6 | 36 | Rejected (3x slower!) |
+
+Zero improvement — the simple loop already saturates memory bandwidth. Every optimization made it worse. `stream_store` was catastrophic (3-4x regression) because SAXPY reads and writes `y` in the same iteration, so non-temporal stores invalidate the cache for the next load. A good optimizer must also know when to say "no optimization possible."
+
+### Clamp (select/masking)
+
+Target: `result[i] = clamp(data[i], lo, hi)` — conditional masking with `select`.
+
+5-iteration run on AMD EPYC 9354P:
+
+| # | Hypothesis | Time (µs) | LOC | Result |
+|---|-----------|-----------|-----|--------|
+| — | Baseline (select-based, single vector) | 91.4 | 67 | — |
+| 1 | min/max intrinsics | — | — | Compile error: min/max unsupported on vectors |
+| 2 | min/max + 4x unroll | — | — | Same compile error |
+| 3 | 4x unroll + prefetch (select) | 83.1 | 83 | **Accepted (+9.1%)** |
+| 4 | stream_store | 166.4 | 83 | Rejected (2x slower) |
+| 5 | 8x unroll + deeper prefetch | 89.3 | 95 | Rejected |
+
+9% gain from unrolling. The agent discovered that `min`/`max` intrinsics don't support vector types — a concrete language feature request (Loop C candidate). The `select`-based clamp generates 4 instructions per operation (2x `vcmpps` + 2x `vblendvps`) vs the C reference's 2-instruction `vmaxps`/`vminps`, leaving more compute headroom for ILP than FMA.
+
 ### Bottleneck Profile Summary
 
 The agent implicitly learned an empirical model of the Zen 4 microarchitecture:
@@ -106,8 +142,10 @@ The agent implicitly learned an empirical model of the Zen 4 microarchitecture:
 | FMA | Throughput | 8x unroll + stream_store | +6% |
 | Dot product | Hybrid | 2 FMA accumulators | +35% |
 | Reduction | Latency | 4 independent accumulators | +61% |
+| SAXPY | Bandwidth | Do nothing | +0% |
+| Clamp | Masking | 4x unroll | +9% |
 
-Key insights: (1) latency hiding via multi-accumulator works, (2) register pressure limits accumulator count based on input arity, (3) hardware prefetch handles sequential access — manual prefetch adds noise, not speed.
+Key insights: (1) latency hiding via multi-accumulator works, (2) register pressure limits accumulator count based on input arity, (3) hardware prefetch handles sequential access — manual prefetch adds noise, not speed, (4) bandwidth-bound kernels can't be optimized with compute tricks, (5) missing vector min/max forces suboptimal select codegen.
 
 ## Design
 
