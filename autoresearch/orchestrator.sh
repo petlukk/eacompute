@@ -22,6 +22,9 @@ HYPOTHESIS_FILE="$SCRIPT_DIR/hypothesis.txt"
 
 export EA_BINARY
 
+# Allow nested claude invocations (when running inside Claude Code)
+unset CLAUDECODE 2>/dev/null || true
+
 # --- Setup ---
 echo "=== Eä Autoresearch: FMA Kernel Optimization ==="
 echo "Max iterations: $MAX_ITERATIONS"
