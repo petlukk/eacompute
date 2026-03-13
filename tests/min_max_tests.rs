@@ -180,4 +180,87 @@ mod tests {
             "-3",
         );
     }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_vector_min_f32x8() {
+        assert_c_interop(
+            r#"
+            export func test(a: *f32, b: *f32, out: *mut f32) {
+                let va: f32x8 = load(a, 0)
+                let vb: f32x8 = load(b, 0)
+                let vr: f32x8 = min(va, vb)
+                store(out, 0, vr)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            extern void test(const float*, const float*, float*);
+            int main() {
+                float a[] = {1,5,3,7,2,6,4,8};
+                float b[] = {8,4,6,2,7,3,5,1};
+                float out[8];
+                test(a, b, out);
+                for (int i = 0; i < 8; i++) printf("%.0f ", out[i]);
+                printf("\n");
+                return 0;
+            }
+            "#,
+            "1 4 3 2 2 3 4 1",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_vector_max_f32x8() {
+        assert_c_interop(
+            r#"
+            export func test(a: *f32, b: *f32, out: *mut f32) {
+                let va: f32x8 = load(a, 0)
+                let vb: f32x8 = load(b, 0)
+                let vr: f32x8 = max(va, vb)
+                store(out, 0, vr)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            extern void test(const float*, const float*, float*);
+            int main() {
+                float a[] = {1,5,3,7,2,6,4,8};
+                float b[] = {8,4,6,2,7,3,5,1};
+                float out[8];
+                test(a, b, out);
+                for (int i = 0; i < 8; i++) printf("%.0f ", out[i]);
+                printf("\n");
+                return 0;
+            }
+            "#,
+            "8 5 6 7 7 6 5 8",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_vector_min_max_ir_uses_llvm_intrinsic() {
+        let ir = compile_to_ir(
+            r#"
+            export func test(a: *f32, b: *f32, out: *mut f32) {
+                let va: f32x8 = load(a, 0)
+                let vb: f32x8 = load(b, 0)
+                let vmin: f32x8 = min(va, vb)
+                let vmax: f32x8 = max(va, vb)
+                store(out, 0, vmin)
+                store(out, 8, vmax)
+            }
+            "#,
+        );
+        assert!(
+            ir.contains("llvm.minnum.v8f32"),
+            "IR should use llvm.minnum.v8f32: {ir}"
+        );
+        assert!(
+            ir.contains("llvm.maxnum.v8f32"),
+            "IR should use llvm.maxnum.v8f32: {ir}"
+        );
+    }
 }

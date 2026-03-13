@@ -202,8 +202,32 @@ impl<'ctx> CodeGenerator<'ctx> {
                     })?;
                 Ok(result)
             }
+            (BasicValueEnum::VectorValue(av), BasicValueEnum::VectorValue(bv)) => {
+                let vec_ty = av.get_type();
+                let base = if name == "min" {
+                    "llvm.minnum"
+                } else {
+                    "llvm.maxnum"
+                };
+                let intrinsic_name = self.llvm_vector_intrinsic_name(base, vec_ty);
+                let fn_type = vec_ty.fn_type(&[vec_ty.into(), vec_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function(&intrinsic_name)
+                    .unwrap_or_else(|| self.module.add_function(&intrinsic_name, fn_type, None));
+                let result = self
+                    .builder
+                    .build_call(intrinsic, &[av.into(), bv.into()], name)
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .left()
+                    .ok_or_else(|| {
+                        CompileError::codegen_error(format!("{name} did not return a value"))
+                    })?;
+                Ok(result)
+            }
             _ => Err(CompileError::codegen_error(format!(
-                "{name} expects matching scalar types"
+                "{name} expects matching numeric types"
             ))),
         }
     }

@@ -452,8 +452,18 @@ impl TypeChecker {
             (Type::F64, Type::F64)
             | (Type::F64, Type::FloatLiteral)
             | (Type::FloatLiteral, Type::F64) => Ok(Type::F64),
+            (
+                Type::Vector {
+                    elem: e1,
+                    width: w1,
+                },
+                Type::Vector {
+                    elem: e2,
+                    width: w2,
+                },
+            ) if e1 == e2 && w1 == w2 && e1.is_float() => Ok(t1.clone()),
             _ => Err(CompileError::type_error(
-                format!("{name} expects (i32,i32), (f32,f32), or (f64,f64), got ({t1}, {t2})"),
+                format!("{name} expects matching numeric types, got ({t1}, {t2})"),
                 span.clone(),
             )),
         }
