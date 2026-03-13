@@ -243,6 +243,27 @@ mod tests {
     // --- exported_function_names helper ---
 
     #[test]
+    fn test_width_mismatch_suggests_load_annotation() {
+        let msg = error_msg(
+            r#"
+            export func test(a: *f32) {
+                let acc: f32x8 = splat(0.0)
+                let v: f32x4 = load(a, 0)
+                let r: f32x8 = acc .+ v
+            }
+            "#,
+        );
+        assert!(
+            msg.contains("vector width mismatch: 8 vs 4"),
+            "should report width mismatch: {msg}"
+        );
+        assert!(
+            msg.contains("hint: load() defaults to width 4"),
+            "should suggest load annotation: {msg}"
+        );
+    }
+
+    #[test]
     fn test_exported_function_names() {
         let src = "func internal(x: i32) -> i32 { return x }\nexport func alpha(x: i32) -> i32 { return x }\nexport func beta(x: i32, y: i32) -> i32 { return x + y }";
         let tokens = ea_compiler::tokenize(src).unwrap();

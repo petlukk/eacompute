@@ -162,8 +162,13 @@ pub fn unify_vector(left: &Type, right: &Type, span: Span) -> crate::error::Resu
             },
         ) => {
             if l_width != r_width {
+                let hint = if *l_width == 4 || *r_width == 4 {
+                    " (hint: load() defaults to width 4; use `let v: f32x8 = load(ptr, i)` for wider vectors)"
+                } else {
+                    ""
+                };
                 return Err(CompileError::type_error(
-                    format!("vector width mismatch: {l_width} vs {r_width}"),
+                    format!("vector width mismatch: {l_width} vs {r_width}{hint}"),
                     span,
                 ));
             }
