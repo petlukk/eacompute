@@ -21,16 +21,24 @@ export func batch_dot(
 
         let mut acc0: f32x8 = splat(0.0)
         let mut acc1: f32x8 = splat(0.0)
+        let mut acc2: f32x8 = splat(0.0)
+        let mut acc3: f32x8 = splat(0.0)
         let mut j: i32 = 0
 
-        while j + 16 <= dim {
+        while j + 32 <= dim {
             let qa0: f32x8 = load(query, j)
             let db0: f32x8 = load(db, base + j)
             let qa1: f32x8 = load(query, j + 8)
             let db1: f32x8 = load(db, base + j + 8)
+            let qa2: f32x8 = load(query, j + 16)
+            let db2: f32x8 = load(db, base + j + 16)
+            let qa3: f32x8 = load(query, j + 24)
+            let db3: f32x8 = load(db, base + j + 24)
             acc0 = fma(qa0, db0, acc0)
             acc1 = fma(qa1, db1, acc1)
-            j = j + 16
+            acc2 = fma(qa2, db2, acc2)
+            acc3 = fma(qa3, db3, acc3)
+            j = j + 32
         }
 
         while j + 8 <= dim {
@@ -40,7 +48,7 @@ export func batch_dot(
             j = j + 8
         }
 
-        let mut dot: f32 = reduce_add(acc0 .+ acc1)
+        let mut dot: f32 = reduce_add_fast((acc0 .+ acc1) .+ (acc2 .+ acc3))
 
         while j < dim {
             dot = dot + query[j] * db[base + j]
@@ -58,7 +66,6 @@ export func batch_cosine(
     n_vecs: i32,
     out: *mut f32
 ) {
-    // Precompute query norm once
     let mut qn0: f32x8 = splat(0.0)
     let mut qn1: f32x8 = splat(0.0)
     let mut qi: i32 = 0
@@ -74,7 +81,7 @@ export func batch_cosine(
         qn0 = fma(qv, qv, qn0)
         qi = qi + 8
     }
-    let mut query_sq: f32 = reduce_add(qn0 .+ qn1)
+    let mut query_sq: f32 = reduce_add_fast(qn0 .+ qn1)
     while qi < dim {
         query_sq = query_sq + query[qi] * query[qi]
         qi = qi + 1
@@ -89,10 +96,15 @@ export func batch_cosine(
         return
     }
 
+    let inv_query_norm: f32 = 1.0 / query_norm
+
     let mut v: i32 = 0
     for v in 0..n_vecs {
         let base: i32 = v * dim
-        prefetch(db, base + dim)
+        let next: i32 = base + dim
+        prefetch(db, next)
+        prefetch(db, next + 128)
+        prefetch(db, next + 256)
 
         let mut dot0: f32x8 = splat(0.0)
         let mut dot1: f32x8 = splat(0.0)
@@ -120,8 +132,8 @@ export func batch_cosine(
             j = j + 8
         }
 
-        let mut dot: f32 = reduce_add(dot0 .+ dot1)
-        let mut sq_b: f32 = reduce_add(sq0 .+ sq1)
+        let mut dot: f32 = reduce_add_fast(dot0 .+ dot1)
+        let mut sq_b: f32 = reduce_add_fast(sq0 .+ sq1)
 
         while j < dim {
             dot = dot + query[j] * db[base + j]
@@ -129,11 +141,10 @@ export func batch_cosine(
             j = j + 1
         }
 
-        let db_norm: f32 = sqrt(sq_b)
-        if db_norm == 0.0 {
+        if sq_b == 0.0 {
             out[v] = 0.0
         } else {
-            out[v] = dot / (query_norm * db_norm)
+            out[v] = dot * inv_query_norm * rsqrt(sq_b)
         }
     }
 }

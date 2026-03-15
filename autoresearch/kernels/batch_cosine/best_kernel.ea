@@ -1,0 +1,93 @@
+// Batch cosine similarity: for each of n_vecs database vectors,
+// compute cosine(query, db[v]) = dot(q,d) / (||q|| * ||d||).
+// Database layout: row-major, vector v starts at db[v * dim].
+
+export func batch_cosine(
+    query: *restrict f32,
+    db: *restrict f32,
+    dim: i32,
+    n_vecs: i32,
+    out: *mut f32
+) {
+    let mut qn0: f32x8 = splat(0.0)
+    let mut qn1: f32x8 = splat(0.0)
+    let mut qi: i32 = 0
+    while qi + 16 <= dim {
+        let qv0: f32x8 = load(query, qi)
+        let qv1: f32x8 = load(query, qi + 8)
+        qn0 = fma(qv0, qv0, qn0)
+        qn1 = fma(qv1, qv1, qn1)
+        qi = qi + 16
+    }
+    while qi + 8 <= dim {
+        let qv: f32x8 = load(query, qi)
+        qn0 = fma(qv, qv, qn0)
+        qi = qi + 8
+    }
+    let mut query_sq: f32 = reduce_add_fast(qn0 .+ qn1)
+    while qi < dim {
+        query_sq = query_sq + query[qi] * query[qi]
+        qi = qi + 1
+    }
+    let query_norm: f32 = sqrt(query_sq)
+
+    if query_norm == 0.0 {
+        let mut z: i32 = 0
+        for z in 0..n_vecs {
+            out[z] = 0.0
+        }
+        return
+    }
+
+    let inv_query_norm: f32 = 1.0 / query_norm
+
+    let mut v: i32 = 0
+    for v in 0..n_vecs {
+        let base: i32 = v * dim
+        let next: i32 = base + dim
+        prefetch(db, next)
+        prefetch(db, next + 128)
+        prefetch(db, next + 256)
+
+        let mut dot0: f32x8 = splat(0.0)
+        let mut dot1: f32x8 = splat(0.0)
+        let mut sq0: f32x8 = splat(0.0)
+        let mut sq1: f32x8 = splat(0.0)
+        let mut j: i32 = 0
+
+        while j + 16 <= dim {
+            let qa0: f32x8 = load(query, j)
+            let db0: f32x8 = load(db, base + j)
+            let qa1: f32x8 = load(query, j + 8)
+            let db1: f32x8 = load(db, base + j + 8)
+            dot0 = fma(qa0, db0, dot0)
+            dot1 = fma(qa1, db1, dot1)
+            sq0 = fma(db0, db0, sq0)
+            sq1 = fma(db1, db1, sq1)
+            j = j + 16
+        }
+
+        while j + 8 <= dim {
+            let qa: f32x8 = load(query, j)
+            let db_v: f32x8 = load(db, base + j)
+            dot0 = fma(qa, db_v, dot0)
+            sq0 = fma(db_v, db_v, sq0)
+            j = j + 8
+        }
+
+        let mut dot: f32 = reduce_add_fast(dot0 .+ dot1)
+        let mut sq_b: f32 = reduce_add_fast(sq0 .+ sq1)
+
+        while j < dim {
+            dot = dot + query[j] * db[base + j]
+            sq_b = sq_b + db[base + j] * db[base + j]
+            j = j + 1
+        }
+
+        if sq_b == 0.0 {
+            out[v] = 0.0
+        } else {
+            out[v] = dot * inv_query_norm * rsqrt(sq_b)
+        }
+    }
+}
