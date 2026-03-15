@@ -41,7 +41,8 @@ Wider SIMD is not always faster. Dependency-bound reductions may prefer more sca
 - **Prefetch**: Use `prefetch(ptr, offset)` to bring cache lines ahead of the load loop.
 - **Wider SIMD**: f32x8 processes 8 elements per iteration vs 4 for f32x4.
 - **Minimize scalar tail**: Handle as few elements as possible in the scalar tail loop.
-- **reduce_add for final reduction**: The `reduce_add(vec)` intrinsic efficiently reduces a vector to a scalar sum.
+- **reduce_add for final reduction**: The `reduce_add(vec)` intrinsic reduces a vector to a scalar sum using ordered (sequential) addition.
+- **reduce_add_fast for faster final reduction**: `reduce_add_fast(vec)` uses unordered tree reduction — log2(width) parallel add levels instead of width sequential adds. Significantly faster on latency-bound reductions. Float-only. Acceptable when rtol=1e-2.
 
 ## Available Eä Features
 
@@ -59,7 +60,7 @@ Wider SIMD is not always faster. Dependency-bound reductions may prefer more sca
 **Intrinsics:**
 - Memory: load, load_f32x4, load_f32x8, load_i32x8 (typed variants for all vector types), store, stream_store, gather, scatter, prefetch(ptr, offset)
 - Arithmetic: fma, sqrt, rsqrt, exp, min, max
-- Reduction: reduce_add, reduce_max, reduce_min
+- Reduction: reduce_add, reduce_add_fast, reduce_max, reduce_min (reduce_add_fast is float-only, uses unordered tree reduction — faster than reduce_add but non-deterministic FP order)
 - Construction: splat, select
 - Conversion: widen_i8_f32x{4,8,16}, widen_u8_f32x{4,8,16}, widen_u8_i32x{4,8,16}
 - Integer: maddubs_i16, maddubs_i32

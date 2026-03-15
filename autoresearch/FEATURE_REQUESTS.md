@@ -30,4 +30,5 @@ These are concrete limitations the agent hit that prevented it from generating f
 **Impact:** Reduction kernel (39.7µs) and dot product (95.9µs) are both latency-bound by the sequential reduce. Tree reduction would enable parallel execution of adds across their ~4-cycle latency.
 **Design question:** Ordered reduce guarantees deterministic floating-point results. Unordered reduce is faster but non-deterministic across runs. Options: (a) default to fast-math unordered reduce, (b) add `reduce_add_fast()` as separate intrinsic, (c) compiler flag `--fast-math` that switches all reduces to unordered.
 **Loop:** C (language design) — requires a design decision about floating-point semantics
-**Status:** NEW
+**Resolution:** Option (b) — `reduce_add_fast()` as separate float-only intrinsic. Uses same `llvm.vector.reduce.fadd` with `reassoc` fast-math flag, letting LLVM emit tree reduction. Integer vectors rejected at type check (integer add is already associative).
+**Status:** DONE

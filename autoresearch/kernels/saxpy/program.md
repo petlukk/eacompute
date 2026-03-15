@@ -59,7 +59,7 @@ SAXPY is bandwidth-bound — wider SIMD may not help since memory bandwidth is t
 **Intrinsics:**
 - Memory: load, load_f32x4, load_f32x8, load_i32x8 (typed variants for all vector types), store, stream_store, gather, scatter, prefetch(ptr, offset)
 - Arithmetic: fma, sqrt, rsqrt, exp, min, max
-- Reduction: reduce_add, reduce_max, reduce_min
+- Reduction: reduce_add, reduce_add_fast, reduce_max, reduce_min (reduce_add_fast is float-only, uses unordered tree reduction — faster than reduce_add but non-deterministic FP order)
 - Construction: splat, select
 - Conversion: widen_i8_f32x{4,8,16}, widen_u8_f32x{4,8,16}, widen_u8_i32x{4,8,16}
 - Integer: maddubs_i16, maddubs_i32

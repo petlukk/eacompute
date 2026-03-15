@@ -40,7 +40,8 @@ Wider SIMD is not always faster. With two input arrays, register pressure limits
 - **FMA intrinsic**: `fma(a, b, acc)` computes `a * b + acc` in one instruction, fusing multiply and add with single rounding.
 - **Unrolled loads**: Load multiple vector pairs per iteration to amortize loop overhead and hide memory latency.
 - **Prefetch**: Use `prefetch(ptr, offset)` to bring cache lines ahead of the load loop.
-- **reduce_add for final reduction**: The `reduce_add(vec)` intrinsic efficiently reduces a vector to a scalar sum.
+- **reduce_add for final reduction**: The `reduce_add(vec)` intrinsic reduces a vector to a scalar sum using ordered (sequential) addition.
+- **reduce_add_fast for faster final reduction**: `reduce_add_fast(vec)` uses unordered tree reduction — log2(width) parallel add levels instead of width sequential adds. Significantly faster on latency-bound reductions. Float-only. Acceptable when rtol=1e-2.
 - **Merge accumulators**: After the main loop, add all accumulator vectors together before the final reduce_add.
 
 ## Available Eä Features
@@ -59,7 +60,7 @@ Wider SIMD is not always faster. With two input arrays, register pressure limits
 **Intrinsics:**
 - Memory: load, load_f32x4, load_f32x8, load_i32x8 (typed variants for all vector types), store, stream_store, gather, scatter, prefetch(ptr, offset)
 - Arithmetic: fma, sqrt, rsqrt, exp, min, max
-- Reduction: reduce_add, reduce_max, reduce_min
+- Reduction: reduce_add, reduce_add_fast, reduce_max, reduce_min (reduce_add_fast is float-only, uses unordered tree reduction — faster than reduce_add but non-deterministic FP order)
 - Construction: splat, select
 - Conversion: widen_i8_f32x{4,8,16}, widen_u8_f32x{4,8,16}, widen_u8_i32x{4,8,16}
 - Integer: maddubs_i16, maddubs_i32

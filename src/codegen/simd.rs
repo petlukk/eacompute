@@ -35,6 +35,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "rsqrt"
                 | "exp"
                 | "reduce_add"
+                | "reduce_add_fast"
                 | "reduce_max"
                 | "reduce_min"
                 | "shuffle"
@@ -95,7 +96,9 @@ impl<'ctx> CodeGenerator<'ctx> {
             "sqrt" => self.compile_sqrt(args, function),
             "rsqrt" => self.compile_rsqrt(args, function),
             "exp" => self.compile_exp(args, function),
-            "reduce_add" | "reduce_max" | "reduce_min" => self.compile_reduce(args, name, function),
+            "reduce_add" | "reduce_add_fast" | "reduce_max" | "reduce_min" => {
+                self.compile_reduce(args, name, function)
+            }
             "shuffle" => self.compile_shuffle(args, function),
             "select" => self.compile_select(args, function),
             "widen_i8_f32x4" => self.compile_widen_i8_f32(args, false, 4, function),
@@ -191,21 +194,23 @@ impl<'ctx> CodeGenerator<'ctx> {
         let elem_ty = vec_ty.get_element_type();
         let is_float = elem_ty.is_float_type();
 
-        let (intrinsic_base, needs_start_value) = match (op, is_float, is_unsigned_elem) {
-            ("reduce_add", true, _) => ("llvm.vector.reduce.fadd", true),
-            ("reduce_add", false, _) => ("llvm.vector.reduce.add", false),
-            ("reduce_max", true, _) => ("llvm.vector.reduce.fmax", false),
-            ("reduce_max", false, true) => ("llvm.vector.reduce.umax", false),
-            ("reduce_max", false, false) => ("llvm.vector.reduce.smax", false),
-            ("reduce_min", true, _) => ("llvm.vector.reduce.fmin", false),
-            ("reduce_min", false, true) => ("llvm.vector.reduce.umin", false),
-            ("reduce_min", false, false) => ("llvm.vector.reduce.smin", false),
-            _ => {
-                return Err(CompileError::codegen_error(format!(
-                    "unknown reduction {op}"
-                )));
-            }
-        };
+        let (intrinsic_base, needs_start_value, set_reassoc) =
+            match (op, is_float, is_unsigned_elem) {
+                ("reduce_add_fast", true, _) => ("llvm.vector.reduce.fadd", true, true),
+                ("reduce_add", true, _) => ("llvm.vector.reduce.fadd", true, false),
+                ("reduce_add", false, _) => ("llvm.vector.reduce.add", false, false),
+                ("reduce_max", true, _) => ("llvm.vector.reduce.fmax", false, false),
+                ("reduce_max", false, true) => ("llvm.vector.reduce.umax", false, false),
+                ("reduce_max", false, false) => ("llvm.vector.reduce.smax", false, false),
+                ("reduce_min", true, _) => ("llvm.vector.reduce.fmin", false, false),
+                ("reduce_min", false, true) => ("llvm.vector.reduce.umin", false, false),
+                ("reduce_min", false, false) => ("llvm.vector.reduce.smin", false, false),
+                _ => {
+                    return Err(CompileError::codegen_error(format!(
+                        "unknown reduction {op}"
+                    )));
+                }
+            };
 
         let intrinsic_name = self.llvm_vector_intrinsic_name(intrinsic_base, vec_ty);
 
@@ -218,10 +223,20 @@ impl<'ctx> CodeGenerator<'ctx> {
                 .module
                 .get_function(&intrinsic_name)
                 .unwrap_or_else(|| self.module.add_function(&intrinsic_name, fn_type, None));
-            let result = self
+            let call = self
                 .builder
                 .build_call(intrinsic, &[zero.into(), vec.into()], "reduce")
-                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            if set_reassoc {
+                use inkwell::values::AsValueRef;
+                unsafe {
+                    inkwell::llvm_sys::core::LLVMSetFastMathFlags(
+                        call.as_value_ref(),
+                        inkwell::llvm_sys::LLVMFastMathAllowReassoc,
+                    );
+                }
+            }
+            let result = call
                 .try_as_basic_value()
                 .left()
                 .ok_or_else(|| CompileError::codegen_error("reduce did not return a value"))?;

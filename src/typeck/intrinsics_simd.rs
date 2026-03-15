@@ -127,6 +127,36 @@ impl TypeChecker {
         }
     }
 
+    pub(super) fn check_float_reduction(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 1 argument"),
+                span.clone(),
+            ));
+        }
+        let arg_type = self.check_expr(&args[0], locals)?;
+        match &arg_type {
+            Type::Vector { elem, .. } if elem.is_float() => Ok(*elem.clone()),
+            Type::Vector { .. } => Err(CompileError::type_error(
+                format!(
+                    "{name} expects float vector argument, got {arg_type}. \
+                     Integer reduce_add is already unordered — use reduce_add instead"
+                ),
+                args[0].span().clone(),
+            )),
+            _ => Err(CompileError::type_error(
+                format!("{name} expects float vector argument, got {arg_type}"),
+                args[0].span().clone(),
+            )),
+        }
+    }
+
     pub(super) fn check_shuffle(
         &self,
         args: &[Expr],

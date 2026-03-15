@@ -89,6 +89,62 @@ mod tests {
     }
 
     #[test]
+    fn test_reduce_add_fast_f32x4() {
+        assert_output(
+            r#"
+            func main() {
+                let v: f32x4 = [1.0, 2.0, 3.0, 4.0]f32x4
+                let sum: f32 = reduce_add_fast(v)
+                println(sum)
+            }
+        "#,
+            "10",
+        );
+    }
+
+    #[test]
+    fn test_reduce_add_fast_ir() {
+        let ir = compile_to_ir(
+            r#"
+            func main() {
+                let v: f32x4 = [1.0, 2.0, 3.0, 4.0]f32x4
+                let sum: f32 = reduce_add_fast(v)
+                println(sum)
+            }
+        "#,
+        );
+        assert!(
+            ir.contains("llvm.vector.reduce.fadd"),
+            "IR must use vector reduce intrinsic"
+        );
+        assert!(
+            ir.contains("reassoc"),
+            "IR must have reassoc fast-math flag for reduce_add_fast"
+        );
+    }
+
+    #[test]
+    fn test_reduce_add_fast_rejects_integer() {
+        let tokens = ea_compiler::tokenize(
+            r#"
+            func main() {
+                let v: i32x4 = [1, 2, 3, 4]i32x4
+                let sum: i32 = reduce_add_fast(v)
+                println(sum)
+            }
+        "#,
+        )
+        .unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let err = ea_compiler::check_types(&stmts).unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("float vector"),
+            "should reject integer vectors: {msg}"
+        );
+    }
+
+    #[test]
     fn test_reduce_max_f32x4() {
         assert_output(
             r#"

@@ -30,6 +30,7 @@ impl TypeChecker {
             "reduce_add" | "reduce_max" | "reduce_min" => {
                 Some(self.check_reduction(name, args, locals, span))
             }
+            "reduce_add_fast" => Some(self.check_float_reduction(name, args, locals, span)),
             "shuffle" => Some(self.check_shuffle(args, locals, span)),
             "select" => Some(self.check_select(args, locals, span)),
             "widen_i8_f32x4" | "widen_u8_f32x4" => {
