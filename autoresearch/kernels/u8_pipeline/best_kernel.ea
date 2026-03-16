@@ -1,0 +1,51 @@
+export func brightness_contrast(input: *restrict u8, output: *mut f32, len: i32, brightness: f32, contrast: f32) {
+    let scale: f32x8 = splat(contrast * 0.00392156863)
+    let bias: f32x8 = splat(brightness)
+    let lo: f32x8 = splat(0.0)
+    let hi: f32x8 = splat(1.0)
+    let mut i: i32 = 0
+    while i + 32 <= len {
+        prefetch(input, i + 128)
+        let c0: u8x16 = load(input, i)
+        let c1: u8x16 = load(input, i + 16)
+        let v0: f32x8 = widen_u8_f32x8(c0)
+        let s0: u8x16 = shuffle(c0, [8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7])
+        let v1: f32x8 = widen_u8_f32x8(s0)
+        let v2: f32x8 = widen_u8_f32x8(c1)
+        let s1: u8x16 = shuffle(c1, [8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7])
+        let v3: f32x8 = widen_u8_f32x8(s1)
+        let r0: f32x8 = min(max(fma(v0, scale, bias), lo), hi)
+        let r1: f32x8 = min(max(fma(v1, scale, bias), lo), hi)
+        let r2: f32x8 = min(max(fma(v2, scale, bias), lo), hi)
+        let r3: f32x8 = min(max(fma(v3, scale, bias), lo), hi)
+        stream_store(output, i, r0)
+        stream_store(output, i + 8, r1)
+        stream_store(output, i + 16, r2)
+        stream_store(output, i + 24, r3)
+        i = i + 32
+    }
+    while i + 16 <= len {
+        let chunk: u8x16 = load(input, i)
+        let v0: f32x8 = widen_u8_f32x8(chunk)
+        let r0: f32x8 = min(max(fma(v0, scale, bias), lo), hi)
+        stream_store(output, i, r0)
+        let shifted: u8x16 = shuffle(chunk, [8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7])
+        let v1: f32x8 = widen_u8_f32x8(shifted)
+        let r1: f32x8 = min(max(fma(v1, scale, bias), lo), hi)
+        stream_store(output, i + 8, r1)
+        i = i + 16
+    }
+    while i < len {
+        let val: f32 = to_f32(input[i]) * contrast * 0.00392156863 + brightness
+        if val < 0.0 {
+            output[i] = 0.0
+        } else {
+            if val > 1.0 {
+                output[i] = 1.0
+            } else {
+                output[i] = val
+            }
+        }
+        i = i + 1
+    }
+}

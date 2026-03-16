@@ -1,0 +1,11 @@
+// Conditional scatter-add: output[indices[i]] += values[i] where mask[i] > threshold.
+export func scatter_add(values: *restrict f32, indices: *restrict i32, mask: *restrict f32, output: *mut f32, len: i32, threshold: f32) {
+    let mut i: i32 = 0
+    while i < len {
+        if mask[i] > threshold {
+            let idx: i32 = indices[i]
+            output[idx] = output[idx] + values[i]
+        }
+        i = i + 1
+    }
+}
