@@ -32,3 +32,21 @@ These are concrete limitations the agent hit that prevented it from generating f
 **Loop:** C (language design) — requires a design decision about floating-point semantics
 **Resolution:** Option (b) — `reduce_add_fast()` as separate float-only intrinsic. Uses same `llvm.vector.reduce.fadd` with `reassoc` fast-math flag, letting LLVM emit tree reduction. Integer vectors rejected at type check (integer add is already associative).
 **Status:** DONE
+
+## Scalar fma() intrinsic
+
+**Source:** IIR EMA benchmark (iterations 1, 5) and particle_life benchmark (iteration 4)
+**Error:** `fma expects vector arguments, got f32, f32, f32`
+**Impact:** Agent cannot use fused multiply-add on scalar floats. IIR filter's critical path is `alpha * x[i] + beta * y[i-1]` — a single FMA instruction (`vfmadd231ss`) would reduce the dependency chain from 2 ops (mul + add) to 1 op (fma), potentially halving latency on the serial IIR loop. Particle_life's inner loop has the same pattern for distance computation: `fma(dx, dx, dy*dy)`.
+**Fix:** Extend `fma()` to accept scalar `(f32, f32, f32)` and `(f64, f64, f64)` arguments. Lower to `llvm.fma.f32` / `llvm.fma.f64`.
+**Loop:** A (compiler)
+**Status:** PENDING
+
+## Unsigned byte comparison (u8x16/u8x32 `.>` uses signed semantics)
+
+**Source:** threshold_u8 benchmark correctness failure
+**Error:** `mismatch at index 1: ea=255 ref=0 src=38` when threshold=128
+**Impact:** The `.>` operator on `u8x16` lowers to x86 `pcmpgtb` which performs **signed** byte comparison. With threshold 128: signed interprets 128 as -128, so `38 > -128` = true (incorrect for unsigned). This means `.>` on unsigned byte vectors gives wrong results for values crossing the 127/128 boundary. The workaround is using signed-safe threshold values (<128), but this limits the usefulness of u8x16 comparisons.
+**Fix:** For unsigned types (u8x16, u8x32), emit unsigned comparison. x86 lacks unsigned byte compare, so the standard approach is: XOR both operands with 0x80 (flip sign bit), then use signed `pcmpgtb`. This converts unsigned comparison to signed in 2 extra instructions. Alternatively, use AVX-512 `vpcmpub` when available.
+**Loop:** A (compiler) — codegen bug
+**Status:** PENDING
