@@ -416,4 +416,67 @@ int main() {
             "5",
         );
     }
+
+    // === Scalar FMA ===
+
+    #[test]
+    fn test_scalar_fma_f32() {
+        assert_output(
+            r#"
+export func main() {
+    let a: f32 = 2.0
+    let b: f32 = 3.0
+    let c: f32 = 4.0
+    let r: f32 = fma(a, b, c)
+    println(r)
+}
+            "#,
+            "10",
+        );
+    }
+
+    #[test]
+    fn test_scalar_fma_mixed() {
+        // Mix of typed and literal args
+        assert_output(
+            r#"
+export func main() {
+    let a: f32 = 1.5
+    let r: f32 = fma(a, 2.0, 0.5)
+    println(r)
+}
+            "#,
+            "3.5",
+        );
+    }
+
+    #[test]
+    fn test_scalar_fma_in_loop() {
+        // IIR-style: y = fma(alpha, x, beta * prev)
+        assert_c_interop(
+            r#"
+export func ema(input: *restrict f32, output: *mut f32, len: i32, alpha: f32) {
+    let beta: f32 = 1.0 - alpha
+    output[0] = alpha * input[0]
+    let mut i: i32 = 1
+    while i < len {
+        output[i] = fma(alpha, input[i], beta * output[i - 1])
+        i = i + 1
+    }
+}
+            "#,
+            r#"
+#include <stdio.h>
+extern void ema(const float*, float*, int, float);
+int main() {
+    float input[] = {1.0f, 2.0f, 3.0f, 4.0f};
+    float output[4];
+    ema(input, output, 4, 0.5f);
+    printf("%.4f %.4f %.4f %.4f\n", output[0], output[1], output[2], output[3]);
+    return 0;
+}
+            "#,
+            "0.5000 1.2500 2.1250 3.0625",
+        );
+    }
 }

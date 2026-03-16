@@ -117,6 +117,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
         "$AGENT_OUTPUT" "$REPO_ROOT" "$HYPOTHESIS_FILE"; then
         echo "  PARSE/APPLY ERROR"
         git -C "$REPO_ROOT" checkout -- src/ tests/ 2>/dev/null || true
+        git -C "$REPO_ROOT" clean -fd -- tests/ 2>/dev/null || true
         python3 "$LOOP_A_DIR/log_result.py" "$HISTORY" "$i" \
             "PARSE_ERROR" "false" "null"
         continue
@@ -127,21 +128,31 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     # Auto-format before checking (LLM diffs rarely match rustfmt exactly)
     (cd "$REPO_ROOT" && cargo fmt 2>/dev/null)
 
-    # Quality gate: clippy
-    if ! (cd "$REPO_ROOT" && cargo clippy --all-targets --all-features -- -D warnings 2>/dev/null); then
+    # Quality gate: clippy (capture errors for agent feedback)
+    CLIPPY_OUTPUT=""
+    if ! CLIPPY_OUTPUT=$(cd "$REPO_ROOT" && cargo clippy --all-targets --all-features -- -D warnings 2>&1); then
         echo "  REJECTED: clippy failed"
+        # Extract the actual error lines for agent feedback
+        CLIPPY_ERRORS=$(echo "$CLIPPY_OUTPUT" | grep -E "^error" | head -5)
+        echo "$CLIPPY_ERRORS"
         git -C "$REPO_ROOT" checkout -- src/ tests/
+        git -C "$REPO_ROOT" clean -fd -- tests/ 2>/dev/null || true
         python3 "$LOOP_A_DIR/log_result.py" "$HISTORY" "$i" \
-            "$HYPOTHESIS" "false" "clippy failed"
+            "$HYPOTHESIS" "false" "clippy failed: $CLIPPY_ERRORS"
         continue
     fi
 
-    # Quality gate: tests
-    if ! (cd "$REPO_ROOT" && cargo test --tests --features=llvm 2>/dev/null); then
+    # Quality gate: tests (capture errors for agent feedback)
+    TEST_OUTPUT=""
+    if ! TEST_OUTPUT=$(cd "$REPO_ROOT" && cargo test --tests --features=llvm 2>&1); then
         echo "  REJECTED: tests failed"
+        # Extract failed test names and error messages
+        TEST_ERRORS=$(echo "$TEST_OUTPUT" | grep -E "(FAILED|panicked|error\[)" | head -5)
+        echo "$TEST_ERRORS"
         git -C "$REPO_ROOT" checkout -- src/ tests/
+        git -C "$REPO_ROOT" clean -fd -- tests/ 2>/dev/null || true
         python3 "$LOOP_A_DIR/log_result.py" "$HISTORY" "$i" \
-            "$HYPOTHESIS" "false" "tests failed"
+            "$HYPOTHESIS" "false" "tests failed: $TEST_ERRORS"
         continue
     fi
 
@@ -150,6 +161,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     if ! (cd "$REPO_ROOT" && cargo build --release --quiet 2>/dev/null); then
         echo "  REJECTED: release build failed"
         git -C "$REPO_ROOT" checkout -- src/ tests/
+        git -C "$REPO_ROOT" clean -fd -- tests/ 2>/dev/null || true
         python3 "$LOOP_A_DIR/log_result.py" "$HISTORY" "$i" \
             "$HYPOTHESIS" "false" "release build failed"
         continue
@@ -161,6 +173,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     if ! BENCH_JSON=$(python3 "$LOOP_A_DIR/bench_all.py" "$REPO_ROOT" 2>/dev/null); then
         echo "  REJECTED: benchmark crashed"
         git -C "$REPO_ROOT" checkout -- src/ tests/
+        git -C "$REPO_ROOT" clean -fd -- tests/ 2>/dev/null || true
         (cd "$REPO_ROOT" && cargo build --release --quiet)
         python3 "$LOOP_A_DIR/log_result.py" "$HISTORY" "$i" \
             "$HYPOTHESIS" "false" "benchmark crashed"
@@ -236,6 +249,7 @@ for kernel, data in sorted(bench['kernels'].items()):
         print(f'  {kernel}: {old} -> {new} µs ({pct:+.2f}%)')
 "
         git -C "$REPO_ROOT" checkout -- src/ tests/
+        git -C "$REPO_ROOT" clean -fd -- tests/ 2>/dev/null || true
         # Rebuild with original code
         (cd "$REPO_ROOT" && cargo build --release --quiet)
         python3 "$LOOP_A_DIR/log_result.py" "$HISTORY" "$i" \

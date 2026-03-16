@@ -12,7 +12,8 @@ import sys
 from pathlib import Path
 
 KERNELS = ["fma", "reduction", "dot_product", "saxpy", "clamp",
-           "matmul", "prefix_sum", "histogram"]
+           "matmul", "prefix_sum", "histogram", "iir_ema",
+           "particle_life", "gather_lut", "masked_scatter"]
 
 
 def main():

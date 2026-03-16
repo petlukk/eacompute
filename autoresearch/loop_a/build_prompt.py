@@ -14,7 +14,7 @@ def format_history(entries):
     for e in entries:
         status = "ACCEPTED" if e.get("accepted") else "REJECTED"
         error = e.get("error", "")
-        error_str = f" | error: {error[:80]}" if error else ""
+        error_str = f" | error: {error[:300]}" if error else ""
         lines.append(
             f"  #{e['iteration']}: {status} | {e.get('hypothesis', '?')}{error_str}"
         )

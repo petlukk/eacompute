@@ -159,27 +159,73 @@ impl<'ctx> CodeGenerator<'ctx> {
         args: &[Expr],
         function: FunctionValue<'ctx>,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
-        let a = self.compile_expr(&args[0], function)?.into_vector_value();
-        let b = self.compile_expr(&args[1], function)?.into_vector_value();
-        let c = self.compile_expr(&args[2], function)?.into_vector_value();
+        let a = self.compile_expr(&args[0], function)?;
+        let b = self.compile_expr(&args[1], function)?;
+        let c = self.compile_expr(&args[2], function)?;
 
-        let vec_ty = a.get_type();
-        let intrinsic_name = self.llvm_vector_intrinsic_name("llvm.fma", vec_ty);
-
-        let fn_type = vec_ty.fn_type(&[vec_ty.into(), vec_ty.into(), vec_ty.into()], false);
-        let intrinsic = self
-            .module
-            .get_function(&intrinsic_name)
-            .unwrap_or_else(|| self.module.add_function(&intrinsic_name, fn_type, None));
-
-        let result = self
-            .builder
-            .build_call(intrinsic, &[a.into(), b.into(), c.into()], "fma")
-            .map_err(|e| CompileError::codegen_error(e.to_string()))?
-            .try_as_basic_value()
-            .left()
-            .ok_or_else(|| CompileError::codegen_error("fma did not return a value"))?;
-        Ok(result)
+        match a {
+            BasicValueEnum::FloatValue(fa) => {
+                let float_ty = fa.get_type();
+                // Cast args to match first arg's type (FloatLiteral defaults to f64)
+                let raw_b = b.into_float_value();
+                let fb = if raw_b.get_type() != float_ty {
+                    self.builder
+                        .build_float_cast(raw_b, float_ty, "fma_cast_b")
+                        .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                } else {
+                    raw_b
+                };
+                let raw_c = c.into_float_value();
+                let fc = if raw_c.get_type() != float_ty {
+                    self.builder
+                        .build_float_cast(raw_c, float_ty, "fma_cast_c")
+                        .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                } else {
+                    raw_c
+                };
+                let intrinsic_name = if float_ty == self.context.f32_type() {
+                    "llvm.fma.f32"
+                } else {
+                    "llvm.fma.f64"
+                };
+                let fn_type =
+                    float_ty.fn_type(&[float_ty.into(), float_ty.into(), float_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function(intrinsic_name)
+                    .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
+                let result = self
+                    .builder
+                    .build_call(intrinsic, &[fa.into(), fb.into(), fc.into()], "fma")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .left()
+                    .ok_or_else(|| CompileError::codegen_error("fma did not return a value"))?;
+                Ok(result)
+            }
+            BasicValueEnum::VectorValue(va) => {
+                let vb = b.into_vector_value();
+                let vc = c.into_vector_value();
+                let vec_ty = va.get_type();
+                let intrinsic_name = self.llvm_vector_intrinsic_name("llvm.fma", vec_ty);
+                let fn_type = vec_ty.fn_type(&[vec_ty.into(), vec_ty.into(), vec_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function(&intrinsic_name)
+                    .unwrap_or_else(|| self.module.add_function(&intrinsic_name, fn_type, None));
+                let result = self
+                    .builder
+                    .build_call(intrinsic, &[va.into(), vb.into(), vc.into()], "fma")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .left()
+                    .ok_or_else(|| CompileError::codegen_error("fma did not return a value"))?;
+                Ok(result)
+            }
+            _ => Err(CompileError::codegen_error(
+                "fma: unexpected argument type (expected float or float vector)",
+            )),
+        }
     }
 
     fn compile_reduce(

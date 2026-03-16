@@ -151,9 +151,23 @@ impl TypeChecker {
         let t1 = self.check_expr(&args[0], locals)?;
         let t2 = self.check_expr(&args[1], locals)?;
         let t3 = self.check_expr(&args[2], locals)?;
+        // Scalar float fma: accept f32, f64, or float literals
+        let all_scalar_float = [&t1, &t2, &t3]
+            .iter()
+            .all(|t| matches!(t, Type::F32 | Type::F64 | Type::FloatLiteral));
+        if all_scalar_float {
+            // Resolve FloatLiteral to F32 if all are literals, otherwise use the concrete type
+            let resolved = [&t1, &t2, &t3]
+                .iter()
+                .find(|t| matches!(t, Type::F32 | Type::F64))
+                .map(|t| (*t).clone())
+                .unwrap_or(Type::F32);
+            return Ok(resolved);
+        }
+        // Vector fma
         if !t1.is_vector() || !t2.is_vector() || !t3.is_vector() {
             return Err(CompileError::type_error(
-                format!("fma expects vector arguments, got {t1}, {t2}, {t3}"),
+                format!("fma expects float or float vector arguments, got {t1}, {t2}, {t3}"),
                 span.clone(),
             ));
         }
