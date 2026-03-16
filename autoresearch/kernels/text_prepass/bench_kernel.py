@@ -14,6 +14,7 @@ import numpy as np
 from pathlib import Path
 
 TEXT_SIZES = [1024, 10 * 1024, 100 * 1024, 738 * 1024]
+BYTES_PER_ELEM = 4  # read 1 byte + write 3 bytes (flags, lower, boundaries)
 NUM_RUNS = 50
 WARMUP_RUNS = 10
 SEED = 42
@@ -188,9 +189,11 @@ def main():
             output(False, error=result)
 
         median_us, min_us = result
-        breakdown[label] = {"median_us": median_us, "min_us": min_us}
+        total_bytes = n * BYTES_PER_ELEM
+        gbs = total_bytes / (median_us / 1e6) / 1e9
+        breakdown[label] = {"median_us": median_us, "min_us": min_us, "gbs": round(gbs, 1)}
         all_medians.append(median_us)
-        print(f"  {label}: {median_us} us median, {min_us} us min",
+        print(f"  {label}: {median_us} us median, {min_us} us min  |  {gbs:.1f} GB/s",
               file=sys.stderr)
 
     # Primary metric: largest size (Pride and Prejudice scale)

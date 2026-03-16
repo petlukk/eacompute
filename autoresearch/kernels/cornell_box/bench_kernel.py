@@ -15,6 +15,7 @@ import numpy as np
 from pathlib import Path
 
 RESOLUTIONS = [(128, 128), (256, 256), (512, 512)]
+# Memory traffic: write RGB output; geometry is tiny and cached
 NUM_RUNS = 20
 WARMUP_RUNS = 5
 
@@ -143,9 +144,11 @@ def main():
             output(False, error=result)
 
         median_us, min_us = result
-        breakdown[label] = {"median_us": median_us, "min_us": min_us}
+        total_bytes = w * h * 3 * 4
+        gbs = total_bytes / (median_us / 1e6) / 1e9
+        breakdown[label] = {"median_us": median_us, "min_us": min_us, "gbs": round(gbs, 1)}
         all_medians.append(median_us)
-        print(f"  {label}: {median_us} us median, {min_us} us min", file=sys.stderr)
+        print(f"  {label}: {median_us} us median, {min_us} us min  |  {gbs:.1f} GB/s", file=sys.stderr)
 
     # Primary metric: largest size (real-world, exceeds cache)
     largest_label = f"{RESOLUTIONS[-1][0]}x{RESOLUTIONS[-1][1]}"

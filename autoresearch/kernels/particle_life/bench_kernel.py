@@ -15,6 +15,7 @@ import numpy as np
 from pathlib import Path
 
 PARTICLE_COUNTS = [500, 1000, 2000]
+# Memory traffic per step: 6 arrays (px,py,vx,vy,types,matrix) + interaction matrix
 NUM_RUNS = 10
 WARMUP_RUNS = 3
 SEED = 42
@@ -187,9 +188,11 @@ def main():
             output(False, error=result)
 
         median_us, min_us = result
-        breakdown[label] = {"median_us": median_us, "min_us": min_us}
+        total_bytes = n * 6 * 4 + NUM_TYPES * NUM_TYPES * 4
+        gbs = total_bytes / (median_us / 1e6) / 1e9
+        breakdown[label] = {"median_us": median_us, "min_us": min_us, "gbs": round(gbs, 1)}
         all_medians.append(median_us)
-        print(f"  {label}: {median_us} us median, {min_us} us min", file=sys.stderr)
+        print(f"  {label}: {median_us} us median, {min_us} us min  |  {gbs:.1f} GB/s", file=sys.stderr)
 
     # Primary metric: largest size (real-world, exceeds cache)
     largest_label = f"N={PARTICLE_COUNTS[-1]}"

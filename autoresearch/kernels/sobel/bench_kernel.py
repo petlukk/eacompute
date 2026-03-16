@@ -16,6 +16,8 @@ import numpy as np
 from pathlib import Path
 
 IMAGE_SIZES = [(512, 512), (1024, 1024), (2048, 2048)]
+# Memory traffic: read f32 input + write f32 output per pixel; stencil reuse from cache
+BYTES_PER_PIXEL = 8
 NUM_RUNS = 50
 WARMUP_RUNS = 10
 SEED = 42
@@ -171,9 +173,11 @@ def main():
             output(False, error=result)
 
         median_us, min_us = result
-        breakdown[label] = {"median_us": median_us, "min_us": min_us}
+        total_bytes = w * h * BYTES_PER_PIXEL
+        gbs = total_bytes / (median_us / 1e6) / 1e9
+        breakdown[label] = {"median_us": median_us, "min_us": min_us, "gbs": round(gbs, 1)}
         all_medians.append(median_us)
-        print(f"  {label}: {median_us} us median, {min_us} us min", file=sys.stderr)
+        print(f"  {label}: {median_us} us median, {min_us} us min  |  {gbs:.1f} GB/s", file=sys.stderr)
 
     # Primary metric: largest size (real-world, exceeds cache)
     largest_label = f"{IMAGE_SIZES[-1][0]}x{IMAGE_SIZES[-1][1]}"

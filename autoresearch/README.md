@@ -136,6 +136,42 @@ Several earlier results were measured with median-of-sizes (now replaced by larg
 | 256KB – 4MB | L3 | Medium — latency tricks help but may not scale |
 | > 10MB | DRAM | Low — this is the truth |
 
+## AVX-512 vs AVX2
+
+**AVX-512 is not free.** Wider SIMD can cause frequency throttling (Intel), register pressure, and code bloat. Even on AMD Zen 4 (which doesn't downclock), AVX-512 loses on nearly half the kernels.
+
+Run the comparison:
+```bash
+python3 autoresearch/avx512_comparison.py
+```
+
+Results on AMD EPYC 9354P (Zen 4), scored on largest dataset size:
+
+| Kernel | AVX2 (µs) | AVX-512 (µs) | Diff | Winner |
+|--------|-----------|-------------|------|--------|
+| dot_product | 4963 | 3878 | **+22%** | AVX-512 |
+| preprocess_fused | 13023 | 11491 | **+12%** | AVX-512 |
+| clamp | 4608 | 4370 | +5% | AVX-512 |
+| batch_cosine | 996 | 947 | +5% | AVX-512 |
+| frame_stats | 2411 | 2317 | +4% | AVX-512 |
+| fma | 9163 | 8894 | +3% | AVX-512 |
+| saxpy | 4921 | 4816 | +2% | AVX-512 |
+| batch_dot | 767 | 803 | **-5%** | AVX2 |
+| edge_detect_fused | 6670 | 7296 | **-9%** | AVX2 |
+| sobel | 2333 | 2789 | **-20%** | AVX2 |
+| reduction | 1979 | 2385 | **-21%** | AVX2 |
+| video_anomaly | 770 | 943 | **-23%** | AVX2 |
+| threshold_u8 | 675 | 850 | **-26%** | AVX2 |
+
+**Score: AVX-512 wins 7, AVX2 wins 6.**
+
+**Pattern:** AVX-512 helps on **broad linear sweeps** (dot_product, preprocess_fused, clamp) where doubling vector width directly doubles throughput. AVX-512 **hurts** on:
+- **Stencil kernels** (sobel -20%, edge_detect -9%) — wider vectors process more columns but stencil neighbors don't align, causing extra shuffles
+- **Already-optimized AVX2 kernels** (threshold_u8 -26%, video_anomaly -23%) — hand-tuned u8x32/f32x8 code with stream_store doesn't benefit from wider vectors
+- **Multi-accumulator reductions** (reduction -21%) — 4 accumulators × 512-bit = 8 ZMM registers, leaving less room for other temporaries
+
+**Takeaway:** Don't assume `--avx512` is faster. Benchmark both. The autoresearch agent should explore width as an optimization dimension — the benchmark decides.
+
 ## Loop A: Compiler Optimization
 
 Loop A modifies the Eä compiler itself (Rust source) to improve codegen quality. All 22 Loop B benchmarks serve as a regression gate — compiler changes are only accepted if no kernel gets slower and at least one gets faster.

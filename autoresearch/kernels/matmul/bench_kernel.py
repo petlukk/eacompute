@@ -16,6 +16,7 @@ import numpy as np
 from pathlib import Path
 
 MATRIX_SIZES = [64, 128, 256]
+# Memory traffic: read A, B, write C = 3 * N * N * 4 bytes
 NUM_RUNS = 50
 WARMUP_RUNS = 10
 SEED = 42
@@ -157,9 +158,11 @@ def main():
             output(False, error=result)
 
         median_us, min_us = result
-        breakdown[label] = {"median_us": median_us, "min_us": min_us}
+        total_bytes = 3 * n * n * 4
+        gbs = total_bytes / (median_us / 1e6) / 1e9
+        breakdown[label] = {"median_us": median_us, "min_us": min_us, "gbs": round(gbs, 1)}
         all_medians.append(median_us)
-        print(f"  {label}: {median_us} us median, {min_us} us min", file=sys.stderr)
+        print(f"  {label}: {median_us} us median, {min_us} us min  |  {gbs:.1f} GB/s", file=sys.stderr)
 
     # Aggregate: use 128x128 median as the primary metric
     # Primary metric: largest size (real-world, exceeds cache)

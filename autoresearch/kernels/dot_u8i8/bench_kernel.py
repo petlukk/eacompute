@@ -14,6 +14,7 @@ import numpy as np
 from pathlib import Path
 
 SIZES = [1024, 4096, 16384, 65536]
+BYTES_PER_ELEM = 2  # read u8 + read i8
 NUM_RUNS = 200
 WARMUP_RUNS = 50
 SEED = 42
@@ -135,9 +136,11 @@ def main():
             output(False, error=result)
 
         median_us, min_us = result
-        breakdown[label] = {"median_us": median_us, "min_us": min_us}
+        total_bytes = n * BYTES_PER_ELEM
+        gbs = total_bytes / (median_us / 1e6) / 1e9
+        breakdown[label] = {"median_us": median_us, "min_us": min_us, "gbs": round(gbs, 1)}
         all_medians.append(median_us)
-        print(f"  {label}: {median_us} us median, {min_us} us min", file=sys.stderr)
+        print(f"  {label}: {median_us} us median, {min_us} us min  |  {gbs:.1f} GB/s", file=sys.stderr)
 
     # Primary metric: largest size (real-world, exceeds cache)
     largest_label = f"N={SIZES[-1]}"

@@ -15,6 +15,9 @@ import numpy as np
 from pathlib import Path
 
 LINE_COUNTS = [10_000, 100_000, 1_000_000, 10_000_000]
+# Memory traffic: read text buffer + read newline positions (4B each) + hash table writes (negligible)
+# Average line ~15 bytes -> total ~15*n_lines text + 4*n_lines newline positions
+BYTES_PER_LINE = 19  # ~15 bytes text + 4 bytes newline index
 NUM_RUNS = 20
 WARMUP_RUNS = 5
 SEED = 42
@@ -259,8 +262,10 @@ def main():
             output(False, error=result)
 
         median_us, min_us = result
-        breakdown[label] = {"median_us": median_us, "min_us": min_us}
-        print(f"  {label}: {median_us} us median, {min_us} us min", file=sys.stderr)
+        total_bytes = n * BYTES_PER_LINE
+        gbs = total_bytes / (median_us / 1e6) / 1e9
+        breakdown[label] = {"median_us": median_us, "min_us": min_us, "gbs": round(gbs, 1)}
+        print(f"  {label}: {median_us} us median, {min_us} us min  |  {gbs:.1f} GB/s", file=sys.stderr)
 
     largest_label = f"N={LINE_COUNTS[-1]}"
     aggregate_median = breakdown[largest_label]["median_us"]

@@ -16,6 +16,7 @@ import numpy as np
 from pathlib import Path
 
 DATASET_SIZES = [64_000, 256_000, 1_000_000, 16_000_000]
+BYTES_PER_ELEM = 16  # read a, b, c + write result = 4 x 4B
 NUM_RUNS = 100
 WARMUP_RUNS = 10
 SEED = 42
@@ -153,9 +154,11 @@ def main():
             output(False, error=result)
 
         median_us, min_us = result
-        breakdown[label] = {"median_us": median_us, "min_us": min_us}
+        total_bytes = size * BYTES_PER_ELEM
+        gbs = total_bytes / (median_us / 1e6) / 1e9
+        breakdown[label] = {"median_us": median_us, "min_us": min_us, "gbs": round(gbs, 1)}
         all_medians.append(median_us)
-        print(f"  {label}: {median_us} µs median, {min_us} µs min", file=sys.stderr)
+        print(f"  {label}: {median_us} us median, {min_us} us min  |  {gbs:.1f} GB/s", file=sys.stderr)
 
     # Aggregate: median of medians across all sizes
     # Primary metric: largest size (real-world, exceeds cache)

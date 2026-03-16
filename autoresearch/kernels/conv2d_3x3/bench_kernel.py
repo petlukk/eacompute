@@ -16,6 +16,7 @@ from pathlib import Path
 
 # (H, W, C_in) — C_in must be multiple of 32
 CONV_SIZES = [(32, 32, 64), (64, 64, 64), (128, 128, 64)]
+# Memory traffic: padded input (u8) + weights (i8) + output (i32)
 NUM_RUNS = 100
 WARMUP_RUNS = 20
 SEED = 42
@@ -164,9 +165,11 @@ def main():
             output(False, error=result)
 
         median_us, min_us = result
-        breakdown[label] = {"median_us": median_us, "min_us": min_us}
+        total_bytes = (H + 2) * (W + 2) * C_in + 9 * C_in * 4 + H * W * 4
+        gbs = total_bytes / (median_us / 1e6) / 1e9
+        breakdown[label] = {"median_us": median_us, "min_us": min_us, "gbs": round(gbs, 1)}
         all_medians.append(median_us)
-        print(f"  {label}: {median_us} us median, {min_us} us min", file=sys.stderr)
+        print(f"  {label}: {median_us} us median, {min_us} us min  |  {gbs:.1f} GB/s", file=sys.stderr)
 
     # Primary metric: largest size (real-world, exceeds cache)
     largest_label = f"{CONV_SIZES[-1][0]}x{CONV_SIZES[-1][1]}xC{CONV_SIZES[-1][2]}"

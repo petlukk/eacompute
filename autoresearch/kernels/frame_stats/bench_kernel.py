@@ -15,6 +15,7 @@ from pathlib import Path
 
 # Real image sizes: 512², 1024², 1600² (HST), 2048², 4096²
 DATASET_SIZES = [512 * 512, 1024 * 1024, 1600 * 1600, 2048 * 2048, 4096 * 4096]
+BYTES_PER_ELEM = 4  # read data only, 3 scalar outputs negligible
 NUM_RUNS = 50
 WARMUP_RUNS = 10
 SEED = 42
@@ -156,9 +157,11 @@ def main():
             output(False, error=result)
 
         median_us, min_us = result
-        breakdown[label] = {"median_us": median_us, "min_us": min_us}
+        total_bytes = n * BYTES_PER_ELEM
+        gbs = total_bytes / (median_us / 1e6) / 1e9
+        breakdown[label] = {"median_us": median_us, "min_us": min_us, "gbs": round(gbs, 1)}
         all_medians.append(median_us)
-        print(f"  {label}: {median_us} us median, {min_us} us min", file=sys.stderr)
+        print(f"  {label}: {median_us} us median, {min_us} us min  |  {gbs:.1f} GB/s", file=sys.stderr)
 
     # Primary metric: largest size (real-world, exceeds cache)
     largest_label = f"N={DATASET_SIZES[-1]}"

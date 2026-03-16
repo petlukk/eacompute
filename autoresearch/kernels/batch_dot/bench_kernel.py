@@ -22,6 +22,7 @@ CONFIGS = [
     (768, 1_000),
     (768, 10_000),
 ]
+# Memory traffic per config: read dim floats of db per vec + write 1 result + amortized query
 NUM_RUNS = 50
 WARMUP_RUNS = 10
 SEED = 42
@@ -153,9 +154,11 @@ def main():
             output(False, error=result)
 
         median_us, min_us = result
-        breakdown[label] = {"median_us": median_us, "min_us": min_us}
+        total_bytes = (dim + 1) * n_vecs * 4 + dim * 4
+        gbs = total_bytes / (median_us / 1e6) / 1e9
+        breakdown[label] = {"median_us": median_us, "min_us": min_us, "gbs": round(gbs, 1)}
         all_medians.append(median_us)
-        print(f"  {label}: {median_us} µs median, {min_us} µs min",
+        print(f"  {label}: {median_us} us median, {min_us} us min  |  {gbs:.1f} GB/s",
               file=sys.stderr)
 
     # Primary metric: largest size (real-world, exceeds cache)
