@@ -55,6 +55,7 @@ fi
 # Get baseline score
 echo "Running baseline benchmark..."
 BASELINE=$(python3 "$SCRIPT_DIR/bench_kernel.py" "$BEST" "$REF_SO")
+BENCH_JSON="$BASELINE"
 BEST_SCORE=$(echo "$BASELINE" | python3 -c "import sys,json; print(json.load(sys.stdin)['time_us'])")
 BEST_LOC=$(echo "$BASELINE" | python3 -c "import sys,json; print(json.load(sys.stdin)['loc'])")
 
@@ -67,7 +68,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
 
     # Build prompt
     PROMPT=$(python3 "$SCRIPT_DIR/build_prompt.py" \
-        "$PROGRAM" "$BEST" "$HISTORY" "$BEST_SCORE")
+        "$PROGRAM" "$BEST" "$HISTORY" "$BEST_SCORE" "$BENCH_JSON")
 
     # Agent turn
     if ! timeout "$TIMEOUT" claude -p "$PROMPT" --output-format text \
@@ -131,6 +132,7 @@ else:
         cp "$KERNEL" "$BEST"
         BEST_SCORE="$TIME_US"
         BEST_LOC="$LOC"
+        BENCH_JSON="$RESULT"
     else
         echo "  REJECTED: ${TIME_US} µs (best: ${BEST_SCORE} µs), LOC ${LOC}"
         cp "$BEST" "$KERNEL"
