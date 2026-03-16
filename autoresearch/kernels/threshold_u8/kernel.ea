@@ -1,0 +1,28 @@
+// pipeline.ea — Raw uint8 pixel pipeline kernels
+
+export func threshold_u8x16(src: *u8, dst: *mut u8, n: i32, thresh: u8) {
+    let t: u8x32 = splat(thresh)
+    let ff: u8x32 = splat(255)
+    let zero: u8x32 = splat(0)
+    let mut i: i32 = 0
+    for i in 0..n step 32 {
+        let chunk: u8x32 = load(src, i)
+        let result: u8x32 = select(chunk .> t, ff, zero)
+        stream_store(dst, i, result)
+    }
+}
+
+export func normalize_u8_f32x8(src: *u8, dst: *mut f32, n: i32) {
+    let mut i: i32 = 0
+    let scale: f32x4 = splat(0.00392156863)
+    for i in 0..n step 8 {
+        let chunk: u8x16 = load(src, i)
+        let lo: f32x4 = widen_u8_f32x4(chunk)
+        let norm_lo: f32x4 = lo .* scale
+        store(dst, i, norm_lo)
+        let shifted: u8x16 = shuffle(chunk, [4, 5, 6, 7, 0, 1, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15])
+        let hi: f32x4 = widen_u8_f32x4(shifted)
+        let norm_hi: f32x4 = hi .* scale
+        store(dst, i + 4, norm_hi)
+    }
+}

@@ -12,7 +12,10 @@ export func batch_dot(
     let mut v: i32 = 0
     for v in 0..n_vecs {
         let base: i32 = v * dim
-        prefetch(db, base + dim)
+        let next: i32 = base + dim
+        prefetch(db, next)
+        prefetch(db, next + 64)
+        prefetch(db, next + 256)
 
         let mut acc0: f32x8 = splat(0.0)
         let mut acc1: f32x8 = splat(0.0)

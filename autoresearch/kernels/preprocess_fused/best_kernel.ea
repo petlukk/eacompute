@@ -1,0 +1,73 @@
+// MNIST preprocessing kernels — normalize, foreach, and fused pipeline.
+
+export func normalize_foreach(input: *restrict f32, out: *mut f32, len: i32, scale: f32) {
+    foreach (i in 0..len) {
+        out[i] = input[i] * scale
+    }
+}
+
+export func normalize_f32x8(input: *restrict f32, out: *mut f32, len: i32, scale: f32) {
+    let vscale: f32x8 = splat(scale)
+    let mut i: i32 = 0
+    while i + 8 <= len {
+        let v: f32x8 = load(input, i)
+        store(out, i, v .* vscale)
+        i = i + 8
+    }
+    while i < len {
+        out[i] = input[i] * scale
+        i = i + 1
+    }
+}
+
+export func preprocess_fused(
+    input: *restrict f32,
+    out: *mut f32,
+    len: i32,
+    scale: f32,
+    mean: f32,
+    inv_std: f32
+) {
+    let cs: f32 = scale * inv_std
+    let cb: f32 = (0.0 - mean) * inv_std
+    let vcs: f32x8 = splat(cs)
+    let vcb: f32x8 = splat(cb)
+    let vzero: f32x8 = splat(0.0)
+    let vone: f32x8 = splat(1.0)
+    let mut i: i32 = 0
+    while i + 32 <= len {
+        prefetch(input, i + 256)
+        let v0: f32x8 = load(input, i)
+        let v1: f32x8 = load(input, i + 8)
+        let v2: f32x8 = load(input, i + 16)
+        let v3: f32x8 = load(input, i + 24)
+        let s0: f32x8 = fma(v0, vcs, vcb)
+        let s1: f32x8 = fma(v1, vcs, vcb)
+        let s2: f32x8 = fma(v2, vcs, vcb)
+        let s3: f32x8 = fma(v3, vcs, vcb)
+        let c0: f32x8 = min(max(s0, vzero), vone)
+        let c1: f32x8 = min(max(s1, vzero), vone)
+        let c2: f32x8 = min(max(s2, vzero), vone)
+        let c3: f32x8 = min(max(s3, vzero), vone)
+        stream_store(out, i, c0)
+        stream_store(out, i + 8, c1)
+        stream_store(out, i + 16, c2)
+        stream_store(out, i + 24, c3)
+        i = i + 32
+    }
+    while i + 8 <= len {
+        let v: f32x8 = load(input, i)
+        let s: f32x8 = fma(v, vcs, vcb)
+        let c: f32x8 = min(max(s, vzero), vone)
+        stream_store(out, i, c)
+        i = i + 8
+    }
+    while i < len {
+        let val: f32 = input[i] * cs + cb
+        let mut r: f32 = val
+        if r < 0.0 { r = 0.0 }
+        if r > 1.0 { r = 1.0 }
+        out[i] = r
+        i = i + 1
+    }
+}

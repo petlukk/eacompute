@@ -1,0 +1,132 @@
+const TABLE_SIZE: i32 = 1024
+const KEY_STRIDE: i32 = 64
+const ASCII_MINUS: i32 = 45
+const ASCII_DOT: i32 = 46
+const ASCII_ZERO: i32 = 48
+const ASCII_SEMI: i32 = 59
+
+
+export func parse_aggregate(
+    text: *u8,
+    nl_pos: *i32,
+    n: i32,
+    text_start: i32,
+    ht_keys: *mut u8,
+    ht_key_len: *mut i32,
+    ht_min: *mut i32,
+    ht_max: *mut i32,
+    ht_sum: *mut i32,
+    ht_count: *mut i32,
+    out_n_stations: *mut i32
+) {
+    let mut n_stations: i32 = 0
+    let mut i: i32 = 0
+
+    for i in 0..n {
+        let mut line_start: i32 = text_start
+        if i > 0 {
+            line_start = nl_pos[i - 1] + 1
+        }
+        let line_end: i32 = nl_pos[i]
+
+        // --- Find semicolon: temp is 3-5 chars, so semi is at end-4, end-5, or end-6 ---
+        let mut semi_pos: i32 = line_end - 4
+        if to_i32(text[semi_pos]) != ASCII_SEMI {
+            semi_pos = line_end - 5
+            if to_i32(text[semi_pos]) != ASCII_SEMI {
+                semi_pos = line_end - 6
+            }
+        }
+
+        let name_len: i32 = semi_pos - line_start
+
+        // --- Hash station name ---
+        let mut h: i32 = 0
+        let mut j: i32 = line_start
+        while j < semi_pos {
+            h = h * 31 + to_i32(text[j])
+            j = j + 1
+        }
+
+        // --- Parse temperature (fixed format: ['-']D[D]'.'D) ---
+        let mut pos: i32 = semi_pos + 1
+        let mut negative: i32 = 0
+        if to_i32(text[pos]) == ASCII_MINUS {
+            negative = 1
+            pos = pos + 1
+        }
+
+        let mut temp: i32 = 0
+        if to_i32(text[pos + 1]) == ASCII_DOT {
+            temp = (to_i32(text[pos]) - ASCII_ZERO) * 10 + (to_i32(text[pos + 2]) - ASCII_ZERO)
+        } else {
+            temp = (to_i32(text[pos]) - ASCII_ZERO) * 100 + (to_i32(text[pos + 1]) - ASCII_ZERO) * 10 + (to_i32(text[pos + 3]) - ASCII_ZERO)
+        }
+        if negative == 1 {
+            temp = 0 - temp
+        }
+
+        // --- Hash table probe ---
+        let mut slot: i32 = ((h % TABLE_SIZE) + TABLE_SIZE) % TABLE_SIZE
+        let mut probing: i32 = 1
+
+        while probing == 1 {
+            if ht_key_len[slot] == 0 {
+                let mut k: i32 = 0
+                let key_base: i32 = slot * KEY_STRIDE
+                while k < name_len {
+                    ht_keys[key_base + k] = text[line_start + k]
+                    k = k + 1
+                }
+                ht_key_len[slot] = name_len
+                ht_min[slot] = temp
+                ht_max[slot] = temp
+                ht_sum[slot] = temp
+                ht_count[slot] = 1
+                n_stations = n_stations + 1
+                probing = 0
+            } else {
+                if ht_key_len[slot] == name_len {
+                    let key_base: i32 = slot * KEY_STRIDE
+                    let k1: u8x16 = load(ht_keys, key_base)
+                    let k2: u8x16 = load(text, line_start)
+                    let ones: u8x16 = splat(1)
+                    let zeros: u8x16 = splat(0)
+                    let matched: u8x16 = select(k1 .== k2, ones, zeros)
+                    let match_count: i32 = to_i32(reduce_add(matched))
+                    let mut check_len: i32 = name_len
+                    if check_len > 16 {
+                        check_len = 16
+                    }
+                    let mut match_flag: i32 = 0
+                    if match_count >= check_len {
+                        match_flag = 1
+                    }
+                    if name_len > 16 && match_flag == 1 {
+                        let mut k: i32 = 16
+                        while k < name_len && match_flag == 1 {
+                            if ht_keys[key_base + k] != text[line_start + k] {
+                                match_flag = 0
+                            }
+                            k = k + 1
+                        }
+                    }
+
+                    if match_flag == 1 {
+                        ht_min[slot] = min(temp, ht_min[slot])
+                        ht_max[slot] = max(temp, ht_max[slot])
+                        ht_sum[slot] = ht_sum[slot] + temp
+                        ht_count[slot] = ht_count[slot] + 1
+                        probing = 0
+                    } else {
+                        slot = (slot + 1) % TABLE_SIZE
+                    }
+                } else {
+                    slot = (slot + 1) % TABLE_SIZE
+                }
+            }
+        }
+    }
+
+    out_n_stations[0] = n_stations
+}

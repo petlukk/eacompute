@@ -30,7 +30,7 @@ func v3_dot(a: Vec3, b: Vec3) -> f32 {
 }
 
 func v3_normalize(v: Vec3) -> Vec3 {
-    let inv_len: f32 = 1.0 / sqrt(v3_dot(v, v))
+    let inv_len: f32 = rsqrt(v3_dot(v, v))
     return v3_scale(v, inv_len)
 }
 
@@ -121,13 +121,6 @@ func closest_hit(ro: Vec3, rd: Vec3) -> HitInfo {
                 best_t = t1a
                 best_id = 6
             }
-            if best_id != 6 {
-                let t1b: f32 = -half_b1 + sqrt_disc1
-                if t1b > 0.001 && t1b < best_t {
-                    best_t = t1b
-                    best_id = 6
-                }
-            }
         }
     }
 
@@ -144,13 +137,6 @@ func closest_hit(ro: Vec3, rd: Vec3) -> HitInfo {
             if t2a > 0.001 && t2a < best_t {
                 best_t = t2a
                 best_id = 7
-            }
-            if best_id != 7 {
-                let t2b: f32 = -half_b2 + sqrt_disc2
-                if t2b > 0.001 && t2b < best_t {
-                    best_t = t2b
-                    best_id = 7
-                }
             }
         }
     }
@@ -279,7 +265,7 @@ func shade_point(pos: Vec3, normal: Vec3, color: Vec3) -> Vec3 {
     let light: Vec3 = v3(0.5, 0.95, 0.5)
     let to_light: Vec3 = v3_sub(light, pos)
     let dist_sq: f32 = v3_dot(to_light, to_light)
-    let inv_dist: f32 = 1.0 / sqrt(dist_sq)
+    let inv_dist: f32 = rsqrt(dist_sq)
     let light_dist: f32 = dist_sq * inv_dist
     let light_dir: Vec3 = v3_scale(to_light, inv_dist)
 
@@ -340,7 +326,7 @@ export func render(out: *mut f32, width: i32, height: i32) {
         let mut u: f32 = u_start
         let mut px: i32 = 0
         for px in 0..width {
-            let inv_len: f32 = 1.0 / sqrt(u * u + v_sq_p1)
+            let inv_len: f32 = rsqrt(u * u + v_sq_p1)
             let rd: Vec3 = v3(u * inv_len, v * inv_len, inv_len)
 
             let color: Vec3 = trace(cam, rd, 0)

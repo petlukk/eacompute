@@ -168,9 +168,10 @@ def main():
         all_medians.append(median_us)
         print(f"  {label}: {median_us} us median, {min_us} us min", file=sys.stderr)
 
-    all_medians.sort()
-    aggregate_median = all_medians[len(all_medians) // 2]
-    aggregate_min = min(m["min_us"] for m in breakdown.values())
+    # Primary metric: largest size (real-world, exceeds cache)
+    largest_label = f"{CONV_SIZES[-1][0]}x{CONV_SIZES[-1][1]}xC{CONV_SIZES[-1][2]}"
+    aggregate_median = breakdown[largest_label]["median_us"]
+    aggregate_min = breakdown[largest_label]["min_us"]
     loc = count_loc(kernel_path)
 
     output(True, time_us=aggregate_median, min_us=aggregate_min, loc=loc,

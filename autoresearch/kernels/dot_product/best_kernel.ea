@@ -24,8 +24,6 @@ export func dot_f32x8(a: *restrict f32, b: *restrict f32, len: i32) -> f32 {
     let mut acc1: f32x8 = splat(0.0)
     let mut i: i32 = 0
     while i + STEP <= len {
-        prefetch(a, i + 64)
-        prefetch(b, i + 64)
         let va0: f32x8 = load(a, i)
         let vb0: f32x8 = load(b, i)
         acc0 = fma(va0, vb0, acc0)
@@ -47,7 +45,7 @@ export func dot_f32x8(a: *restrict f32, b: *restrict f32, len: i32) -> f32 {
         i = i + LANE_8
     }
     let merged: f32x8 = acc0 .+ acc1
-    let mut total: f32 = reduce_add(merged)
+    let mut total: f32 = reduce_add_fast(merged)
     while i < len {
         total = total + a[i] * b[i]
         i = i + 1

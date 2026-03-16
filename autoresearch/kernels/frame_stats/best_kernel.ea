@@ -1,0 +1,65 @@
+// Single-pass min/max/sum of float array.
+// Dual-accumulator reductions for ILP.
+// Writes results to out_min[0], out_max[0], out_sum[0].
+export func frame_stats(
+    data: *restrict f32,
+    len: i32,
+    out_min: *mut f32,
+    out_max: *mut f32,
+    out_sum: *mut f32
+) {
+    let init_val: f32 = data[0]
+    let mut sum_acc0: f32x8 = splat(0.0)
+    let mut sum_acc1: f32x8 = splat(0.0)
+    let mut min_acc0: f32x8 = splat(init_val)
+    let mut min_acc1: f32x8 = splat(init_val)
+    let mut max_acc0: f32x8 = splat(init_val)
+    let mut max_acc1: f32x8 = splat(init_val)
+
+    let mut i: i32 = 0
+
+    while i + 16 <= len {
+        prefetch(data, i + 64)
+        let v0: f32x8 = load(data, i)
+        let v1: f32x8 = load(data, i + 8)
+
+        sum_acc0 = sum_acc0 .+ v0
+        sum_acc1 = sum_acc1 .+ v1
+
+        min_acc0 = min(v0, min_acc0)
+        min_acc1 = min(v1, min_acc1)
+
+        max_acc0 = max(v0, max_acc0)
+        max_acc1 = max(v1, max_acc1)
+
+        i = i + 16
+    }
+
+    while i + 8 <= len {
+        let v: f32x8 = load(data, i)
+        sum_acc0 = sum_acc0 .+ v
+        min_acc0 = min(v, min_acc0)
+        max_acc0 = max(v, max_acc0)
+        i = i + 8
+    }
+
+    let sum_merged: f32x8 = sum_acc0 .+ sum_acc1
+    let min_merged: f32x8 = min(min_acc0, min_acc1)
+    let max_merged: f32x8 = max(max_acc0, max_acc1)
+
+    let mut total_sum: f32 = reduce_add(sum_merged)
+    let mut total_min: f32 = reduce_min(min_merged)
+    let mut total_max: f32 = reduce_max(max_merged)
+
+    while i < len {
+        let v: f32 = data[i]
+        total_sum = total_sum + v
+        total_min = min(v, total_min)
+        total_max = max(v, total_max)
+        i = i + 1
+    }
+
+    out_min[0] = total_min
+    out_max[0] = total_max
+    out_sum[0] = total_sum
+}

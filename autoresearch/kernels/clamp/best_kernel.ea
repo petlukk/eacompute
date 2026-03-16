@@ -1,5 +1,6 @@
 const LANE_8: i32 = 8
 const STRIDE: i32 = 32
+const PF_AHEAD: i32 = 512
 
 export func clamp_f32x8(
     data: *restrict f32,
@@ -12,14 +13,19 @@ export func clamp_f32x8(
     let vhi: f32x8 = splat(hi)
     let mut i: i32 = 0
     while i + STRIDE <= len {
+        prefetch(data, i + PF_AHEAD)
         let v0: f32x8 = load(data, i)
         let v1: f32x8 = load(data, i + LANE_8)
         let v2: f32x8 = load(data, i + LANE_8 + LANE_8)
         let v3: f32x8 = load(data, i + LANE_8 + LANE_8 + LANE_8)
-        store(result, i, min(max(v0, vlo), vhi))
-        store(result, i + LANE_8, min(max(v1, vlo), vhi))
-        store(result, i + LANE_8 + LANE_8, min(max(v2, vlo), vhi))
-        store(result, i + LANE_8 + LANE_8 + LANE_8, min(max(v3, vlo), vhi))
+        let c0: f32x8 = min(max(v0, vlo), vhi)
+        let c1: f32x8 = min(max(v1, vlo), vhi)
+        let c2: f32x8 = min(max(v2, vlo), vhi)
+        let c3: f32x8 = min(max(v3, vlo), vhi)
+        stream_store(result, i, c0)
+        stream_store(result, i + LANE_8, c1)
+        stream_store(result, i + LANE_8 + LANE_8, c2)
+        stream_store(result, i + LANE_8 + LANE_8 + LANE_8, c3)
         i = i + STRIDE
     }
     while i + LANE_8 <= len {

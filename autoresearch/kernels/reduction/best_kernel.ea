@@ -24,18 +24,25 @@ export func sum_f32x8(data: *restrict f32, len: i32) -> f32 {
     let mut acc1: f32x8 = splat(0.0)
     let mut acc2: f32x8 = splat(0.0)
     let mut acc3: f32x8 = splat(0.0)
-    let stride: i32 = LANE_8 * 4
+    let stride: i32 = LANE_8 * 8
     let mut i: i32 = 0
     while i + stride <= len {
-        prefetch(data, i + stride)
         let v0: f32x8 = load(data, i)
         let v1: f32x8 = load(data, i + LANE_8)
         let v2: f32x8 = load(data, i + LANE_8 * 2)
         let v3: f32x8 = load(data, i + LANE_8 * 3)
+        let v4: f32x8 = load(data, i + LANE_8 * 4)
+        let v5: f32x8 = load(data, i + LANE_8 * 5)
+        let v6: f32x8 = load(data, i + LANE_8 * 6)
+        let v7: f32x8 = load(data, i + LANE_8 * 7)
         acc0 = acc0 .+ v0
         acc1 = acc1 .+ v1
         acc2 = acc2 .+ v2
         acc3 = acc3 .+ v3
+        acc0 = acc0 .+ v4
+        acc1 = acc1 .+ v5
+        acc2 = acc2 .+ v6
+        acc3 = acc3 .+ v7
         i = i + stride
     }
     while i + LANE_8 <= len {

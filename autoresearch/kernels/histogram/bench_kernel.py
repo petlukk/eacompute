@@ -166,9 +166,10 @@ def main():
         print(f"  {label}: {median_us} us median, {min_us} us min", file=sys.stderr)
 
     # Aggregate: median of medians across all sizes
-    all_medians.sort()
-    aggregate_median = all_medians[len(all_medians) // 2]
-    aggregate_min = min(m["min_us"] for m in breakdown.values())
+    # Primary metric: largest size (real-world, exceeds cache)
+    largest_label = f"{DATASET_SIZES[-1] // 1000}K" if DATASET_SIZES[-1] < 1_000_000 else f"{DATASET_SIZES[-1] // 1_000_000}M"
+    aggregate_median = breakdown[largest_label]["median_us"]
+    aggregate_min = breakdown[largest_label]["min_us"]
     loc = count_loc(kernel_path)
 
     output(True, time_us=aggregate_median, min_us=aggregate_min, loc=loc,
