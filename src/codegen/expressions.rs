@@ -299,7 +299,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             Expr::Negate(inner, _) => self.infer_expr_type(inner),
             _ => None,
         };
-        // Only return scalar numeric types — struct/vector types are not useful hints
+        // Only return scalar numeric or vector types — struct types are not useful hints
         ty.filter(|t| {
             matches!(
                 t,
@@ -312,6 +312,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     | Type::U8
                     | Type::U16
                     | Type::U32
+                    | Type::Vector { .. }
             )
         })
     }

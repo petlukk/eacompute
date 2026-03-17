@@ -386,6 +386,69 @@ mod tests {
         );
     }
 
+    // === u8x16 unsigned comparison ===
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_u8x16_unsigned_greater_than() {
+        // 200 > 100 is true for unsigned, but -56 > 100 is false for signed.
+        // This test catches the bug where u8x16 .> uses signed icmp sgt.
+        assert_c_interop(
+            r#"
+            export func unsigned_cmp(dst: *mut u8, n: i32) {
+                let a: u8x16 = splat(200)
+                let b: u8x16 = splat(100)
+                let ones: u8x16 = splat(1)
+                let zeros: u8x16 = splat(0)
+                let result: u8x16 = select(a .> b, ones, zeros)
+                store(dst, 0, result)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            extern void unsigned_cmp(unsigned char* dst, int n);
+            int main() {
+                unsigned char dst[16] = {0};
+                unsigned_cmp(dst, 16);
+                // All lanes should be 1 (200 > 100 unsigned)
+                printf("%d\n", (int)dst[0]);
+                printf("%d\n", (int)dst[15]);
+                return 0;
+            }
+            "#,
+            "1\n1",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_u8x16_unsigned_less_than() {
+        assert_c_interop(
+            r#"
+            export func unsigned_lt(dst: *mut u8, n: i32) {
+                let a: u8x16 = splat(100)
+                let b: u8x16 = splat(200)
+                let ones: u8x16 = splat(1)
+                let zeros: u8x16 = splat(0)
+                let result: u8x16 = select(a .< b, ones, zeros)
+                store(dst, 0, result)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            extern void unsigned_lt(unsigned char* dst, int n);
+            int main() {
+                unsigned char dst[16] = {0};
+                unsigned_lt(dst, 16);
+                printf("%d\n", (int)dst[0]);
+                printf("%d\n", (int)dst[15]);
+                return 0;
+            }
+            "#,
+            "1\n1",
+        );
+    }
+
     // === u32 / u64 types ===
 
     #[test]
