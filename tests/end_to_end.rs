@@ -232,4 +232,20 @@ mod tests {
             &["10", "3.5"],
         );
     }
+
+    #[test]
+    fn test_print_target_outputs_cpu_name() {
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_ea"))
+            .arg("--print-target")
+            .output()
+            .expect("failed to run ea");
+        assert!(output.status.success());
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let target = stdout.trim();
+        assert!(!target.is_empty(), "print-target should output a CPU name");
+        assert!(
+            !target.contains(' '),
+            "CPU name should be a single token: '{target}'"
+        );
+    }
 }

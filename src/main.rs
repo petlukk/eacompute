@@ -1,3 +1,5 @@
+mod usage;
+
 use ea_compiler::error::{CompileError, format_with_source};
 use std::process;
 
@@ -9,13 +11,13 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
 
     if args.is_empty() {
-        print_usage();
+        usage::print_usage();
         process::exit(1);
     }
 
     match args[0].as_str() {
         "--help" | "-h" => {
-            print_usage();
+            usage::print_usage();
             return;
         }
         "--version" | "-V" => {
@@ -31,6 +33,20 @@ fn main() {
             return;
         }
         _ => {}
+    }
+
+    #[cfg(feature = "llvm")]
+    if args[0] == "--print-target" {
+        use inkwell::targets::{InitializationConfig, Target, TargetMachine};
+        Target::initialize_native(&InitializationConfig::default())
+            .expect("failed to initialize native target");
+        println!(
+            "{}",
+            TargetMachine::get_host_cpu_name()
+                .to_str()
+                .unwrap_or("unknown")
+        );
+        return;
     }
 
     let input_file = &args[0];
@@ -466,35 +482,4 @@ fn write_or_exit(path: &str, content: &str) {
         process::exit(1);
     }
     eprintln!("wrote {path}");
-}
-
-fn print_usage() {
-    eprint!(
-        "\
-Usage: ea <file.ea> [options]
-       ea bind <file.ea> --python [--rust] [--pytorch] [--cmake] [--cpp]
-       ea inspect <file.ea> [--avx512] [--target=CPU]
-
-Options:
-  -o <name>          Compile and link to executable
-  --lib              Produce shared library (.so/.dll) + JSON metadata
-  --opt-level=N      Optimization level 0-3 (default: 3)
-  --target=CPU       Target CPU (default: native)
-  --target-triple=T  Cross-compile target (e.g. aarch64-unknown-linux-gnu)
-  --avx512           Enable AVX-512 (f32x16)
-  --emit-llvm        Print LLVM IR
-  --emit-asm         Emit assembly (.s file)
-  --header           Generate C header (.h)
-  --emit-ast/--emit-tokens  Print AST or lexer tokens
-  --help, -h / --version, -V
-
-Subcommands:
-  inspect <file.ea>        Analyze kernel: instruction mix, loops, registers
-  bind <file.ea> --python  Generate Python/NumPy bindings
-  bind <file.ea> --rust    Generate Rust FFI + safe wrappers
-  bind <file.ea> --pytorch Generate PyTorch autograd wrappers
-  bind <file.ea> --cmake   Generate CMakeLists.txt + EaCompiler.cmake
-  bind <file.ea> --cpp     Generate C++ header with std::span
-"
-    );
 }
