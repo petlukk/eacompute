@@ -30,3 +30,7 @@
 - [Image Processing](cookbook/image-processing.md)
 - [Text Processing](cookbook/text-processing.md)
 - [ML Preprocessing](cookbook/ml-preprocessing.md)
+
+# Examples
+
+- [CQT Audio Visualizer: Beating BLAS with 80 Lines of Ea](examples/cqt-audio-visualizer.md)
