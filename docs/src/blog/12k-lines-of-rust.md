@@ -14,7 +14,7 @@ The compiler is 12,000 lines of Rust. It has 475 tests. It took me about a year.
 
 I had a problem that kept repeating. I'd write something in Python, profile it, find a hot loop, and think: "this needs to be fast." And I knew that fast meant C. Fast meant SIMD. I don't have deep experience with either, but I knew that's where the performance lives.
 
-So I'd fumble through some C code, fight with ctypes, spend an afternoon on pointer arithmetic, and eventually get a 5× speedup. Then next week, different project, same dance.
+So I'd fumble through some C code — with an LLM helping me write it, which honestly made it worse because now the code worked but I didn't fully understand *why* — fight with ctypes, spend an afternoon debugging pointer arithmetic that the AI got right the first time but I broke while "cleaning up," and eventually get a 5× speedup. Then next week, different project, same dance.
 
 I didn't mind the hard part — figuring out *what* the kernel should do, thinking about memory access patterns, deciding on vector widths. That's the interesting problem. What I minded was the plumbing. The header files. The build system. The ctypes declarations. The dtype validation. All of it boilerplate, all of it error-prone, none of it the actual work.
 
