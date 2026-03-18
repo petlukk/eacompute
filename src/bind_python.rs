@@ -19,6 +19,10 @@ pub fn generate(json_str: &str, module_stem: &str) -> Result<String, String> {
         "_lib = _ct.CDLL(str(_Path(__file__).with_name(\"{lib_name}\")))\n\n"
     ));
 
+    // __all__ export list
+    let names: Vec<String> = exports.iter().map(|f| format!("\"{}\"", f.name)).collect();
+    out.push_str(&format!("__all__ = [{}]\n\n", names.join(", ")));
+
     for func in &exports {
         emit_argtypes(&mut out, func);
         emit_restype(&mut out, func);
@@ -92,6 +96,27 @@ fn emit_wrapper(out: &mut String, func: &ExportFunc) {
         py_params.join(", ")
     ));
 
+    // Friendly docstring with Python types
+    let friendly_args: Vec<String> = func
+        .args
+        .iter()
+        .enumerate()
+        .filter(|(i, a)| !(collapsed[*i] || a.direction == "out" && a.cap.is_some()))
+        .map(|(_, a)| format!("{}: {}", a.name, friendly_type(&a.ty)))
+        .collect();
+    let friendly_ret = if !auto_out.is_empty() {
+        if auto_out.len() == 1 {
+            friendly_type(&auto_out[0].ty)
+        } else {
+            let types: Vec<String> = auto_out.iter().map(|a| friendly_type(&a.ty)).collect();
+            format!("tuple[{}]", types.join(", "))
+        }
+    } else {
+        func.return_type
+            .as_deref()
+            .map(friendly_type)
+            .unwrap_or_else(|| "None".to_string())
+    };
     let c_args: Vec<String> = func
         .args
         .iter()
@@ -99,7 +124,10 @@ fn emit_wrapper(out: &mut String, func: &ExportFunc) {
         .collect();
     let c_ret = func.return_type.as_deref().unwrap_or("void");
     out.push_str(&format!(
-        "    \"\"\"{}({}) -> {}\"\"\"\n",
+        "    \"\"\"{}({}) -> {}\n\n    C signature: {}({}) -> {}\n    \"\"\"\n",
+        func.name,
+        friendly_args.join(", "),
+        friendly_ret,
         func.name,
         c_args.join(", "),
         c_ret
@@ -258,5 +286,19 @@ fn python_return_cast(ty: &str) -> &'static str {
         "f32" | "f64" => "float",
         "bool" => "bool",
         _ => "int",
+    }
+}
+
+fn friendly_type(ty: &str) -> String {
+    if let Some(inner) = pointer_inner(ty) {
+        if let Some(dtype) = numpy_dtype(inner) {
+            return format!("ndarray[{dtype}]");
+        }
+        return "ndarray".to_string();
+    }
+    match ty {
+        "f32" | "f64" => "float".to_string(),
+        "bool" => "bool".to_string(),
+        _ => "int".to_string(),
     }
 }

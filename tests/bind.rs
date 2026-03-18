@@ -289,3 +289,29 @@ fn test_roundtrip_integer_types() {
     // count should be collapsed
     assert!(py.contains("def process_bytes(input: _np.ndarray, output: _np.ndarray):"));
 }
+
+#[test]
+fn test_python_friendly_docstring() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "dot", "args": [{"name": "a", "type": "*f32"}, {"name": "b", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": "f32"}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "k").unwrap();
+    assert!(
+        py.contains("ndarray[float32]"),
+        "docstring should show Python types, got:\n{py}"
+    );
+    assert!(
+        py.contains("C signature:"),
+        "should include C signature reference, got:\n{py}"
+    );
+}
+
+#[test]
+fn test_python_all_export() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "add", "args": [{"name": "a", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": null}, {"name": "dot", "args": [{"name": "a", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": "f32"}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "k").unwrap();
+    assert!(
+        py.contains("__all__"),
+        "should have __all__ export list, got:\n{py}"
+    );
+    assert!(py.contains("\"add\""), "__all__ should list add");
+    assert!(py.contains("\"dot\""), "__all__ should list dot");
+}
