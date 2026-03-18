@@ -258,7 +258,7 @@ fn emit_parallel_wrapper(out: &mut String, func: &ExportFunc) {
         py_params.join(", ")
     ));
     out.push_str(&format!(
-        "    \"\"\"Parallel variant of {}. Splits work across threads using pointer offsets.\"\"\"\n",
+        "    \"\"\"Parallel variant of {}. Splits work across threads using pointer offsets.\n\n    Best for compute-bound kernels (matmul, convolution, FMA-heavy).\n    Bandwidth-bound kernels (simple copy, SAXPY, threshold) won't benefit\n    and may be slower due to thread pool overhead.\n    \"\"\"\n",
         func.name
     ));
 
