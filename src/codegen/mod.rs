@@ -1,6 +1,8 @@
 #[cfg(feature = "llvm")]
 mod builtins;
 #[cfg(feature = "llvm")]
+mod comparisons;
+#[cfg(feature = "llvm")]
 mod expressions;
 #[cfg(feature = "llvm")]
 mod simd;
