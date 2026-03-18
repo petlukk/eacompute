@@ -63,7 +63,9 @@ impl TypeChecker {
                     })?;
                     if !mutable {
                         return Err(CompileError::type_error(
-                            format!("cannot assign to immutable variable '{target}'"),
+                            format!(
+                                "cannot assign to immutable variable '{target}'. Declare with 'let mut {target}' to allow assignment"
+                            ),
                             span.clone(),
                         ));
                     }
