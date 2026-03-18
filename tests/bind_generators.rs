@@ -310,3 +310,37 @@ fn test_roundtrip_source_to_cpp() {
     assert!(hpp.contains("extern \"C\""));
     assert!(hpp.contains(".size()"));
 }
+
+#[test]
+fn test_cpp_nodiscard_on_return() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "dot", "args": [{"name": "a", "type": "*f32"}, {"name": "b", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": "f32"}], "structs": []}"#;
+    let cpp = ea_compiler::bind_cpp::generate(json, "k").unwrap();
+    assert!(
+        cpp.contains("[[nodiscard]]"),
+        "functions with return values should have [[nodiscard]], got:\n{cpp}"
+    );
+}
+
+#[test]
+fn test_cpp_no_nodiscard_on_void() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "scale", "args": [{"name": "data", "type": "*mut f32"}, {"name": "n", "type": "i32"}, {"name": "alpha", "type": "f32"}], "return_type": null}], "structs": []}"#;
+    let cpp = ea_compiler::bind_cpp::generate(json, "k").unwrap();
+    assert!(
+        !cpp.contains("[[nodiscard]]"),
+        "void functions should NOT have [[nodiscard]], got:\n{cpp}"
+    );
+}
+
+#[test]
+fn test_cpp_doxygen_comment() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "dot", "args": [{"name": "a", "type": "*f32"}, {"name": "b", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": "f32"}], "structs": []}"#;
+    let cpp = ea_compiler::bind_cpp::generate(json, "k").unwrap();
+    assert!(
+        cpp.contains("/// @brief dot("),
+        "span wrapper should have doxygen comment, got:\n{cpp}"
+    );
+    assert!(
+        cpp.contains("/// @note C signature:"),
+        "should include C signature note, got:\n{cpp}"
+    );
+}

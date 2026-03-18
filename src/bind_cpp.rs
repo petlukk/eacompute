@@ -88,8 +88,35 @@ fn emit_span_wrapper(out: &mut String, func: &ExportFunc) {
         }
     };
 
+    // Doxygen comment
+    let friendly_args: Vec<String> = func
+        .args
+        .iter()
+        .enumerate()
+        .filter(|(i, a)| !(collapsed[*i] || a.direction == "out" && a.cap.is_some()))
+        .map(|(_, a)| format!("{}: {}", a.name, cpp_span_type(&a.ty)))
+        .collect();
+    let c_args: Vec<String> = func
+        .args
+        .iter()
+        .map(|a| format!("{}: {}", a.name, cpp_raw_type(&a.ty)))
+        .collect();
+    let c_ret_str = match &func.return_type {
+        Some(ty) => cpp_raw_type(ty),
+        None => "void".to_string(),
+    };
     out.push_str(&format!(
-        "inline {ret} {}({}) {{\n",
+        "/// @brief {}({})\n/// @note C signature: {}({}) -> {c_ret_str}\n",
+        func.name,
+        friendly_args.join(", "),
+        func.name,
+        c_args.join(", "),
+    ));
+
+    let has_return = func.return_type.is_some() || !auto_out.is_empty();
+    let nodiscard = if has_return { "[[nodiscard]] " } else { "" };
+    out.push_str(&format!(
+        "{nodiscard}inline {ret} {}({}) {{\n",
         func.name,
         safe_params.join(", ")
     ));
