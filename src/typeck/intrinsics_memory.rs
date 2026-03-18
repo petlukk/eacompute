@@ -62,7 +62,7 @@ impl TypeChecker {
     ) -> crate::error::Result<Type> {
         if args.len() != 3 {
             return Err(CompileError::type_error(
-                "store expects 3 arguments",
+                "store expects 3 arguments (ptr, index, vector)",
                 span.clone(),
             ));
         }
@@ -87,7 +87,9 @@ impl TypeChecker {
             ) => {
                 if !types::types_compatible(&elem, &inner) {
                     return Err(CompileError::type_error(
-                        format!("store mismatch: ptr to {inner}, val {elem}"),
+                        format!(
+                            "store type mismatch: pointer element type is {inner}, but vector element type is {elem}"
+                        ),
                         span.clone(),
                     ));
                 }
@@ -180,7 +182,9 @@ impl TypeChecker {
             ) => {
                 if !types::types_compatible(&elem, &inner) {
                     return Err(CompileError::type_error(
-                        format!("scatter mismatch: ptr to {inner}, val {elem}"),
+                        format!(
+                            "scatter type mismatch: pointer element type is {inner}, but vector element type is {elem}"
+                        ),
                         span.clone(),
                     ));
                 }
@@ -290,7 +294,9 @@ impl TypeChecker {
             ) => {
                 if !types::types_compatible(&elem, &inner) {
                     return Err(CompileError::type_error(
-                        format!("store_masked mismatch: ptr to {inner}, val {elem}"),
+                        format!(
+                            "store_masked type mismatch: pointer element type is {inner}, but vector element type is {elem}"
+                        ),
                         span.clone(),
                     ));
                 }

@@ -54,4 +54,24 @@ mod tests {
             "const mismatch should mention the value kind, got: {msg}"
         );
     }
+
+    #[test]
+    fn test_store_mismatch_is_descriptive() {
+        let msg = type_err(
+            "export func f(p: *mut i32, n: i32) {\n    let v: f32x4 = splat(1.0)\n    store(p, 0, v)\n    return\n}",
+        );
+        assert!(
+            msg.contains("pointer element type is"),
+            "store mismatch should be descriptive, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_store_arg_count_shows_names() {
+        let msg = type_err("export func f(p: *mut f32) {\n    store(p, 0)\n    return\n}");
+        assert!(
+            msg.contains("(ptr, index, vector)"),
+            "store arg count error should name the args, got: {msg}"
+        );
+    }
 }
