@@ -197,7 +197,9 @@ impl<'ctx> CodeGenerator<'ctx> {
                     BasicTypeEnum::IntType(t) => t.vec_type(*width as u32).into(),
                     BasicTypeEnum::FloatType(t) => t.vec_type(*width as u32).into(),
                     BasicTypeEnum::PointerType(t) => t.vec_type(*width as u32).into(),
-                    _ => panic!("BUG: unsupported vector element type {elem_ty:?}"),
+                    _ => panic!(
+                        "internal compiler error: unsupported vector element type '{elem}' (please report this bug)"
+                    ),
                 }
             }
             Type::Struct(name) => {
@@ -205,13 +207,13 @@ impl<'ctx> CodeGenerator<'ctx> {
                     BasicTypeEnum::StructType(*st)
                 } else {
                     panic!(
-                        "BUG: struct type '{name}' not registered — should have been caught by typechecker"
+                        "internal compiler error: struct type '{name}' not found (please report this bug)"
                     )
                 }
             }
             Type::String | Type::Void => {
                 panic!(
-                    "BUG: type {ty:?} has no LLVM representation — should have been caught by typechecker"
+                    "internal compiler error: type '{ty}' cannot be compiled (please report this bug)"
                 )
             }
         }
