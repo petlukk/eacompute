@@ -106,6 +106,31 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
+    #[test]
+    fn test_inspect_fma_count() {
+        let source = r#"
+            export kernel fma_kernel(a: *f32, b: *f32, c: *f32, out: *mut f32)
+                over i in n step 4
+            {
+                let va: f32x4 = load(a, i)
+                let vb: f32x4 = load(b, i)
+                let vc: f32x4 = load(c, i)
+                store(out, i, fma(va, vb, vc))
+            }
+        "#;
+        let report = inspect_source(source, &CompileOptions::default()).unwrap();
+        let func = report
+            .functions
+            .iter()
+            .find(|f| f.name == "fma_kernel")
+            .unwrap();
+        assert!(
+            func.fma_ops > 0,
+            "kernel with fma() should detect FMA instructions, got 0"
+        );
+    }
+
     #[test]
     fn test_inspect_display_shows_memory_ops() {
         let source = r#"

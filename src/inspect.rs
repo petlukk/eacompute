@@ -26,6 +26,7 @@ pub struct FunctionReport {
     pub scalar_instructions: u32,
     pub loads: u32,
     pub stores: u32,
+    pub fma_ops: u32,
     pub vector_width: Option<String>,
     pub loops: u32,
     pub registers: Vec<String>,
@@ -50,6 +51,9 @@ impl fmt::Display for InspectReport {
             writeln!(f, "  scalar instructions:  {}", func.scalar_instructions)?;
             writeln!(f, "  loads:                {}", func.loads)?;
             writeln!(f, "  stores:               {}", func.stores)?;
+            if func.fma_ops > 0 {
+                writeln!(f, "  FMA operations:       {}", func.fma_ops)?;
+            }
             if let Some(ref width) = func.vector_width {
                 writeln!(f, "  vector width:         {width}")?;
             }
@@ -103,6 +107,7 @@ pub fn analyze_module(
         let mut scalar_instructions: u32 = 0;
         let mut loads: u32 = 0;
         let mut stores: u32 = 0;
+        let mut fma_ops: u32 = 0;
         let mut max_vector_bits: u32 = 0;
         let mut vector_elem_type = String::new();
         let mut vector_width: u32 = 0;
@@ -118,6 +123,17 @@ pub fn analyze_module(
                     InstructionOpcode::Load => loads += 1,
                     InstructionOpcode::Store => stores += 1,
                     _ => {}
+                }
+                if opcode == InstructionOpcode::Call {
+                    let num_operands = instruction.get_num_operands();
+                    if num_operands > 0
+                        && let Some(Operand::Value(val)) = instruction.get_operand(num_operands - 1)
+                    {
+                        let callee_name = val.get_name().to_str().unwrap_or("");
+                        if callee_name.starts_with("llvm.fma.") {
+                            fma_ops += 1;
+                        }
+                    }
                 }
                 if is_vector_instruction(&instruction) {
                     vector_instructions += 1;
@@ -182,6 +198,7 @@ pub fn analyze_module(
             scalar_instructions,
             loads,
             stores,
+            fma_ops,
             vector_width: width_str,
             loops,
             registers: regs,
