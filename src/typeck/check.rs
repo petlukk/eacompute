@@ -56,8 +56,15 @@ impl TypeChecker {
                         ));
                     }
                     let (var_type, mutable) = locals.get(target).cloned().ok_or_else(|| {
+                        let candidates = locals
+                            .keys()
+                            .map(|k| k.as_str())
+                            .chain(self.constants.keys().map(|k| k.as_str()));
+                        let suggestion = types::suggest_closest_name(target, candidates)
+                            .map(|s| format!(". Did you mean '{s}'?"))
+                            .unwrap_or_default();
                         CompileError::type_error(
-                            format!("undefined variable '{target}'"),
+                            format!("undefined variable '{target}'{suggestion}"),
                             span.clone(),
                         )
                     })?;
@@ -298,13 +305,23 @@ impl TypeChecker {
                             span.clone(),
                         )
                     })?;
+                    let all_field_names: Vec<String> =
+                        fields.iter().map(|(n, _)| n.clone()).collect();
                     let field_type = fields
                         .iter()
                         .find(|(n, _)| n == field)
                         .map(|(_, t)| t.clone())
                         .ok_or_else(|| {
+                            let suggestion = types::suggest_closest_name(
+                                field,
+                                all_field_names.iter().map(|n| n.as_str()),
+                            )
+                            .map(|s| format!(". Did you mean '{s}'?"))
+                            .unwrap_or_default();
                             CompileError::type_error(
-                                format!("struct '{struct_name}' has no field '{field}'"),
+                                format!(
+                                    "struct '{struct_name}' has no field '{field}'{suggestion}"
+                                ),
                                 span.clone(),
                             )
                         })?;

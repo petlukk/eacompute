@@ -95,4 +95,31 @@ mod tests {
         let msg = type_err("export func f(a: f32x4, b: f32x4) -> f32x4 { return a * b }");
         assert!(msg.contains(".*"), "vector * should suggest .*, got: {msg}");
     }
+
+    #[test]
+    fn test_undefined_variable_suggests_close_match() {
+        let msg = type_err("export func f(length: i32) -> i32 { return lenght }");
+        assert!(
+            msg.contains("Did you mean 'length'"),
+            "typo should suggest close match, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_undefined_function_suggests_close_match() {
+        let msg = type_err("export func f(a: f32x4) -> f32 { return redu_add(a) }");
+        assert!(
+            msg.contains("Did you mean"),
+            "typo should suggest close match, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_undefined_variable_no_suggestion_when_no_match() {
+        let msg = type_err("export func f() -> i32 { return xyzzy }");
+        assert!(
+            !msg.contains("Did you mean"),
+            "no suggestion when nothing is close, got: {msg}"
+        );
+    }
 }

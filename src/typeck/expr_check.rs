@@ -24,10 +24,19 @@ impl TypeChecker {
                 if let Some((ty, _)) = self.constants.get(name) {
                     return Ok(ty.clone());
                 }
-                Err(CompileError::type_error(
-                    format!("undefined variable '{name}'"),
-                    span.clone(),
-                ))
+                {
+                    let candidates = locals
+                        .keys()
+                        .map(|k| k.as_str())
+                        .chain(self.constants.keys().map(|k| k.as_str()));
+                    let suggestion = types::suggest_closest_name(name, candidates)
+                        .map(|s| format!(". Did you mean '{s}'?"))
+                        .unwrap_or_default();
+                    Err(CompileError::type_error(
+                        format!("undefined variable '{name}'{suggestion}"),
+                        span.clone(),
+                    ))
+                }
             }
             Expr::Not(inner, span) => {
                 let inner_type = self.check_expr(inner, locals)?;
@@ -226,16 +235,28 @@ impl TypeChecker {
                         span.clone(),
                     )
                 })?;
-                fields
-                    .iter()
-                    .find(|(n, _)| n == field)
-                    .map(|(_, t)| t.clone())
-                    .ok_or_else(|| {
-                        CompileError::type_error(
-                            format!("struct '{struct_name}' has no field '{field}'"),
-                            span.clone(),
-                        )
-                    })
+                {
+                    let all_field_names: Vec<String> =
+                        fields.iter().map(|(n, _)| n.clone()).collect();
+                    fields
+                        .iter()
+                        .find(|(n, _)| n == field)
+                        .map(|(_, t)| t.clone())
+                        .ok_or_else(|| {
+                            let suggestion = types::suggest_closest_name(
+                                field,
+                                all_field_names.iter().map(|n| n.as_str()),
+                            )
+                            .map(|s| format!(". Did you mean '{s}'?"))
+                            .unwrap_or_default();
+                            CompileError::type_error(
+                                format!(
+                                    "struct '{struct_name}' has no field '{field}'{suggestion}"
+                                ),
+                                span.clone(),
+                            )
+                        })
+                }
             }
             Expr::StructLiteral { name, fields, span } => {
                 let def_fields = self.structs.get(name).ok_or_else(|| {
@@ -252,13 +273,21 @@ impl TypeChecker {
                     ));
                 }
                 for (field_name, field_val) in fields {
+                    let all_field_names: Vec<String> =
+                        def_fields.iter().map(|(n, _)| n.clone()).collect();
                     let expected = def_fields
                         .iter()
                         .find(|(n, _)| n == field_name)
                         .map(|(_, t)| t.clone())
                         .ok_or_else(|| {
+                            let suggestion = types::suggest_closest_name(
+                                field_name,
+                                all_field_names.iter().map(|n| n.as_str()),
+                            )
+                            .map(|s| format!(". Did you mean '{s}'?"))
+                            .unwrap_or_default();
                             CompileError::type_error(
-                                format!("struct '{name}' has no field '{field_name}'"),
+                                format!("struct '{name}' has no field '{field_name}'{suggestion}"),
                                 field_val.span().clone(),
                             )
                         })?;
@@ -277,7 +306,50 @@ impl TypeChecker {
                     return result;
                 }
                 let sig = self.functions.get(name).ok_or_else(|| {
-                    CompileError::type_error(format!("undefined function '{name}'"), span.clone())
+                    let intrinsics = [
+                        "println",
+                        "splat",
+                        "load",
+                        "store",
+                        "fma",
+                        "sqrt",
+                        "rsqrt",
+                        "exp",
+                        "to_f32",
+                        "to_f64",
+                        "to_i32",
+                        "to_i64",
+                        "reduce_add",
+                        "reduce_max",
+                        "reduce_min",
+                        "reduce_add_fast",
+                        "shuffle",
+                        "select",
+                        "prefetch",
+                        "gather",
+                        "scatter",
+                        "load_masked",
+                        "store_masked",
+                        "stream_store",
+                        "movemask",
+                        "min",
+                        "max",
+                        "maddubs_i16",
+                        "maddubs_i32",
+                        "narrow_f32x4_i8",
+                    ];
+                    let candidates = self
+                        .functions
+                        .keys()
+                        .map(|k| k.as_str())
+                        .chain(intrinsics.into_iter());
+                    let suggestion = types::suggest_closest_name(name, candidates)
+                        .map(|s| format!(". Did you mean '{s}'?"))
+                        .unwrap_or_default();
+                    CompileError::type_error(
+                        format!("undefined function '{name}'{suggestion}"),
+                        span.clone(),
+                    )
                 })?;
                 if args.len() != sig.params.len() {
                     return Err(CompileError::type_error(

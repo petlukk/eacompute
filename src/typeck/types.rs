@@ -300,6 +300,48 @@ pub fn resolve_type(ty: &TypeAnnotation) -> crate::error::Result<Type> {
     }
 }
 
+/// Compute Levenshtein edit distance between two strings.
+fn levenshtein(a: &str, b: &str) -> usize {
+    let a_len = a.len();
+    let b_len = b.len();
+    if a_len == 0 {
+        return b_len;
+    }
+    if b_len == 0 {
+        return a_len;
+    }
+
+    let mut prev: Vec<usize> = (0..=b_len).collect();
+    let mut curr = vec![0; b_len + 1];
+
+    for (i, ca) in a.chars().enumerate() {
+        curr[0] = i + 1;
+        for (j, cb) in b.chars().enumerate() {
+            let cost = if ca == cb { 0 } else { 1 };
+            curr[j + 1] = (prev[j] + cost).min(prev[j + 1] + 1).min(curr[j] + 1);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+    prev[b_len]
+}
+
+/// Find the closest matching name from candidates. Returns None if no candidate
+/// is within edit distance 2 (or 1 for short names <=3 chars).
+pub fn suggest_closest_name<'a>(
+    query: &str,
+    candidates: impl Iterator<Item = &'a str>,
+) -> Option<String> {
+    let max_dist = if query.len() <= 3 { 1 } else { 2 };
+    let mut best: Option<(usize, String)> = None;
+    for name in candidates {
+        let dist = levenshtein(query, name);
+        if dist > 0 && dist <= max_dist && (best.is_none() || dist < best.as_ref().unwrap().0) {
+            best = Some((dist, name.to_string()));
+        }
+    }
+    best.map(|(_, name)| name)
+}
+
 pub fn suggest_dot_op(left: &Type, right: &Type, op: &crate::ast::BinaryOp) -> Option<String> {
     use crate::ast::BinaryOp;
     if !matches!(left, Type::Vector { .. }) || !matches!(right, Type::Vector { .. }) {
