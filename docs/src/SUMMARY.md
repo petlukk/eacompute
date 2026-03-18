@@ -34,3 +34,7 @@
 # Examples
 
 - [CQT Audio Visualizer: Beating BLAS with 80 Lines of Ea](examples/cqt-audio-visualizer.md)
+
+# Blog
+
+- [How 30 Lines of Eä Beat NumPy by 6×](blog/numpy-6x.md)
