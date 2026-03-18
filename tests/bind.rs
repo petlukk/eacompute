@@ -315,3 +315,183 @@ fn test_python_all_export() {
     assert!(py.contains("\"add\""), "__all__ should list add");
     assert!(py.contains("\"dot\""), "__all__ should list dot");
 }
+
+#[test]
+fn test_is_parallelizable_basic() {
+    use ea_compiler::bind_common::{Arg, ExportFunc, is_parallelizable};
+
+    let scale = ExportFunc {
+        name: "scale".into(),
+        args: vec![
+            Arg {
+                name: "src".into(),
+                ty: "*f32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "dst".into(),
+                ty: "*mut f32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "n".into(),
+                ty: "i32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+        ],
+        return_type: None,
+    };
+    assert!(is_parallelizable(&scale), "scale should be parallelizable");
+
+    let dot = ExportFunc {
+        name: "dot".into(),
+        args: vec![
+            Arg {
+                name: "a".into(),
+                ty: "*f32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "b".into(),
+                ty: "*f32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "n".into(),
+                ty: "i32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+        ],
+        return_type: Some("f32".into()),
+    };
+    assert!(is_parallelizable(&dot), "dot should be parallelizable");
+}
+
+#[test]
+fn test_is_not_parallelizable_with_out_params() {
+    use ea_compiler::bind_common::{Arg, ExportFunc, is_parallelizable};
+
+    let scale_out = ExportFunc {
+        name: "scale".into(),
+        args: vec![
+            Arg {
+                name: "src".into(),
+                ty: "*f32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "dst".into(),
+                ty: "*mut f32".into(),
+                direction: "out".into(),
+                cap: Some("n".into()),
+                count: None,
+            },
+            Arg {
+                name: "n".into(),
+                ty: "i32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+        ],
+        return_type: None,
+    };
+    assert!(
+        !is_parallelizable(&scale_out),
+        "auto-alloc out should not be parallelizable"
+    );
+}
+
+#[test]
+fn test_python_parallel_map_generated() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "scale", "args": [{"name": "src", "type": "*f32"}, {"name": "dst", "type": "*mut f32"}, {"name": "n", "type": "i32"}], "return_type": null}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "k").unwrap();
+    assert!(
+        py.contains("def scale_parallel("),
+        "should generate _parallel variant"
+    );
+    assert!(py.contains("ThreadPoolExecutor"), "should use thread pool");
+    assert!(
+        py.contains("ctypes.data"),
+        "should use pointer-based offset, not slicing"
+    );
+    assert!(!py.contains("[start:end]"), "must NOT use array slicing");
+}
+
+#[test]
+fn test_python_parallel_reduce_generated() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "dot", "args": [{"name": "a", "type": "*f32"}, {"name": "b", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": "f32"}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "k").unwrap();
+    assert!(
+        py.contains("def dot_parallel("),
+        "should generate _parallel variant"
+    );
+    assert!(
+        py.contains("sum("),
+        "reduce pattern should sum partial results"
+    );
+}
+
+#[test]
+fn test_python_parallel_not_generated_for_auto_out() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "scale", "args": [{"name": "src", "type": "*f32", "direction": "in"}, {"name": "dst", "type": "*mut f32", "direction": "out", "cap": "n", "count": null}, {"name": "n", "type": "i32", "direction": "in"}], "return_type": null}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "k").unwrap();
+    assert!(
+        !py.contains("_parallel("),
+        "auto-out functions should not get _parallel variant"
+    );
+}
+
+#[test]
+fn test_python_parallel_in_all() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "scale", "args": [{"name": "src", "type": "*f32"}, {"name": "dst", "type": "*mut f32"}, {"name": "n", "type": "i32"}], "return_type": null}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "k").unwrap();
+    assert!(
+        py.contains("\"scale_parallel\""),
+        "__all__ should include parallel variant"
+    );
+}
+
+#[test]
+fn test_is_not_parallelizable_no_pointer() {
+    use ea_compiler::bind_common::{Arg, ExportFunc, is_parallelizable};
+
+    let add = ExportFunc {
+        name: "add".into(),
+        args: vec![
+            Arg {
+                name: "a".into(),
+                ty: "i32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "b".into(),
+                ty: "i32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+        ],
+        return_type: Some("i32".into()),
+    };
+    assert!(
+        !is_parallelizable(&add),
+        "no pointer args = not parallelizable"
+    );
+}
