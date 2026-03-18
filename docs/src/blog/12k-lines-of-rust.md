@@ -12,15 +12,15 @@ The compiler is 12,000 lines of Rust. It has 475 tests. It took me about a year.
 
 ## Why
 
-I kept writing the same code. Take a Python script, find the slow loop, rewrite it in C with SIMD intrinsics, write a ctypes wrapper, debug pointer arithmetic for two hours, get a 5× speedup, then do it all again next week for a different project.
+I had a problem that kept repeating. I'd write something in Python, profile it, find a hot loop, and think: "this needs to be fast." And I knew that fast meant C. Fast meant SIMD. I don't have deep experience with either, but I knew that's where the performance lives.
 
-The friction wasn't the SIMD part. I actually like thinking about load/store patterns and accumulator strategies. The friction was everything *around* it: the header files, the build system, the ctypes declarations, the dtype validation. I spent 20% of my time on the kernel and 80% on plumbing.
+So I'd fumble through some C code, fight with ctypes, spend an afternoon on pointer arithmetic, and eventually get a 5× speedup. Then next week, different project, same dance.
 
-So I thought: what if a compiler could handle the plumbing?
+I didn't mind the hard part — figuring out *what* the kernel should do, thinking about memory access patterns, deciding on vector widths. That's the interesting problem. What I minded was the plumbing. The header files. The build system. The ctypes declarations. The dtype validation. All of it boilerplate, all of it error-prone, none of it the actual work.
 
-Write the kernel in a simple language. Compile to a shared library. Auto-generate the Python wrapper with type checking, length inference, and output allocation. One command. No Makefile.
+So I thought: what if a compiler could handle the plumbing? You write the kernel in a simple language — something that looks like the pseudocode you'd sketch on a whiteboard — and the compiler handles everything else. Compile to a shared library. Auto-generate the Python wrapper. One command. No Makefile.
 
-That was the idea. The tricky part was making it actually work.
+I didn't know how to build a compiler. But I had the idea, and I wanted to see if it would work.
 
 ## The First Attempt (10K Lines of Pain)
 
@@ -108,11 +108,15 @@ Nobody notices good error messages. But everyone notices bad ones. The differenc
 
 This is where it gets interesting.
 
-I built an automated optimization loop: an LLM reads the kernel source, the benchmark results, and the optimization history, then proposes a modified kernel. The system compiles it, benchmarks it across multiple data sizes (to catch cache-fitting illusions), verifies correctness against a C reference, and accepts or rejects the change. Then it iterates.
+Inspired by Andrej Karpathy's autoresearch concept, I built an automated optimization loop: an LLM reads the kernel source, the benchmark results, and the history of what's been tried, then proposes a modified kernel. The system compiles it, benchmarks it across multiple data sizes (to catch cache-fitting illusions), verifies correctness against a C reference, and accepts or rejects the change. Then it iterates.
 
-The first time I ran it on our FMA kernel, it found a 10% improvement in 30 iterations. I thought the kernel was already optimal — I'd hand-tuned it, looked at the assembly, counted the instructions. The LLM found that 12× unrolling with stream stores beat my 4× unrolling with regular stores at DRAM scale.
+This is where I had the most fun building Eä.
 
-Then I let it run on the matrix multiplication kernel. It found a 56% improvement by switching from ijk to ikj loop order with 8× k-unrolling. I knew about loop tiling. I teach people about loop tiling. But I didn't think to apply it to that specific kernel because the matrices were "small enough." The LLM didn't have that assumption.
+The first time I ran it on the FMA kernel, it found a 10% improvement in 30 iterations. I thought the kernel was already as good as it could get. The LLM found that 12× unrolling with stream stores beat 4× unrolling with regular stores at DRAM scale. I wouldn't have tried that — it sounds like overkill.
+
+Then I let it run on the matrix multiplication kernel. 56% improvement. It switched from ijk to ikj loop order with 8× k-unrolling. I've heard of loop tiling. I couldn't have told you when to apply it. The LLM didn't need to "know" — it just tried it and the benchmark said yes.
+
+The thing that surprised me most: you think you have an optimal kernel. You let the LLM iterate 5 times and it finds 20% improvement. Okay, fine, maybe it wasn't optimal. So you let it iterate 50 times on the already-improved kernel. And it *still* finds improvements. The search space for kernel optimization is bigger than your intuition.
 
 27 benchmark kernels, all scored on largest-size (real-world) data with GB/s bandwidth metrics. The system includes bottleneck classification that tells the LLM whether a kernel is DRAM-bound (don't bother with compute tricks), compute-bound (try wider SIMD, more accumulators), or mixed. The biggest wins:
 
@@ -123,7 +127,7 @@ Then I let it run on the matrix multiplication kernel. It found a 56% improvemen
 | Conv2d 3×3 | **47%** | 4× column unroll, prefetch, restrict |
 | Edge detect | **41%** | f32x4 → f32x8 upgrade |
 
-The humbling lesson: I thought I was good at optimization. I'm okay. But an LLM with a benchmark harness and 50 iterations to burn is better, because it doesn't have assumptions about what "should" work.
+The humbling part: I'm not an optimization expert. But it turns out you don't need to be one — you need a benchmark harness, a correctness check, and a system that's willing to try things you wouldn't think of.
 
 ## The Numbers
 
