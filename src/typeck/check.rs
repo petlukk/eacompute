@@ -238,13 +238,13 @@ impl TypeChecker {
                 }
                 Stmt::Kernel { span, .. } => {
                     return Err(CompileError::type_error(
-                        "kernel should have been desugared before type checking",
+                        "internal compiler error: kernel was not desugared before type checking (please report this bug)",
                         span.clone(),
                     ));
                 }
                 Stmt::For { span, .. } => {
                     return Err(CompileError::type_error(
-                        "for loop should have been desugared before type checking",
+                        "internal compiler error: for-loop was not desugared before type checking (please report this bug)",
                         span.clone(),
                     ));
                 }

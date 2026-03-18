@@ -70,7 +70,7 @@ impl<'ctx> CodeGenerator<'ctx> {
 
         if !function.verify(true) {
             return Err(CompileError::codegen_error(format!(
-                "LLVM verification failed for function '{name}'"
+                "internal error: generated code for function '{name}' failed validation — this is likely a compiler bug, please report it"
             )));
         }
         Ok(())
@@ -368,10 +368,10 @@ impl<'ctx> CodeGenerator<'ctx> {
                 Ok(false)
             }
             Stmt::Kernel { .. } => Err(CompileError::codegen_error(
-                "kernel should have been desugared before codegen",
+                "internal compiler error: kernel was not desugared before codegen (please report this bug)",
             )),
             Stmt::For { .. } => Err(CompileError::codegen_error(
-                "for loop should have been desugared before codegen",
+                "internal compiler error: for-loop was not desugared before codegen (please report this bug)",
             )),
             Stmt::StaticAssert { .. } => {
                 // Already validated at type-check time — no code to emit
