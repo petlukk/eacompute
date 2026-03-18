@@ -149,6 +149,61 @@ mod tests {
     }
 
     #[test]
+    fn test_inspect_hint_no_simd() {
+        let source = r#"
+            export func scalar_sum(data: *i32, n: i32) -> i32 {
+                let mut acc: i32 = 0
+                let mut i: i32 = 0
+                while i < n {
+                    acc = acc + data[i]
+                    i = i + 1
+                }
+                return acc
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            ..CompileOptions::default()
+        };
+        let report = inspect_source(source, &opts).unwrap();
+        let func = report
+            .functions
+            .iter()
+            .find(|f| f.name == "scalar_sum")
+            .unwrap();
+        assert!(
+            func.hints.iter().any(|h| h.contains("vector")),
+            "scalar loop should hint about SIMD, got hints: {:?}",
+            func.hints
+        );
+    }
+
+    #[test]
+    fn test_inspect_display_shows_hints() {
+        let source = r#"
+            export func scalar_sum(data: *i32, n: i32) -> i32 {
+                let mut acc: i32 = 0
+                let mut i: i32 = 0
+                while i < n {
+                    acc = acc + data[i]
+                    i = i + 1
+                }
+                return acc
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            ..CompileOptions::default()
+        };
+        let report = inspect_source(source, &opts).unwrap();
+        let output = format!("{report}");
+        assert!(
+            output.contains("hint:"),
+            "display should show hints section, got:\n{output}"
+        );
+    }
+
+    #[test]
     fn test_inspect_display_format() {
         let source = r#"
             export func identity(x: i32) -> i32 { return x }

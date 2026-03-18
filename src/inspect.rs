@@ -30,6 +30,7 @@ pub struct FunctionReport {
     pub vector_width: Option<String>,
     pub loops: u32,
     pub registers: Vec<String>,
+    pub hints: Vec<String>,
 }
 
 #[cfg(feature = "llvm")]
@@ -74,6 +75,9 @@ impl fmt::Display for InspectReport {
                     reg_list,
                     func.registers.len()
                 )?;
+            }
+            for hint in &func.hints {
+                writeln!(f, "  hint:                 {hint}")?;
             }
         }
         Ok(())
@@ -191,6 +195,33 @@ pub fn analyze_module(
 
         let regs = asm_registers.get(&name).cloned().unwrap_or_default();
 
+        let mut hints = Vec::new();
+
+        // Hint: no SIMD in a loop
+        if vector_instructions == 0 && loops > 0 {
+            hints.push(
+                "no vector instructions — consider using SIMD types (f32x4, f32x8)".to_string(),
+            );
+        }
+
+        // Hint: narrow vectors on x86 (128-bit when 256-bit is available)
+        if max_vector_bits == 128 && vector_instructions > 0 && !cfg!(target_arch = "aarch64") {
+            hints.push(
+                "using 128-bit vectors — f32x8/i32x8 may double throughput on AVX2".to_string(),
+            );
+        }
+
+        // Hint: memory-heavy kernel
+        let mem_ops = loads + stores;
+        let total_ops = vector_instructions + scalar_instructions;
+        if mem_ops > 0 && total_ops > mem_ops && mem_ops > total_ops - mem_ops {
+            let compute_ops = total_ops - mem_ops;
+            hints.push(format!(
+                "memory-heavy: {} memory ops vs {} compute ops — kernel may be bandwidth-bound",
+                mem_ops, compute_ops
+            ));
+        }
+
         functions.push(FunctionReport {
             name,
             exported,
@@ -202,6 +233,7 @@ pub fn analyze_module(
             vector_width: width_str,
             loops,
             registers: regs,
+            hints,
         });
 
         func = function.get_next_function();
