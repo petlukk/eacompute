@@ -264,6 +264,29 @@ mod tests {
     }
 
     #[test]
+    fn test_error_underline_spans_expression() {
+        let src = "export func bad(x: f32) {\n    let y: i32 = x + 1.0\n    return\n}";
+        let formatted = error_with_source(src);
+        // The underline should be wider than 1 character for 'x + 1.0'
+        assert!(
+            formatted.contains("^^^"),
+            "type error should underline the full expression, got:\n{formatted}"
+        );
+    }
+
+    #[test]
+    fn test_error_single_char_still_works() {
+        // Single variable reference — span start == span end, should show single ^
+        let src = "export func bad() -> i32 {\n    return xyz\n}";
+        let err = compile_err(src);
+        let formatted = format_with_source(&err, "test.ea", src);
+        assert!(
+            formatted.contains('^'),
+            "single-char span should still show caret, got:\n{formatted}"
+        );
+    }
+
+    #[test]
     fn test_exported_function_names() {
         let src = "func internal(x: i32) -> i32 { return x }\nexport func alpha(x: i32) -> i32 { return x }\nexport func beta(x: i32, y: i32) -> i32 { return x + y }";
         let tokens = ea_compiler::tokenize(src).unwrap();

@@ -183,8 +183,19 @@ pub fn format_with_source(error: &CompileError, filename: &str, source: &str) ->
     }
 
     let source_line = lines[line - 1];
+    let underline_len = match error {
+        CompileError::TypeError { span, .. } => {
+            if span.start.line == span.end.line && span.end.column > span.start.column {
+                span.end.column - span.start.column + 1
+            } else {
+                1
+            }
+        }
+        _ => 1,
+    };
     let caret_col = if col > 0 { col - 1 } else { 0 };
-    let caret = format!("{:>width$}^", "", width = caret_col + 4);
+    let underline = "^".repeat(underline_len);
+    let caret = format!("{:>width$}{underline}", "", width = caret_col + 4);
 
     format!("{header}\n    {source_line}\n{caret}")
 }
