@@ -61,7 +61,12 @@ pub fn create_target_machine(opts: &CompileOptions) -> crate::error::Result<Targ
             RelocMode::PIC,
             CodeModel::Default,
         )
-        .ok_or_else(|| CompileError::codegen_error("failed to create target machine"))
+        .ok_or_else(|| {
+            CompileError::codegen_error(format!(
+                "failed to create target machine for triple '{}', cpu '{cpu_str}'",
+                triple.as_str().to_string_lossy()
+            ))
+        })
 }
 
 #[cfg(feature = "llvm")]
@@ -110,7 +115,7 @@ pub fn optimize_module(
     let opts = PassBuilderOptions::create();
     module
         .run_passes(&passes, machine, opts)
-        .map_err(|e| CompileError::codegen_error(format!("pass pipeline failed: {e}")))?;
+        .map_err(|e| CompileError::codegen_error(format!("optimization failed: {e}")))?;
     Ok(())
 }
 
