@@ -6,9 +6,17 @@
 
 ## The Elevator Pitch
 
-Eä is a compiler for SIMD compute kernels. You write a `.ea` file with explicit vector types, compile it to a `.so`, and call it from Python with zero glue code. It generates native bindings for Python, Rust, C++, PyTorch, and CMake. It targets x86-64 (AVX2/AVX-512) and AArch64 (NEON).
+Eä is a compiler for SIMD kernels. You write a small `.ea` file, run one command, and call it from Python like a normal function. But it runs at native vectorized speed.
 
-The compiler is 12,000 lines of Rust. It has 475 tests. It took me about a year. And I'm not a great developer. More of an ideas person who got very lucky with timing.
+```python
+import ea
+kernel = ea.load("fma.ea")
+result = kernel.fma_f32x8(a, b, c, out)  # 6.6× faster than NumPy
+```
+
+No ctypes. No header files. No build system. The compiler generates the shared library *and* the Python wrapper. Also Rust, C++, PyTorch, and CMake bindings. It targets x86-64 (AVX2/AVX-512) and AArch64 (NEON).
+
+The whole compiler is 12,000 lines of Rust. 475 tests. One person. I'm not a compiler engineer. But I had a very specific problem, and it turns out that's enough.
 
 ## Why
 
@@ -19,6 +27,8 @@ So I'd fumble through some C code (with an LLM helping me write it, which honest
 I didn't mind the hard part. Figuring out *what* the kernel should do, thinking about memory access patterns, deciding on vector widths. That's the interesting problem. What I minded was the plumbing. The header files. The build system. The ctypes declarations. The dtype validation. All of it boilerplate, all of it error-prone, none of it the actual work.
 
 So I thought: what if a compiler could handle the plumbing? You write the kernel in a simple language, something that looks like the pseudocode you'd sketch on a whiteboard, and the compiler handles everything else. Compile to a shared library. Auto-generate the Python wrapper. One command. No Makefile.
+
+**The "no glue code" part turned out to be the product.** Not the SIMD. Not the compiler. The fact that you go from `.ea` file to working Python function in one command, with types checked, lengths inferred, and output buffers allocated. That's what makes people actually use it instead of just reading about it.
 
 I didn't know how to build a compiler. But I had the idea, and I wanted to see if it would work.
 
@@ -125,7 +135,7 @@ The thing that surprised me most: you think you have an optimal kernel. You let 
 | Bitonic sort | **97%** | Replaced O(n²) Shellsort with sorting network |
 | Matmul | **56%** | k×8 unroll, cache-friendly access |
 | Conv2d 3×3 | **47%** | 4× column unroll, prefetch, restrict |
-| Edge detect | **41%** | f32x4 → f32x8 upgrade |
+| Edge detect | **41%** | f32x4 to f32x8 upgrade |
 
 The humbling part: I'm not an optimization expert. But it turns out you don't need to be one. You need a benchmark harness, a correctness check, and a system that's willing to try things you wouldn't think of.
 
@@ -143,10 +153,12 @@ Binding targets: Python, Rust, C++, PyTorch, CMake
 Performance on a real workload (16M float32 elements):
 
 ```
-FMA (fused multiply-add):  6.6× faster than NumPy, 37.0 GB/s
-Dot product:               Matches BLAS at 36.6 GB/s
-SAXPY:                     2.1× faster than NumPy (single-pass fusion)
+FMA (fused multiply-add):  6.6× faster than NumPy    37.0 GB/s
+Dot product:               matches BLAS               36.6 GB/s
+SAXPY:                     2.1× faster than NumPy     35.2 GB/s
 ```
+
+That's ~37 GB/s on a system with ~40 GB/s memory bandwidth. Near the hardware limit. There's not much room left, which means the code is doing roughly as little unnecessary work as possible.
 
 ## What I'd Do Differently
 
@@ -162,9 +174,9 @@ I'm not a compiler engineer. I don't have a CS degree. I'm the kind of person wh
 
 What changed is the tooling. I built Eä with the help of AI models. Claude for the heavy lifting, my own judgment for the architecture and design decisions. The hard rules came from me (learned the painful way from the first attempt). The implementation speed came from having a capable coding assistant.
 
-A year ago, I couldn't have built this. Not because I didn't have the ideas. I had the ideas for years. But the gap between "I know what a SIMD kernel compiler should do" and "I have a working SIMD kernel compiler" was too wide for one person.
+A year ago, this would have required a team. Now it's 12,000 lines and one person.
 
-That gap is smaller now. Not zero. You still need to know what you're building and why. The AI doesn't know your domain, your constraints, your users. But it can write the lexer while you think about the type system. It can generate 475 tests while you think about the binding API. It can iterate on a kernel 50 times while you sleep.
+The interesting question isn't "can you build this?" anymore. It's what are you going to build next?
 
 My advice: if you have an idea that feels too ambitious for one person, the calculus has changed. Try it. Set hard rules so the codebase stays manageable. Write tests for everything. And don't be afraid to throw away your first attempt.
 
