@@ -71,7 +71,7 @@ jobs:
     runs-on: windows-latest
     env:
       LLVM_VERSION: "18.1.8"
-      LLVM_SYS_180_PREFIX: C:\llvm
+      LLVM_SYS_181_PREFIX: C:\llvm
     steps:
       - uses: actions/checkout@v4
 
