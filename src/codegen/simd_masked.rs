@@ -226,7 +226,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             BasicTypeEnum::IntType(it) => it.vec_type(width),
             _ => {
                 return Err(CompileError::codegen_error(
-                    "unsupported gather element type",
+                    "unsupported gather element type (internal error)",
                 ));
             }
         };

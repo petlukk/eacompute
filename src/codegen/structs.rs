@@ -39,7 +39,11 @@ impl<'ctx> CodeGenerator<'ctx> {
             let field_ptr = self
                 .builder
                 .build_struct_gep(struct_type, alloca, idx, &format!("{name}.{field_name}"))
-                .map_err(|e| CompileError::codegen_error(format!("struct gep error: {e}")))?;
+                .map_err(|e| {
+                    CompileError::codegen_error(format!(
+                        "internal error accessing struct field: {e}"
+                    ))
+                })?;
             self.builder
                 .build_store(field_ptr, val)
                 .map_err(|e| CompileError::codegen_error(e.to_string()))?;
@@ -82,7 +86,9 @@ impl<'ctx> CodeGenerator<'ctx> {
                 idx,
                 &format!("{struct_name}.{field}"),
             )
-            .map_err(|e| CompileError::codegen_error(format!("struct gep error: {e}")))?;
+            .map_err(|e| {
+                CompileError::codegen_error(format!("internal error accessing struct field: {e}"))
+            })?;
         let field_llvm_ty = self.llvm_type(&field_type);
         let val = self
             .builder
@@ -122,7 +128,9 @@ impl<'ctx> CodeGenerator<'ctx> {
                 idx,
                 &format!("{struct_name}.{field}"),
             )
-            .map_err(|e| CompileError::codegen_error(format!("struct gep error: {e}")))?;
+            .map_err(|e| {
+                CompileError::codegen_error(format!("internal error accessing struct field: {e}"))
+            })?;
         let val = self.compile_expr_typed(value, Some(&field_type), function)?;
         self.builder
             .build_store(field_ptr, val)
@@ -153,11 +161,11 @@ impl<'ctx> CodeGenerator<'ctx> {
                             Ok((ptr, sn.clone()))
                         }
                         _ => Err(CompileError::codegen_error(format!(
-                            "pointer does not point to struct: {ty:?}"
+                            "pointer does not point to struct: {ty}"
                         ))),
                     },
                     _ => Err(CompileError::codegen_error(format!(
-                        "field access on non-struct type: {ty:?}"
+                        "field access on non-struct type: {ty}"
                     ))),
                 }
             }
@@ -181,7 +189,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 "nested struct field access not supported",
             )),
             _ => Err(CompileError::codegen_error(
-                "unsupported object for field access",
+                "unsupported object for field access (internal error)",
             )),
         }
     }
@@ -203,7 +211,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 }
             }
             _ => Err(CompileError::codegen_error(
-                "cannot resolve struct name from expression",
+                "cannot resolve struct name from expression (internal error)",
             )),
         }
     }

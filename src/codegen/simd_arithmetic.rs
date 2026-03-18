@@ -62,7 +62,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             }
             _ => {
                 return Err(CompileError::codegen_error(
-                    "unsupported vector binary operation",
+                    "unsupported vector binary operation (internal error)",
                 ));
             }
         };

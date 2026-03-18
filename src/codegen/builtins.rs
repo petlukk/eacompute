@@ -86,7 +86,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             }
             _ => {
                 return Err(CompileError::codegen_error(
-                    "unsupported println argument type",
+                    "unsupported println argument type (internal error)",
                 ));
             }
         }

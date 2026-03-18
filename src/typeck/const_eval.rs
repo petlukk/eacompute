@@ -94,7 +94,7 @@ fn eval_binary(
             )),
         },
         _ => Err(CompileError::type_error(
-            "type mismatch in constant expression",
+            "type mismatch in constant expression: cannot mix integer and float operands",
             span.clone(),
         )),
     }

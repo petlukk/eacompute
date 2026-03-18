@@ -110,7 +110,9 @@ impl<'ctx> CodeGenerator<'ctx> {
                             Ok(BasicValueEnum::VectorValue(result))
                         }
                     }
-                    _ => Err(CompileError::codegen_error("unary '-' on unsupported type")),
+                    _ => Err(CompileError::codegen_error(
+                        "unary '-' on unsupported type (internal error)",
+                    )),
                 }
             }
             Expr::Variable(name, _) => {
@@ -364,7 +366,9 @@ impl<'ctx> CodeGenerator<'ctx> {
             (Type::F64, Literal::Integer(n)) => {
                 Ok(self.context.f64_type().const_float(*n as f64).into())
             }
-            _ => Err(CompileError::codegen_error("unsupported const type")),
+            _ => Err(CompileError::codegen_error(
+                "unsupported const type (internal error — please report this bug)",
+            )),
         }
     }
 }
