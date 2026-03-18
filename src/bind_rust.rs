@@ -62,15 +62,50 @@ fn emit_safe_wrapper(out: &mut String, func: &ExportFunc) {
         .filter(|a| a.direction == "out" && a.cap.is_some())
         .collect();
 
-    // Build doc comment showing original C signature
+    // Build doc comment: first line shows Rust types, then C signature
     let c_args: Vec<String> = func
         .args
         .iter()
         .map(|a| format!("{}: {}", a.name, a.ty))
         .collect();
     let c_ret = func.return_type.as_deref().unwrap_or("void");
+
+    // Rust-friendly parameter list (excluding collapsed/auto-out args)
+    let friendly_params: Vec<String> = func
+        .args
+        .iter()
+        .enumerate()
+        .filter(|(i, a)| !(collapsed[*i] || a.direction == "out" && a.cap.is_some()))
+        .map(|(_, a)| format!("{}: {}", a.name, rust_safe_type(&a.ty)))
+        .collect();
+
+    // Compute friendly return type string
+    let friendly_ret = if !auto_out.is_empty() {
+        if auto_out.len() == 1 {
+            let inner = pointer_inner(&auto_out[0].ty).unwrap_or("f32");
+            format!(" -> Vec<{}>", rust_scalar_type(inner))
+        } else {
+            let types: Vec<String> = auto_out
+                .iter()
+                .map(|a| {
+                    let inner = pointer_inner(&a.ty).unwrap_or("f32");
+                    format!("Vec<{}>", rust_scalar_type(inner))
+                })
+                .collect();
+            format!(" -> ({})", types.join(", "))
+        }
+    } else {
+        match &func.return_type {
+            Some(ty) => format!(" -> {}", rust_ffi_type(ty)),
+            None => String::new(),
+        }
+    };
+
     out.push_str(&format!(
-        "/// {}({}) -> {}\n",
+        "/// {}({}){}\n///\n/// C signature: `{}({}) -> {}`\n",
+        func.name,
+        friendly_params.join(", "),
+        friendly_ret,
         func.name,
         c_args.join(", "),
         c_ret
@@ -109,6 +144,11 @@ fn emit_safe_wrapper(out: &mut String, func: &ExportFunc) {
             None => String::new(),
         }
     };
+
+    let has_return = func.return_type.is_some() || !auto_out.is_empty();
+    if has_return {
+        out.push_str("#[must_use]\n");
+    }
 
     out.push_str(&format!(
         "pub fn {}({}){ret} {{\n",

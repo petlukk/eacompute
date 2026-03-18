@@ -119,6 +119,40 @@ fn test_roundtrip_source_to_rust() {
     assert!(rs.contains(".len() as i32"));
 }
 
+#[test]
+fn test_rust_friendly_doc_comment() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "dot", "args": [{"name": "a", "type": "*f32"}, {"name": "b", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": "f32"}], "structs": []}"#;
+    let rs = ea_compiler::bind_rust::generate(json, "k").unwrap();
+    assert!(
+        rs.contains("/// dot(a: &[f32]"),
+        "doc comment should show Rust types, got:\n{rs}"
+    );
+    assert!(
+        rs.contains("C signature:"),
+        "should include C signature, got:\n{rs}"
+    );
+}
+
+#[test]
+fn test_rust_must_use_on_return() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "dot", "args": [{"name": "a", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": "f32"}], "structs": []}"#;
+    let rs = ea_compiler::bind_rust::generate(json, "k").unwrap();
+    assert!(
+        rs.contains("#[must_use]"),
+        "functions with return values should have #[must_use], got:\n{rs}"
+    );
+}
+
+#[test]
+fn test_rust_no_must_use_on_void() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "scale", "args": [{"name": "data", "type": "*mut f32"}, {"name": "n", "type": "i32"}, {"name": "alpha", "type": "f32"}], "return_type": null}], "structs": []}"#;
+    let rs = ea_compiler::bind_rust::generate(json, "k").unwrap();
+    assert!(
+        !rs.contains("#[must_use]"),
+        "void functions should NOT have #[must_use], got:\n{rs}"
+    );
+}
+
 // --- PyTorch generation tests ---
 
 #[test]
