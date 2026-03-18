@@ -344,3 +344,31 @@ fn test_cpp_doxygen_comment() {
         "should include C signature note, got:\n{cpp}"
     );
 }
+
+#[test]
+fn test_pytorch_type_hints() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "dot", "args": [{"name": "a", "type": "*f32"}, {"name": "b", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": "f32"}], "structs": []}"#;
+    let py = ea_compiler::bind_pytorch::generate(json, "k").unwrap();
+    assert!(
+        py.contains("_torch.Tensor"),
+        "wrapper params should have Tensor type hints, got:\n{py}"
+    );
+    assert!(
+        py.contains("-> float"),
+        "wrapper should have return type hint, got:\n{py}"
+    );
+}
+
+#[test]
+fn test_pytorch_friendly_docstring() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "dot", "args": [{"name": "a", "type": "*f32"}, {"name": "b", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": "f32"}], "structs": []}"#;
+    let py = ea_compiler::bind_pytorch::generate(json, "k").unwrap();
+    assert!(
+        py.contains("Tensor[float32]"),
+        "docstring should show friendly types, got:\n{py}"
+    );
+    assert!(
+        py.contains("C signature:"),
+        "should include C signature, got:\n{py}"
+    );
+}

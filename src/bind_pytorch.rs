@@ -209,7 +209,13 @@ fn emit_autograd_class(out: &mut String, func: &ExportFunc) {
 fn emit_wrapper(out: &mut String, func: &ExportFunc) {
     let collapsed = find_collapsed_args(&func.args);
     let class_name = to_class_name(&func.name);
+    let auto_out: Vec<&crate::bind_common::Arg> = func
+        .args
+        .iter()
+        .filter(|a| a.direction == "out" && a.cap.is_some())
+        .collect();
 
+    // Build typed parameter list
     let mut py_params = Vec::new();
     for (i, arg) in func.args.iter().enumerate() {
         if collapsed[i] {
@@ -218,20 +224,94 @@ fn emit_wrapper(out: &mut String, func: &ExportFunc) {
         if arg.direction == "out" && arg.cap.is_some() {
             continue;
         }
-        py_params.push(arg.name.clone());
+        if pointer_inner(&arg.ty).is_some() {
+            py_params.push(format!("{}: _torch.Tensor", arg.name));
+        } else {
+            py_params.push(format!("{}: {}", arg.name, python_type_annotation(&arg.ty)));
+        }
     }
 
-    out.push_str(&format!("def {}({}):\n", func.name, py_params.join(", ")));
+    // Determine return type annotation
+    let ret_annotation = if !auto_out.is_empty() {
+        if auto_out.len() == 1 {
+            " -> _torch.Tensor".to_string()
+        } else {
+            let inner: Vec<&str> = auto_out.iter().map(|_| "_torch.Tensor").collect();
+            format!(" -> tuple[{}]", inner.join(", "))
+        }
+    } else if let Some(ty) = &func.return_type {
+        format!(" -> {}", python_type_annotation(ty))
+    } else {
+        String::new()
+    };
 
-    // Docstring showing original C signature
+    out.push_str(&format!(
+        "def {}({}){}:\n",
+        func.name,
+        py_params.join(", "),
+        ret_annotation
+    ));
+
+    // Friendly docstring line
+    let friendly_args: Vec<String> = func
+        .args
+        .iter()
+        .enumerate()
+        .filter(|(i, a)| !(collapsed[*i] || a.direction == "out" && a.cap.is_some()))
+        .map(|(_, a)| {
+            if let Some(inner) = pointer_inner(&a.ty) {
+                format!("{}: Tensor[{}]", a.name, torch_dtype_short(inner))
+            } else {
+                format!("{}: {}", a.name, python_type_annotation(&a.ty))
+            }
+        })
+        .collect();
+    let friendly_ret = if !auto_out.is_empty() {
+        if auto_out.len() == 1 {
+            if let Some(inner) = auto_out[0]
+                .ty
+                .strip_prefix("*mut ")
+                .or_else(|| auto_out[0].ty.strip_prefix("*"))
+            {
+                format!("Tensor[{}]", torch_dtype_short(inner))
+            } else {
+                "Tensor".to_string()
+            }
+        } else {
+            let parts: Vec<String> = auto_out
+                .iter()
+                .map(|a| {
+                    if let Some(inner) =
+                        a.ty.strip_prefix("*mut ")
+                            .or_else(|| a.ty.strip_prefix("*"))
+                    {
+                        format!("Tensor[{}]", torch_dtype_short(inner))
+                    } else {
+                        "Tensor".to_string()
+                    }
+                })
+                .collect();
+            format!("tuple[{}]", parts.join(", "))
+        }
+    } else if let Some(ty) = &func.return_type {
+        python_type_annotation(ty).to_string()
+    } else {
+        "None".to_string()
+    };
+
+    // C signature line
     let c_args: Vec<String> = func
         .args
         .iter()
         .map(|a| format!("{}: {}", a.name, a.ty))
         .collect();
     let c_ret = func.return_type.as_deref().unwrap_or("void");
+
     out.push_str(&format!(
-        "    \"\"\"{}({}) -> {}\"\"\"\n",
+        "    \"\"\"{}({}) -> {}\n\n    C signature: {}({}) -> {}\n    \"\"\"\n",
+        func.name,
+        friendly_args.join(", "),
+        friendly_ret,
         func.name,
         c_args.join(", "),
         c_ret
@@ -239,7 +319,11 @@ fn emit_wrapper(out: &mut String, func: &ExportFunc) {
 
     out.push_str(&format!(
         "    return _{class_name}.apply({})\n",
-        py_params.join(", ")
+        py_params
+            .iter()
+            .map(|p| p.split(':').next().unwrap().trim().to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
     ));
 }
 
@@ -310,6 +394,27 @@ fn torch_cast_method(ty: &str) -> &'static str {
 }
 
 fn python_cast(ty: &str) -> &'static str {
+    match ty {
+        "f32" | "f64" => "float",
+        "bool" => "bool",
+        _ => "int",
+    }
+}
+
+fn torch_dtype_short(ty: &str) -> &'static str {
+    match ty {
+        "f32" => "float32",
+        "f64" => "float64",
+        "i8" => "int8",
+        "u8" => "uint8",
+        "i16" => "int16",
+        "i32" => "int32",
+        "i64" => "int64",
+        _ => "float32",
+    }
+}
+
+fn python_type_annotation(ty: &str) -> &'static str {
     match ty {
         "f32" | "f64" => "float",
         "bool" => "bool",
