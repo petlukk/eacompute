@@ -476,7 +476,7 @@ impl Parser {
         }
 
         Err(CompileError::parse_error(
-            format!("expected expression, found {:?}", self.peek_kind()),
+            format!("expected expression, found '{}'", self.peek_lexeme()),
             self.current_position(),
         ))
     }

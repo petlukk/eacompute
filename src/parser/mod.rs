@@ -56,10 +56,16 @@ impl Parser {
                 self.advance();
                 return self.parse_kernel(true, start);
             }
-            self.expect_kind(
-                TokenKind::Func,
-                "expected 'func' or 'kernel' after 'export'",
-            )?;
+            if !self.check(TokenKind::Func) {
+                return Err(CompileError::parse_error(
+                    format!(
+                        "expected 'func' or 'kernel' after 'export', found '{}'",
+                        self.peek_lexeme()
+                    ),
+                    self.current_position(),
+                ));
+            }
+            self.advance();
             return self.function(true, start, cfg);
         }
         if self.check(TokenKind::Func) {
@@ -88,7 +94,10 @@ impl Parser {
             return self.parse_static_assert(start);
         }
         Err(CompileError::parse_error(
-            format!("expected declaration, found {:?}", self.peek_kind()),
+            format!(
+                "expected declaration (func, kernel, struct, or const), found '{}'",
+                self.peek_lexeme()
+            ),
             self.current_position(),
         ))
     }
@@ -239,7 +248,10 @@ impl Parser {
             return Ok(TypeAnnotation::Named(token.lexeme.clone(), span));
         }
         Err(CompileError::parse_error(
-            format!("expected type, found {:?}", self.peek_kind()),
+            format!(
+                "expected type (e.g., i32, f32, *mut f32), found '{}'",
+                self.peek_lexeme()
+            ),
             self.current_position(),
         ))
     }
@@ -334,6 +346,13 @@ impl Parser {
                     .map(|t| t.position.clone())
                     .unwrap_or_default()
             })
+    }
+
+    pub(super) fn peek_lexeme(&self) -> &str {
+        self.tokens
+            .get(self.current)
+            .map(|t| t.lexeme.as_str())
+            .unwrap_or("end of file")
     }
 
     pub(super) fn previous_position(&self) -> Position {
