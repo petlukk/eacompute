@@ -101,7 +101,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             )
             .map_err(|e| CompileError::codegen_error(e.to_string()))?
             .try_as_basic_value()
-            .left()
+            .basic()
             .ok_or_else(|| CompileError::codegen_error("masked load did not return a value"))?;
 
         Ok(result)
@@ -270,7 +270,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             )
             .map_err(|e| CompileError::codegen_error(e.to_string()))?
             .try_as_basic_value()
-            .left()
+            .basic()
             .ok_or_else(|| CompileError::codegen_error("gather did not return a value"))?;
         Ok(result)
     }

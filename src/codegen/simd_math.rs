@@ -31,7 +31,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .build_call(intrinsic, &[fv.into()], "sqrt")
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?
                     .try_as_basic_value()
-                    .left()
+                    .basic()
                     .ok_or_else(|| CompileError::codegen_error("sqrt did not return a value"))?;
                 Ok(result)
             }
@@ -48,7 +48,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .build_call(intrinsic, &[vv.into()], "vsqrt")
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?
                     .try_as_basic_value()
-                    .left()
+                    .basic()
                     .ok_or_else(|| CompileError::codegen_error("sqrt did not return a value"))?;
                 Ok(result)
             }
@@ -83,7 +83,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .build_call(intrinsic, &[fv.into()], "exp")
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?
                     .try_as_basic_value()
-                    .left()
+                    .basic()
                     .ok_or_else(|| CompileError::codegen_error("exp did not return a value"))?;
                 Ok(result)
             }
@@ -100,7 +100,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .build_call(intrinsic, &[vv.into()], "vexp")
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?
                     .try_as_basic_value()
-                    .left()
+                    .basic()
                     .ok_or_else(|| CompileError::codegen_error("exp did not return a value"))?;
                 Ok(result)
             }
@@ -171,7 +171,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .build_call(intrinsic, &[av.into(), bv.into()], name)
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?
                     .try_as_basic_value()
-                    .left()
+                    .basic()
                     .ok_or_else(|| {
                         CompileError::codegen_error(format!("{name} did not return a value"))
                     })?;
@@ -196,7 +196,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .build_call(intrinsic, &[av.into(), bv.into()], name)
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?
                     .try_as_basic_value()
-                    .left()
+                    .basic()
                     .ok_or_else(|| {
                         CompileError::codegen_error(format!("{name} did not return a value"))
                     })?;
@@ -220,7 +220,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .build_call(intrinsic, &[av.into(), bv.into()], name)
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?
                     .try_as_basic_value()
-                    .left()
+                    .basic()
                     .ok_or_else(|| {
                         CompileError::codegen_error(format!("{name} did not return a value"))
                     })?;

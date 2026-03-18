@@ -186,7 +186,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .builder
                     .build_call(callee, &compiled_args, "call")
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?;
-                match result.try_as_basic_value().left() {
+                match result.try_as_basic_value().basic() {
                     Some(val) => Ok(val),
                     None => Ok(BasicValueEnum::IntValue(
                         self.context.i32_type().const_int(0, false),

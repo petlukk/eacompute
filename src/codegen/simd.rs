@@ -199,7 +199,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .build_call(intrinsic, &[fa.into(), fb.into(), fc.into()], "fma")
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?
                     .try_as_basic_value()
-                    .left()
+                    .basic()
                     .ok_or_else(|| CompileError::codegen_error("fma did not return a value"))?;
                 Ok(result)
             }
@@ -218,7 +218,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .build_call(intrinsic, &[va.into(), vb.into(), vc.into()], "fma")
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?
                     .try_as_basic_value()
-                    .left()
+                    .basic()
                     .ok_or_else(|| CompileError::codegen_error("fma did not return a value"))?;
                 Ok(result)
             }
@@ -284,7 +284,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             }
             let result = call
                 .try_as_basic_value()
-                .left()
+                .basic()
                 .ok_or_else(|| CompileError::codegen_error("reduce did not return a value"))?;
             Ok(result)
         } else {
@@ -302,7 +302,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 .build_call(intrinsic, &[vec.into()], "reduce")
                 .map_err(|e| CompileError::codegen_error(e.to_string()))?
                 .try_as_basic_value()
-                .left()
+                .basic()
                 .ok_or_else(|| CompileError::codegen_error("reduce did not return a value"))?;
             Ok(result)
         }

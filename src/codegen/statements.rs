@@ -343,7 +343,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 // Compile the inner loop normally — LLVM at O2/O3 handles unrolling.
                 // The unroll(N) annotation is a semantic hint. Explicit metadata
                 // attachment (llvm.loop.unroll.count) requires instruction-level
-                // metadata API which inkwell 0.5 does not expose. The loop compiles
+                // metadata API which inkwell does not expose. The loop compiles
                 // correctly and LLVM's heuristics apply at O2+.
                 self.compile_stmt(body, function)
             }

@@ -300,7 +300,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             .build_call(intrinsic, &[a.into(), b.into()], "maddubs_i16")
             .map_err(|e| CompileError::codegen_error(e.to_string()))?
             .try_as_basic_value()
-            .left()
+            .basic()
             .ok_or_else(|| CompileError::codegen_error("maddubs_i16 did not return a value"))?;
 
         Ok(result)
@@ -341,7 +341,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             .build_call(pmaddubsw, &[a.into(), b.into()], "maddubs_i32_step1")
             .map_err(|e| CompileError::codegen_error(e.to_string()))?
             .try_as_basic_value()
-            .left()
+            .basic()
             .ok_or_else(|| CompileError::codegen_error("pmaddubsw did not return a value"))?
             .into_vector_value(); // i16x8
 
@@ -364,7 +364,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             .build_call(pmaddwd, &[t.into(), ones.into()], "maddubs_i32_step2")
             .map_err(|e| CompileError::codegen_error(e.to_string()))?
             .try_as_basic_value()
-            .left()
+            .basic()
             .ok_or_else(|| CompileError::codegen_error("pmaddwd did not return a value"))?;
 
         Ok(result)
@@ -427,7 +427,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             .build_call(intrinsic, &[byte_vec.into()], "movemask")
             .map_err(|e| CompileError::codegen_error(e.to_string()))?
             .try_as_basic_value()
-            .left()
+            .basic()
             .ok_or_else(|| CompileError::codegen_error("movemask did not return a value"))?;
 
         Ok(result)

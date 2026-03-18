@@ -4,8 +4,6 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 #[cfg(feature = "llvm")]
-use either::Either::{Left, Right};
-#[cfg(feature = "llvm")]
 use inkwell::module::Module;
 #[cfg(feature = "llvm")]
 use inkwell::targets::TargetMachine;
@@ -13,6 +11,8 @@ use inkwell::targets::TargetMachine;
 use inkwell::types::AnyTypeEnum;
 #[cfg(feature = "llvm")]
 use inkwell::values::InstructionOpcode;
+#[cfg(feature = "llvm")]
+use inkwell::values::Operand;
 
 #[cfg(feature = "llvm")]
 use crate::error::CompileError;
@@ -221,7 +221,7 @@ fn is_vector_instruction(instr: &inkwell::values::InstructionValue) -> bool {
     }
     // Check if any operand is a vector type via get_operands iterator
     for operand in instr.get_operands().flatten() {
-        if let Left(val) = operand
+        if let Operand::Value(val) = operand
             && val.get_type().is_vector_type()
         {
             return true;
@@ -251,7 +251,7 @@ fn detect_loops(function: &inkwell::values::FunctionValue) -> u32 {
             && term.get_opcode() == InstructionOpcode::Br
         {
             for operand in term.get_operands().flatten() {
-                if let Right(succ_bb) = operand
+                if let Operand::Block(succ_bb) = operand
                     && let Some(&succ_idx) = block_index.get(&succ_bb)
                     && succ_idx <= idx
                 {

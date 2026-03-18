@@ -8,7 +8,7 @@ Results reported in the README were measured on:
 - **Features**: SSE4.2, AVX2, FMA
 - **OS**: Ubuntu 22.04 on WSL2 (kernel 5.15.146.1)
 - **GCC**: 11.4.0 (`gcc -O3 -march=native -ffast-math`)
-- **LLVM**: 18.1.x (via inkwell 0.5, `features = ["llvm18-0"]`, no external `llc`)
+- **LLVM**: 18.1.x (via inkwell 0.8, `features = ["llvm18-1"]`, no external `llc`)
 - **Ea**: strict IEEE — no fast-math flags
 
 ## Measurement Conditions
