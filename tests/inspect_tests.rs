@@ -79,6 +79,50 @@ mod tests {
         assert!(names.contains(&"beta"), "missing beta in report");
     }
 
+    #[cfg(target_arch = "x86_64")]
+    #[test]
+    fn test_inspect_memory_ops() {
+        let source = r#"
+            export kernel vscale(data: *f32, out: *mut f32, factor: f32)
+                over i in n step 4
+            {
+                let v: f32x4 = load(data, i)
+                store(out, i, v .* splat(factor))
+            }
+        "#;
+        let report = inspect_source(source, &CompileOptions::default()).unwrap();
+        let func = report
+            .functions
+            .iter()
+            .find(|f| f.name == "vscale")
+            .unwrap();
+        assert!(
+            func.loads > 0,
+            "kernel with load() should count loads, got 0"
+        );
+        assert!(
+            func.stores > 0,
+            "kernel with store() should count stores, got 0"
+        );
+    }
+
+    #[test]
+    fn test_inspect_display_shows_memory_ops() {
+        let source = r#"
+            export func add(a: i32, b: i32) -> i32 { return a + b }
+        "#;
+        let report = inspect_source(source, &CompileOptions::default()).unwrap();
+        let output = format!("{report}");
+        assert!(
+            output.contains("loads:"),
+            "display should contain 'loads:', got:\n{output}"
+        );
+        assert!(
+            output.contains("stores:"),
+            "display should contain 'stores:', got:\n{output}"
+        );
+    }
+
     #[test]
     fn test_inspect_display_format() {
         let source = r#"

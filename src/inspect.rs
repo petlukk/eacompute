@@ -24,6 +24,8 @@ pub struct FunctionReport {
     pub exported: bool,
     pub vector_instructions: u32,
     pub scalar_instructions: u32,
+    pub loads: u32,
+    pub stores: u32,
     pub vector_width: Option<String>,
     pub loops: u32,
     pub registers: Vec<String>,
@@ -46,6 +48,8 @@ impl fmt::Display for InspectReport {
             writeln!(f, "=== {}{} ===", func.name, export_tag)?;
             writeln!(f, "  vector instructions:  {}", func.vector_instructions)?;
             writeln!(f, "  scalar instructions:  {}", func.scalar_instructions)?;
+            writeln!(f, "  loads:                {}", func.loads)?;
+            writeln!(f, "  stores:               {}", func.stores)?;
             if let Some(ref width) = func.vector_width {
                 writeln!(f, "  vector width:         {width}")?;
             }
@@ -97,6 +101,8 @@ pub fn analyze_module(
 
         let mut vector_instructions: u32 = 0;
         let mut scalar_instructions: u32 = 0;
+        let mut loads: u32 = 0;
+        let mut stores: u32 = 0;
         let mut max_vector_bits: u32 = 0;
         let mut vector_elem_type = String::new();
         let mut vector_width: u32 = 0;
@@ -107,6 +113,12 @@ pub fn analyze_module(
         while let Some(block) = bb {
             let mut instr = block.get_first_instruction();
             while let Some(instruction) = instr {
+                let opcode = instruction.get_opcode();
+                match opcode {
+                    InstructionOpcode::Load => loads += 1,
+                    InstructionOpcode::Store => stores += 1,
+                    _ => {}
+                }
                 if is_vector_instruction(&instruction) {
                     vector_instructions += 1;
                     let ty = instruction.get_type();
@@ -145,11 +157,8 @@ pub fn analyze_module(
                             vector_width = size;
                         }
                     }
-                } else {
-                    let opcode = instruction.get_opcode();
-                    if is_countable_scalar_opcode(opcode) {
-                        scalar_instructions += 1;
-                    }
+                } else if is_countable_scalar_opcode(opcode) {
+                    scalar_instructions += 1;
                 }
                 instr = instruction.get_next_instruction();
             }
@@ -171,6 +180,8 @@ pub fn analyze_module(
             exported,
             vector_instructions,
             scalar_instructions,
+            loads,
+            stores,
             vector_width: width_str,
             loops,
             registers: regs,
