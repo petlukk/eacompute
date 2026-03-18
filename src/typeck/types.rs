@@ -299,3 +299,26 @@ pub fn resolve_type(ty: &TypeAnnotation) -> crate::error::Result<Type> {
         }
     }
 }
+
+pub fn suggest_dot_op(left: &Type, right: &Type, op: &crate::ast::BinaryOp) -> Option<String> {
+    use crate::ast::BinaryOp;
+    if !matches!(left, Type::Vector { .. }) || !matches!(right, Type::Vector { .. }) {
+        return None;
+    }
+    let (op_str, dot_op) = match op {
+        BinaryOp::Add => ("+", ".+"),
+        BinaryOp::Subtract => ("-", ".-"),
+        BinaryOp::Multiply => ("*", ".*"),
+        BinaryOp::Divide => ("/", "./"),
+        BinaryOp::Less => ("<", ".<"),
+        BinaryOp::Greater => (">", ".>"),
+        BinaryOp::LessEqual => ("<=", ".<="),
+        BinaryOp::GreaterEqual => (">=", ".>="),
+        BinaryOp::Equal => ("==", ".=="),
+        BinaryOp::NotEqual => ("!=", ".!="),
+        _ => return None,
+    };
+    Some(format!(
+        "cannot use '{op_str}' on vectors. Use '{dot_op}' for element-wise vector operations"
+    ))
+}

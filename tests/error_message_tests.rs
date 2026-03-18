@@ -67,11 +67,32 @@ mod tests {
     }
 
     #[test]
+    fn test_immutable_assign_suggests_let_mut() {
+        let msg = type_err("export func f() { let x: i32 = 0\n x = 1\n return }");
+        assert!(
+            msg.contains("let mut"),
+            "immutable assign should suggest 'let mut', got: {msg}"
+        );
+    }
+
+    #[test]
     fn test_store_arg_count_shows_names() {
         let msg = type_err("export func f(p: *mut f32) {\n    store(p, 0)\n    return\n}");
         assert!(
             msg.contains("(ptr, index, vector)"),
             "store arg count error should name the args, got: {msg}"
         );
+    }
+
+    #[test]
+    fn test_vector_add_suggests_dot_operator() {
+        let msg = type_err("export func f(a: f32x4, b: f32x4) -> f32x4 { return a + b }");
+        assert!(msg.contains(".+"), "vector + should suggest .+, got: {msg}");
+    }
+
+    #[test]
+    fn test_vector_multiply_suggests_dot_operator() {
+        let msg = type_err("export func f(a: f32x4, b: f32x4) -> f32x4 { return a * b }");
+        assert!(msg.contains(".*"), "vector * should suggest .*, got: {msg}");
     }
 }

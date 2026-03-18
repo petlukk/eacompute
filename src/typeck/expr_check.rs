@@ -84,11 +84,19 @@ impl TypeChecker {
                     | BinaryOp::Subtract
                     | BinaryOp::Multiply
                     | BinaryOp::Divide
-                    | BinaryOp::Modulo => types::unify_numeric(&lt, &rt, span.clone()),
+                    | BinaryOp::Modulo => {
+                        if let Some(suggestion) = types::suggest_dot_op(&lt, &rt, op) {
+                            return Err(CompileError::type_error(suggestion, span.clone()));
+                        }
+                        types::unify_numeric(&lt, &rt, span.clone())
+                    }
                     BinaryOp::Less
                     | BinaryOp::Greater
                     | BinaryOp::LessEqual
                     | BinaryOp::GreaterEqual => {
+                        if let Some(suggestion) = types::suggest_dot_op(&lt, &rt, op) {
+                            return Err(CompileError::type_error(suggestion, span.clone()));
+                        }
                         types::unify_numeric(&lt, &rt, span.clone())?;
                         Ok(Type::Bool)
                     }
@@ -96,6 +104,9 @@ impl TypeChecker {
                         if lt.is_bool() && rt.is_bool() {
                             Ok(Type::Bool)
                         } else {
+                            if let Some(suggestion) = types::suggest_dot_op(&lt, &rt, op) {
+                                return Err(CompileError::type_error(suggestion, span.clone()));
+                            }
                             types::unify_numeric(&lt, &rt, span.clone())?;
                             Ok(Type::Bool)
                         }
