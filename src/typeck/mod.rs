@@ -92,8 +92,16 @@ impl TypeChecker {
                     (Type::F32 | Type::F64, Literal::Float(_)) => {}
                     (Type::F32 | Type::F64, Literal::Integer(_)) => {}
                     _ => {
+                        let value_kind = match value {
+                            Literal::Integer(_) => "integer literal",
+                            Literal::Float(_) => "float literal",
+                            Literal::Bool(_) => "bool literal",
+                            Literal::StringLit(_) => "string literal",
+                        };
                         return Err(crate::error::CompileError::type_error(
-                            format!("const value does not match type {declared}"),
+                            format!(
+                                "const value is a {value_kind} but declared type is {declared}"
+                            ),
                             span.clone(),
                         ));
                     }
