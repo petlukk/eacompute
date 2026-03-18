@@ -315,3 +315,133 @@ fn test_python_all_export() {
     assert!(py.contains("\"add\""), "__all__ should list add");
     assert!(py.contains("\"dot\""), "__all__ should list dot");
 }
+
+#[test]
+fn test_is_parallelizable_basic() {
+    use ea_compiler::bind_common::{Arg, ExportFunc, is_parallelizable};
+
+    let scale = ExportFunc {
+        name: "scale".into(),
+        args: vec![
+            Arg {
+                name: "src".into(),
+                ty: "*f32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "dst".into(),
+                ty: "*mut f32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "n".into(),
+                ty: "i32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+        ],
+        return_type: None,
+    };
+    assert!(is_parallelizable(&scale), "scale should be parallelizable");
+
+    let dot = ExportFunc {
+        name: "dot".into(),
+        args: vec![
+            Arg {
+                name: "a".into(),
+                ty: "*f32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "b".into(),
+                ty: "*f32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "n".into(),
+                ty: "i32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+        ],
+        return_type: Some("f32".into()),
+    };
+    assert!(is_parallelizable(&dot), "dot should be parallelizable");
+}
+
+#[test]
+fn test_is_not_parallelizable_with_out_params() {
+    use ea_compiler::bind_common::{Arg, ExportFunc, is_parallelizable};
+
+    let scale_out = ExportFunc {
+        name: "scale".into(),
+        args: vec![
+            Arg {
+                name: "src".into(),
+                ty: "*f32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "dst".into(),
+                ty: "*mut f32".into(),
+                direction: "out".into(),
+                cap: Some("n".into()),
+                count: None,
+            },
+            Arg {
+                name: "n".into(),
+                ty: "i32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+        ],
+        return_type: None,
+    };
+    assert!(
+        !is_parallelizable(&scale_out),
+        "auto-alloc out should not be parallelizable"
+    );
+}
+
+#[test]
+fn test_is_not_parallelizable_no_pointer() {
+    use ea_compiler::bind_common::{Arg, ExportFunc, is_parallelizable};
+
+    let add = ExportFunc {
+        name: "add".into(),
+        args: vec![
+            Arg {
+                name: "a".into(),
+                ty: "i32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+            Arg {
+                name: "b".into(),
+                ty: "i32".into(),
+                direction: "in".into(),
+                cap: None,
+                count: None,
+            },
+        ],
+        return_type: Some("i32".into()),
+    };
+    assert!(
+        !is_parallelizable(&add),
+        "no pointer args = not parallelizable"
+    );
+}

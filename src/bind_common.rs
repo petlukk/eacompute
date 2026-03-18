@@ -68,6 +68,31 @@ pub fn find_collapsed_args(args: &[Arg]) -> Vec<bool> {
     collapsed
 }
 
+/// Returns true if a function can be parallelized: has pointer args,
+/// exactly one collapsed length, and no auto-allocated out params.
+pub fn is_parallelizable(func: &ExportFunc) -> bool {
+    let has_pointer = func.args.iter().any(|a| pointer_inner(&a.ty).is_some());
+    if !has_pointer {
+        return false;
+    }
+    let has_auto_out = func
+        .args
+        .iter()
+        .any(|a| a.direction == "out" && a.cap.is_some());
+    if has_auto_out {
+        return false;
+    }
+    let collapsed = find_collapsed_args(&func.args);
+    let collapsed_count = collapsed.iter().filter(|&&c| c).count();
+    if collapsed_count != 1 {
+        return false;
+    }
+    match &func.return_type {
+        None => true,
+        Some(ty) => matches!(ty.as_str(), "f32" | "f64" | "i32" | "i64" | "u32" | "u64"),
+    }
+}
+
 // --- Minimal JSON parsing (no serde) ---
 
 pub fn parse_exports(json: &str) -> Result<Vec<ExportFunc>, String> {
