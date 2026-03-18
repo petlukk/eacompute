@@ -19,8 +19,21 @@ pub fn generate(json_str: &str, module_stem: &str) -> Result<String, String> {
         "_lib = _ct.CDLL(str(_Path(__file__).with_name(\"{lib_name}\")))\n\n"
     ));
 
+    let has_parallel = exports.iter().any(crate::bind_common::is_parallelizable);
+    if has_parallel {
+        out.push_str("import os as _os\n");
+        out.push_str("from concurrent.futures import ThreadPoolExecutor as _TPE\n");
+        out.push_str("from typing import Optional as _Optional\n");
+        out.push('\n');
+    }
+
     // __all__ export list
-    let names: Vec<String> = exports.iter().map(|f| format!("\"{}\"", f.name)).collect();
+    let mut names: Vec<String> = exports.iter().map(|f| format!("\"{}\"", f.name)).collect();
+    for func in &exports {
+        if crate::bind_common::is_parallelizable(func) {
+            names.push(format!("\"{}_parallel\"", func.name));
+        }
+    }
     out.push_str(&format!("__all__ = [{}]\n\n", names.join(", ")));
 
     for func in &exports {
@@ -29,6 +42,10 @@ pub fn generate(json_str: &str, module_stem: &str) -> Result<String, String> {
         out.push('\n');
         emit_wrapper(&mut out, func);
         out.push('\n');
+        if crate::bind_common::is_parallelizable(func) {
+            emit_parallel_wrapper(&mut out, func);
+            out.push('\n');
+        }
     }
 
     Ok(out)
@@ -211,6 +228,149 @@ fn emit_wrapper(out: &mut String, func: &ExportFunc) {
         }
     } else if let Some(ty) = &func.return_type {
         out.push_str(&format!("    return {}(_result)\n", python_return_cast(ty)));
+    }
+}
+
+fn emit_parallel_wrapper(out: &mut String, func: &ExportFunc) {
+    let collapsed = find_collapsed_args(&func.args);
+    let is_reduce = func.return_type.is_some();
+
+    // Build signature params (same as sequential, minus collapsed, plus threads)
+    let mut py_params = Vec::new();
+    for (i, arg) in func.args.iter().enumerate() {
+        if collapsed[i] {
+            continue;
+        }
+        let annotation = python_annotation(&arg.ty);
+        py_params.push(format!("{}: {}", arg.name, annotation));
+    }
+    py_params.push("threads: _Optional[int] = None".to_string());
+
+    let ret_annotation = if let Some(ty) = &func.return_type {
+        format!(" -> {}", python_return_annotation(ty))
+    } else {
+        String::new()
+    };
+
+    out.push_str(&format!(
+        "def {}_parallel({}){ret_annotation}:\n",
+        func.name,
+        py_params.join(", ")
+    ));
+    out.push_str(&format!(
+        "    \"\"\"Parallel variant of {}. Splits work across threads using pointer offsets.\"\"\"\n",
+        func.name
+    ));
+
+    // Dtype checks
+    for arg in &func.args {
+        if let Some(inner) = pointer_inner(&arg.ty)
+            && let Some(dtype) = numpy_dtype(inner)
+        {
+            out.push_str(&format!("    if {}.dtype != _np.{dtype}:\n", arg.name));
+            out.push_str(&format!(
+                "        raise TypeError(\"{}: expected {dtype}\")\n",
+                arg.name
+            ));
+        }
+    }
+
+    // Find the collapsed length arg to determine N
+    let collapsed_idx = collapsed.iter().position(|&c| c).unwrap();
+    let last_ptr_before = func.args[..collapsed_idx]
+        .iter()
+        .rev()
+        .find(|a| pointer_inner(&a.ty).is_some())
+        .unwrap();
+
+    // Determine element type from first pointer arg for sizeof
+    let first_ptr = func
+        .args
+        .iter()
+        .find(|a| pointer_inner(&a.ty).is_some())
+        .unwrap();
+    let inner = pointer_inner(&first_ptr.ty).unwrap();
+    let elem_ctype = scalar_ctype(inner);
+
+    out.push_str(&format!("    _n = {}.size\n", last_ptr_before.name));
+    out.push_str("    _threads = threads or _os.cpu_count() or 1\n");
+    out.push_str("    if _threads == 1 or _n < _threads:\n");
+
+    // Fallback to sequential — build args for sequential call
+    let seq_args: Vec<String> = func
+        .args
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| !collapsed[*i])
+        .map(|(_, a)| a.name.clone())
+        .collect();
+    if is_reduce {
+        out.push_str(&format!(
+            "        return {}({})\n",
+            func.name,
+            seq_args.join(", ")
+        ));
+    } else {
+        out.push_str(&format!(
+            "        {}({})\n        return\n",
+            func.name,
+            seq_args.join(", ")
+        ));
+    }
+
+    out.push_str(&format!("    _elem = _ct.sizeof({elem_ctype})\n"));
+    out.push_str("    _chunk = _n // _threads\n");
+
+    // Worker function
+    if is_reduce {
+        out.push_str("    def _worker(_start, _count):\n");
+        out.push_str(&format!("        return _lib.{}(\n", func.name));
+    } else {
+        out.push_str("    def _worker(_start, _count):\n");
+        out.push_str(&format!("        _lib.{}(\n", func.name));
+    }
+
+    // Worker call args
+    let mut worker_args = Vec::new();
+    for (i, arg) in func.args.iter().enumerate() {
+        if collapsed[i] {
+            worker_args.push(format!("            {}(_count)", ctype_for(&arg.ty)));
+        } else if pointer_inner(&arg.ty).is_some() {
+            worker_args.push(format!(
+                "            _ct.cast(_ct.c_void_p({}.ctypes.data + _start * _elem), {})",
+                arg.name,
+                ctype_for(&arg.ty)
+            ));
+        } else {
+            worker_args.push(format!(
+                "            {}({}({}))",
+                ctype_for(&arg.ty),
+                python_cast(&arg.ty),
+                arg.name
+            ));
+        }
+    }
+    for (i, wa) in worker_args.iter().enumerate() {
+        out.push_str(wa);
+        if i + 1 < worker_args.len() {
+            out.push(',');
+        }
+        out.push('\n');
+    }
+    out.push_str("        )\n");
+
+    // ThreadPool dispatch
+    out.push_str("    with _TPE(max_workers=_threads) as _pool:\n");
+    out.push_str("        _futures = []\n");
+    out.push_str("        for _t in range(_threads):\n");
+    out.push_str("            _s = _t * _chunk\n");
+    out.push_str("            _c = _n - _s if _t == _threads - 1 else _chunk\n");
+    out.push_str("            _futures.append(_pool.submit(_worker, _s, _c))\n");
+    if is_reduce {
+        out.push_str("        return float(sum(float(f.result()) for f in _futures))\n");
+    } else {
+        out.push_str("        for _f in _futures:\n");
+        out.push_str("            _f.result()\n");
     }
 }
 

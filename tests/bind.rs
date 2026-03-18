@@ -417,6 +417,56 @@ fn test_is_not_parallelizable_with_out_params() {
 }
 
 #[test]
+fn test_python_parallel_map_generated() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "scale", "args": [{"name": "src", "type": "*f32"}, {"name": "dst", "type": "*mut f32"}, {"name": "n", "type": "i32"}], "return_type": null}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "k").unwrap();
+    assert!(
+        py.contains("def scale_parallel("),
+        "should generate _parallel variant"
+    );
+    assert!(py.contains("ThreadPoolExecutor"), "should use thread pool");
+    assert!(
+        py.contains("ctypes.data"),
+        "should use pointer-based offset, not slicing"
+    );
+    assert!(!py.contains("[start:end]"), "must NOT use array slicing");
+}
+
+#[test]
+fn test_python_parallel_reduce_generated() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "dot", "args": [{"name": "a", "type": "*f32"}, {"name": "b", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": "f32"}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "k").unwrap();
+    assert!(
+        py.contains("def dot_parallel("),
+        "should generate _parallel variant"
+    );
+    assert!(
+        py.contains("sum("),
+        "reduce pattern should sum partial results"
+    );
+}
+
+#[test]
+fn test_python_parallel_not_generated_for_auto_out() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "scale", "args": [{"name": "src", "type": "*f32", "direction": "in"}, {"name": "dst", "type": "*mut f32", "direction": "out", "cap": "n", "count": null}, {"name": "n", "type": "i32", "direction": "in"}], "return_type": null}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "k").unwrap();
+    assert!(
+        !py.contains("_parallel("),
+        "auto-out functions should not get _parallel variant"
+    );
+}
+
+#[test]
+fn test_python_parallel_in_all() {
+    let json = r#"{"library": "k.so", "exports": [{"name": "scale", "args": [{"name": "src", "type": "*f32"}, {"name": "dst", "type": "*mut f32"}, {"name": "n", "type": "i32"}], "return_type": null}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "k").unwrap();
+    assert!(
+        py.contains("\"scale_parallel\""),
+        "__all__ should include parallel variant"
+    );
+}
+
+#[test]
 fn test_is_not_parallelizable_no_pointer() {
     use ea_compiler::bind_common::{Arg, ExportFunc, is_parallelizable};
 
