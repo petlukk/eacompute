@@ -97,6 +97,8 @@ impl Parser {
             || self.check(TokenKind::AmpDot)
             || self.check(TokenKind::PipeDot)
             || self.check(TokenKind::CaretDot)
+            || self.check(TokenKind::ShiftLeftDot)
+            || self.check(TokenKind::ShiftRightDot)
         {
             let op = if self.check(TokenKind::Plus) {
                 BinaryOp::Add
@@ -110,8 +112,12 @@ impl Parser {
                 BinaryOp::AndDot
             } else if self.check(TokenKind::PipeDot) {
                 BinaryOp::OrDot
-            } else {
+            } else if self.check(TokenKind::CaretDot) {
                 BinaryOp::XorDot
+            } else if self.check(TokenKind::ShiftLeftDot) {
+                BinaryOp::ShiftLeftDot
+            } else {
+                BinaryOp::ShiftRightDot
             };
             let start = left.span().start.clone();
             self.advance();
