@@ -28,6 +28,8 @@ pub enum BinaryOp {
     AndDot,
     OrDot,
     XorDot,
+    ShiftLeftDot,
+    ShiftRightDot,
 }
 
 impl fmt::Display for BinaryOp {
@@ -59,6 +61,8 @@ impl fmt::Display for BinaryOp {
             BinaryOp::AndDot => write!(f, ".&"),
             BinaryOp::OrDot => write!(f, ".|"),
             BinaryOp::XorDot => write!(f, ".^"),
+            BinaryOp::ShiftLeftDot => write!(f, ".<<"),
+            BinaryOp::ShiftRightDot => write!(f, ".>>"),
         }
     }
 }

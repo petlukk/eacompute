@@ -134,7 +134,11 @@ impl TypeChecker {
                     BinaryOp::AddDot | BinaryOp::SubDot | BinaryOp::MulDot | BinaryOp::DivDot => {
                         types::unify_vector(&lt, &rt, span.clone())
                     }
-                    BinaryOp::AndDot | BinaryOp::OrDot | BinaryOp::XorDot => {
+                    BinaryOp::AndDot
+                    | BinaryOp::OrDot
+                    | BinaryOp::XorDot
+                    | BinaryOp::ShiftLeftDot
+                    | BinaryOp::ShiftRightDot => {
                         let result = types::unify_vector(&lt, &rt, span.clone())?;
                         match &result {
                             Type::Vector { elem, .. } if elem.is_integer() => Ok(result),
