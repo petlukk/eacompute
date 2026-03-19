@@ -52,6 +52,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             }
             BinaryOp::OrDot => self.builder.build_or(l, r, "vor"),
             BinaryOp::XorDot => self.builder.build_xor(l, r, "vxor"),
+            BinaryOp::ShiftLeftDot => self.builder.build_left_shift(l, r, "vshl"),
+            BinaryOp::ShiftRightDot => self.builder.build_right_shift(l, r, !is_unsigned, "vshr"),
             BinaryOp::LessDot
             | BinaryOp::GreaterDot
             | BinaryOp::LessEqualDot
