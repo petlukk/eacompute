@@ -34,19 +34,47 @@ Operations: addition (`.+`), XOR (`.^`), rotation via shift (`.<<`, `.>>`) and O
 - `chacha20_block(state: *i32, out: *mut i32)` — Single 64-byte block. 10 double rounds (20 quarter rounds total). Adds original state back at the end per RFC.
 - `chacha20_encrypt(key: *i32, nonce: *i32, counter: i32, plaintext: *u8, ciphertext: *mut u8, len: i32)` — Counter mode encryption. Generates keystream blocks, XORs with plaintext. Increments counter per block. Handles partial final block.
 
+**State constants** (RFC 7539 "expand 32-byte k"):
+```
+0x61707865, 0x3320646e, 0x79622d32, 0x6b206574
+```
+
 **State layout** (RFC 7539 Section 2.3):
 ```
-cccccccc  cccccccc  cccccccc  cccccccc    (constants "expand 32-byte k")
+cccccccc  cccccccc  cccccccc  cccccccc    (constants above)
 kkkkkkkk  kkkkkkkk  kkkkkkkk  kkkkkkkk    (key words 0-3)
 kkkkkkkk  kkkkkkkk  kkkkkkkk  kkkkkkkk    (key words 4-7)
 bbbbbbbb  nnnnnnnn  nnnnnnnn  nnnnnnnn    (counter + nonce)
 ```
 
+**Endianness:** Little-endian throughout (matching x86-64 and standard AArch64). Key, nonce, and counter bytes are loaded as little-endian i32 words per RFC 7539 Section 2.1. On little-endian platforms, raw pointer loads produce correct byte order.
+
 **Quarter round assignment:**
 - Column rounds: QR(0,4,8,12), QR(1,5,9,13), QR(2,6,10,14), QR(3,7,11,15)
 - Diagonal rounds: QR(0,5,10,15), QR(1,6,11,12), QR(2,7,8,13), QR(3,4,9,14)
 
-**SIMD strategy:** The state is 16 x i32. Column rounds operate on 4 independent i32x4 vectors (rows of the state matrix). Diagonal rounds require shuffling to realign lanes, then shuffling back. This is the standard approach for SIMD ChaCha20.
+**SIMD strategy:** The state is stored as 4 row vectors (i32x4 each):
+- `row0` = constants, `row1` = key[0:3], `row2` = key[4:7], `row3` = counter+nonce
+
+Column rounds operate directly on these 4 vectors (each QR hits one lane per row).
+
+For diagonal rounds, rows must be rotated to realign lanes:
+- `row1`: rotate left by 1 → `shuffle(row1, [1, 2, 3, 0])`
+- `row2`: rotate left by 2 → `shuffle(row2, [2, 3, 0, 1])`
+- `row3`: rotate left by 3 → `shuffle(row3, [3, 0, 1, 2])`
+
+After the diagonal QRs, reverse the rotations:
+- `row1`: rotate right by 1 → `shuffle(row1, [3, 0, 1, 2])`
+- `row2`: rotate right by 2 → `shuffle(row2, [2, 3, 0, 1])`
+- `row3`: rotate right by 3 → `shuffle(row3, [1, 2, 3, 0])`
+
+This is the standard SIMD ChaCha20 approach.
+
+**Byte-level XOR strategy:** After `chacha20_block` produces 16 x i32 keystream words, store them to a temporary i32 buffer. Then load the same memory as u8x16 vectors (pointer reinterpretation via cast to `*u8`), and XOR with plaintext u8x16 vectors. This works because the keystream buffer is caller-provided contiguous memory; reading it through a `*u8` pointer gives the little-endian byte representation of each i32 word, which is correct per RFC 7539.
+
+**`chacha20_block` is internal** (not exported). Only `chacha20_encrypt` is exported. The block function is inlined or called internally within the encrypt function. Since Ea has single-file compilation, the block logic can be a helper function in the same file.
+
+**Partial final block:** Generate a full 64-byte keystream block into a temporary buffer. Use a scalar tail loop to XOR only the remaining `len % 64` bytes. No masked SIMD needed — the tail is small enough that scalar is fine.
 
 ### `chacha20_fused.ea` — Encrypt + Statistics in One Pass
 
@@ -69,7 +97,7 @@ Standard ChaCha20 in plain C. No intrinsics, no SIMD pragmas. Compiled with `cc 
 | Generic C | Fair fight | `chacha20_ref.c` compiled with `-O3`, called via ctypes |
 | OpenSSL | Industry standard | `cryptography.hazmat.primitives.ciphers` ChaCha20 |
 | Ea (single core) | Our kernel, 1 thread | `chacha20_encrypt()` via auto-generated binding |
-| Ea `_parallel` | Our kernel, all cores | `chacha20_encrypt_parallel()` via ThreadPoolExecutor |
+| Ea parallel | Our kernel, all cores | Manual ThreadPoolExecutor in bench.py: partition data into chunks, assign counter ranges, call `chacha20_encrypt` per thread. Auto-generated `_parallel` won't work here because each chunk needs a different starting counter value. |
 | Ea fused (single core) | Encrypt + stats, 1 thread | `chacha20_encrypt_stats()` |
 | Separate encrypt + stats | Two passes | Encrypt first, then compute stats separately — shows fusion savings |
 
