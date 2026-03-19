@@ -61,7 +61,7 @@ Edit `ema_filter` to improve performance. You MUST output a HYPOTHESIS line and 
 
 **Other:** const, static_assert, *restrict, *restrict mut
 
-**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`
+**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`, `.<<`, `.>>`|`.&`, `.|`, `.^`, `.<<`, `.>>`
 
 ## Output Format
 

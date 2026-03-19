@@ -47,6 +47,8 @@ Element-wise vector operations use dot-prefixed operators. This distinguishes th
 | `.&` | Element-wise bitwise AND |
 | `.\|` | Element-wise bitwise OR |
 | `.^` | Element-wise bitwise XOR |
+| `.<<` | Element-wise shift left |
+| `.>>` | Element-wise shift right (logical for unsigned, arithmetic for signed) |
 
 Example:
 

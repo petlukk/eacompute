@@ -69,7 +69,7 @@ Wider SIMD is not always faster. Dependency-bound reductions may prefer more sca
 
 **Other:** const, static_assert, *restrict, *restrict mut
 
-**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`
+**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`, `.<<`, `.>>`|`.&`, `.|`, `.^`, `.<<`, `.>>`
 
 ## Output Format
 

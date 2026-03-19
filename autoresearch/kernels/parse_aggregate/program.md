@@ -61,7 +61,7 @@ The kernel is a sequential loop over lines with data-dependent control flow (sem
 
 **Other:** const, static_assert, *restrict, *restrict mut
 
-**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`
+**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`, `.<<`, `.>>`|`.&`, `.|`, `.^`, `.<<`, `.>>`
 
 ## Output Format
 

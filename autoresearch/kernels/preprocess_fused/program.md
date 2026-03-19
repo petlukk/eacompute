@@ -64,7 +64,7 @@ Scored on the LARGEST size: N=47,040,000 (28*28*60000 = full MNIST dataset). Thi
 
 **Other:** const, static_assert, *restrict, *restrict mut
 
-**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`
+**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`, `.<<`, `.>>`|`.&`, `.|`, `.^`, `.<<`, `.>>`
 
 ## Output Format
 

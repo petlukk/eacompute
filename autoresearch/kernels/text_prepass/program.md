@@ -59,7 +59,7 @@ The kernel is already SIMD-optimized using u8x16 vectors. It classifies each byt
 
 **Other:** const, static_assert, *restrict, *restrict mut
 
-**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.<=`, `.>=`, `.&`, `.|`, `.^`
+**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.<=`, `.>=`, `.&`, `.|`, `.^`, `.<<`, `.>>`|`.&`, `.|`, `.^`, `.<<`, `.>>`
 
 ## Output Format
 

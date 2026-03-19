@@ -65,7 +65,7 @@ The LUT is only 1KB (256 floats) and fits entirely in L1 cache. The data array i
 
 **Other:** const, static_assert, *restrict, *restrict mut
 
-**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`
+**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`, `.<<`, `.>>`|`.&`, `.|`, `.^`, `.<<`, `.>>`
 
 **Casting:** `to_i32(x)`, `to_f32(x)`, etc. for scalar type conversions.
 

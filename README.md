@@ -135,7 +135,7 @@ cargo test --features=llvm
 
 `widen_u8_f32x4`, `widen_i8_f32x4`, `widen_u8_f32x8`, `widen_i8_f32x8`, `widen_u8_f32x16`¹, `widen_i8_f32x16`¹, `widen_u8_i32x4`, `widen_u8_i32x8`, `widen_u8_i32x16`¹, `narrow_f32x4_i8`, `sqrt`, `rsqrt`, `exp`, `to_f32`, `to_i32`, `to_f64`, `to_i64`
 
-Bitwise: `.&`, `.|`, `.^` on integer vectors. Restrict pointers: `*restrict T`, `*mut restrict T`.
+Bitwise: `.&`, `.|`, `.^`, `.<<`, `.>>` on integer vectors. Restrict pointers: `*restrict T`, `*mut restrict T`.
 
 ¹ Requires `--avx512`
 

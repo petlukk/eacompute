@@ -66,7 +66,7 @@ The kernel currently uses scalar insertion sort on blocks of 8, then merge passe
 
 **Other:** const, static_assert, *restrict, *restrict mut
 
-**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`
+**Dot operators for SIMD element-wise ops:** `.+`, `.-`, `.*`, `./`, `.==`, `.<`, `.>`, `.&`, `.|`, `.^`, `.<<`, `.>>`|`.&`, `.|`, `.^`, `.<<`, `.>>`
 
 **Scalar min/max:** `min(a, b)` and `max(a, b)` work on scalar f32 values too — branchless compare-and-swap.
 

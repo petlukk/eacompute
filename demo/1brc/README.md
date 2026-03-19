@@ -36,7 +36,7 @@ Two exports: `count_lines` and `extract_lines`.
 
 **Why u8x16 not u8x32**: `movemask` on `u8x32` returns a 32-bit value in `i32`. If bit 31 is set, the value is negative, and `/ 2` (signed division) gives wrong results for bit extraction. `u8x16` produces a 16-bit mask (max 65535), always positive. Throughput is the same — we're memory-bandwidth bound.
 
-**Why `% 2` and `/ 2`**: Ea has no scalar bitwise operators (`&`, `|`, `>>`, `<<`). Bit extraction uses `m % 2` for LSB test and `m / 2` for right-shift. This works correctly because the mask is always non-negative.
+**Why `% 2` and `/ 2`**: Ea has no scalar bitwise operators (`&`, `|`, `>>`, `<<`). Bit extraction uses `m % 2` for LSB test and `m / 2` for right-shift. This works correctly because the mask is always non-negative. (Note: SIMD vector shifts `.<<` and `.>>` are available on integer vectors, but scalar shifts remain unsupported.)
 
 **extract_lines** (ARM): Scalar byte-by-byte scan. No `movemask` equivalent on NEON, and without scalar bitwise ops, there's no fast way to extract bit positions from a SIMD comparison result.
 
@@ -140,7 +140,7 @@ The hash table (84KB) lives entirely in L2 — only 1.5% of L2 bandwidth is used
 
 ### What Ea is and isn't
 
-Going faster on 1BRC would require branchless techniques: SWAR byte scanning (`(x - 0x0101...) & ~x & 0x8080...`), branchless min/max via conditional moves, and shift-xor hashing. These all need scalar bitwise operators that Ea deliberately doesn't have.
+Going faster on 1BRC would require branchless techniques: SWAR byte scanning (`(x - 0x0101...) & ~x & 0x8080...`), branchless min/max via conditional moves, and shift-xor hashing. These all need scalar bitwise operators that Ea deliberately doesn't have. (SIMD vector shifts `.<<` and `.>>` exist for integer vectors, but the scalar equivalents do not.)
 
 Ea is designed for **branch-light, data-parallel, cache-aware numerics** — not bit-manipulation and parser-heavy string processing. The fact that a SIMD numerics language hits 125 cycles/row and beats Polars on a fundamentally branch-heavy workload shows the hash table design is sound. The remaining 25% branch tax is the cost of doing string parsing without bitwise ops, and that's an acceptable trade-off for a language that stays true to its design.
 
