@@ -229,6 +229,10 @@ pub enum TokenKind {
     LessDot,
     #[token(".>")]
     GreaterDot,
+    #[token(".<<")]
+    ShiftLeftDot,
+    #[token(".>>")]
+    ShiftRightDot,
     #[token(".&")]
     AmpDot,
     #[token(".|")]

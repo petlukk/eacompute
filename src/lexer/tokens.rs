@@ -81,6 +81,8 @@ pub fn token_name(kind: &TokenKind) -> &'static str {
         TokenKind::AmpDot => ".&",
         TokenKind::PipeDot => ".|",
         TokenKind::CaretDot => ".^",
+        TokenKind::ShiftLeftDot => ".<<",
+        TokenKind::ShiftRightDot => ".>>",
         TokenKind::DotDot => "..",
         TokenKind::Dot => ".",
         TokenKind::AmpAmp => "&&",
