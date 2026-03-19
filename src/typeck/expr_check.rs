@@ -87,7 +87,19 @@ impl TypeChecker {
             }
             Expr::Binary(lhs, op, rhs, span) => {
                 let lt = self.check_expr(lhs, locals)?;
-                let rt = self.check_expr(rhs, locals)?;
+                // Propagate vector type as hint to RHS (enables splat width inference)
+                let rt = if matches!(&lt, Type::Vector { .. }) {
+                    self.check_expr_with_hint(rhs, locals, Some(&lt))?
+                } else {
+                    self.check_expr(rhs, locals)?
+                };
+                // If RHS is vector but LHS wasn't, re-check LHS with RHS hint
+                let lt =
+                    if !matches!(&lt, Type::Vector { .. }) && matches!(&rt, Type::Vector { .. }) {
+                        self.check_expr_with_hint(lhs, locals, Some(&rt))?
+                    } else {
+                        lt
+                    };
                 match op {
                     BinaryOp::Add
                     | BinaryOp::Subtract
