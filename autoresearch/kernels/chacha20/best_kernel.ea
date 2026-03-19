@@ -1,0 +1,198 @@
+// chacha20.ea — ChaCha20 (RFC 7539) SIMD kernel
+// Implements block function and counter-mode encryption using i32x4 vectors.
+
+// Rotation helpers — use mask to neutralize arithmetic shift sign extension
+func rotl16(v: i32x4) -> i32x4 {
+    let sl: i32x4 = splat(16)
+    let left: i32x4 = v .<< sl
+    let right: i32x4 = v .>> sl
+    let mask: i32x4 = splat(65535)
+    return left .| (right .& mask)
+}
+
+func rotl12(v: i32x4) -> i32x4 {
+    let sl: i32x4 = splat(12)
+    let sr: i32x4 = splat(20)
+    let left: i32x4 = v .<< sl
+    let right: i32x4 = v .>> sr
+    let mask: i32x4 = splat(4095)
+    return left .| (right .& mask)
+}
+
+func rotl8(v: i32x4) -> i32x4 {
+    let sl: i32x4 = splat(8)
+    let sr: i32x4 = splat(24)
+    let left: i32x4 = v .<< sl
+    let right: i32x4 = v .>> sr
+    let mask: i32x4 = splat(255)
+    return left .| (right .& mask)
+}
+
+func rotl7(v: i32x4) -> i32x4 {
+    let sl: i32x4 = splat(7)
+    let sr: i32x4 = splat(25)
+    let left: i32x4 = v .<< sl
+    let right: i32x4 = v .>> sr
+    let mask: i32x4 = splat(127)
+    return left .| (right .& mask)
+}
+
+// Quarter round on four i32x4 row vectors
+func quarter_round(
+    a: i32x4, b: i32x4, c: i32x4, d: i32x4,
+    out_a: *mut i32, out_b: *mut i32, out_c: *mut i32, out_d: *mut i32
+) {
+    let mut va: i32x4 = a
+    let mut vb: i32x4 = b
+    let mut vc: i32x4 = c
+    let mut vd: i32x4 = d
+
+    va = va .+ vb
+    vd = rotl16(vd .^ va)
+    vc = vc .+ vd
+    vb = rotl12(vb .^ vc)
+    va = va .+ vb
+    vd = rotl8(vd .^ va)
+    vc = vc .+ vd
+    vb = rotl7(vb .^ vc)
+
+    store(out_a, 0, va)
+    store(out_b, 0, vb)
+    store(out_c, 0, vc)
+    store(out_d, 0, vd)
+}
+
+// Generate one 64-byte keystream block.
+// key: 8 x i32 (32 bytes), nonce: 3 x i32 (12 bytes), counter: block counter
+// out: 16 x i32 (64 bytes) keystream output
+export func chacha20_block(key: *i32, nonce: *i32, counter: i32, out: *mut i32) {
+    // Build initial state rows
+    let row0_init: i32x4 = [1634760805, 857760878, 2036477234, 1797285236]i32x4
+    let row1_init: i32x4 = load(key, 0)
+    let row2_init: i32x4 = load(key, 4)
+
+    // row3 = [counter, nonce[0], nonce[1], nonce[2]]
+    store(out, 0, splat(counter))
+    out[1] = nonce[0]
+    out[2] = nonce[1]
+    out[3] = nonce[2]
+    let row3_init: i32x4 = load(out, 0)
+
+    // Working state — store rows in out buffer as scratch (16 i32 words)
+    // rows at out[0..3], out[4..7], out[8..11], out[12..15]
+    store(out, 0, row0_init)
+    store(out, 4, row1_init)
+    store(out, 8, row2_init)
+    store(out, 12, row3_init)
+
+    // 20 rounds = 10 double rounds
+    let mut round: i32 = 0
+    while round < 10 {
+        // Load current state
+        let mut r0: i32x4 = load(out, 0)
+        let mut r1: i32x4 = load(out, 4)
+        let mut r2: i32x4 = load(out, 8)
+        let mut r3: i32x4 = load(out, 12)
+
+        // Column round: QR on rows directly
+        // a=r0, b=r1, c=r2, d=r3
+        r0 = r0 .+ r1
+        r3 = rotl16(r3 .^ r0)
+        r2 = r2 .+ r3
+        r1 = rotl12(r1 .^ r2)
+        r0 = r0 .+ r1
+        r3 = rotl8(r3 .^ r0)
+        r2 = r2 .+ r3
+        r1 = rotl7(r1 .^ r2)
+
+        // Diagonal round: shuffle rows to align diagonals
+        r1 = shuffle(r1, [1, 2, 3, 0])
+        r2 = shuffle(r2, [2, 3, 0, 1])
+        r3 = shuffle(r3, [3, 0, 1, 2])
+
+        // QR on shuffled rows
+        r0 = r0 .+ r1
+        r3 = rotl16(r3 .^ r0)
+        r2 = r2 .+ r3
+        r1 = rotl12(r1 .^ r2)
+        r0 = r0 .+ r1
+        r3 = rotl8(r3 .^ r0)
+        r2 = r2 .+ r3
+        r1 = rotl7(r1 .^ r2)
+
+        // Unshuffle rows
+        r1 = shuffle(r1, [3, 0, 1, 2])
+        r2 = shuffle(r2, [2, 3, 0, 1])
+        r3 = shuffle(r3, [1, 2, 3, 0])
+
+        // Store back
+        store(out, 0, r0)
+        store(out, 4, r1)
+        store(out, 8, r2)
+        store(out, 12, r3)
+
+        round = round + 1
+    }
+
+    // Add initial state back (wrapping i32 addition with .+)
+    let final0: i32x4 = load(out, 0) .+ row0_init
+    let final1: i32x4 = load(out, 4) .+ row1_init
+    let final2: i32x4 = load(out, 8) .+ row2_init
+    let final3: i32x4 = load(out, 12) .+ row3_init
+
+    store(out, 0, final0)
+    store(out, 4, final1)
+    store(out, 8, final2)
+    store(out, 12, final3)
+}
+
+// Counter-mode encryption.
+// key: 8 x i32 (32 bytes), nonce: 3 x i32 (12 bytes), counter: initial block counter
+// plaintext/ciphertext: byte buffers, len: byte length
+// ks_i32 / ks_u8: two pointers to the same 64-byte scratch buffer (different typed views)
+export func chacha20_encrypt(
+    key: *i32, nonce: *i32, counter: i32,
+    plaintext: *u8, ciphertext: *mut u8, len: i32,
+    ks_i32: *mut i32, ks_u8: *u8
+) {
+    let mut offset: i32 = 0
+    let mut ctr: i32 = counter
+
+    while offset < len {
+        // Generate keystream block
+        chacha20_block(key, nonce, ctr, ks_i32)
+
+        let remaining: i32 = len - offset
+
+        // Process 64 bytes or less
+        // Handle full 16-byte u8x16 chunks
+        let mut chunk_off: i32 = 0
+        while chunk_off + 16 <= 64 {
+            if offset + chunk_off + 16 <= len {
+                let pt: u8x16 = load(plaintext, offset + chunk_off)
+                let ks: u8x16 = load(ks_u8, chunk_off)
+                store(ciphertext, offset + chunk_off, pt .^ ks)
+            }
+            chunk_off = chunk_off + 16
+        }
+
+        // Handle partial tail if remaining < 64
+        if remaining < 64 {
+            // Figure out where the partial region starts
+            // Full chunks already handled above via the if-guard
+            // Find the first byte position that wasn't handled
+            let full_bytes: i32 = remaining - (remaining - ((remaining / 16) * 16))
+            // Tail bytes start at full_bytes within this block
+            let tail_count: i32 = remaining - full_bytes
+            if tail_count > 0 {
+                let tail_off: i32 = offset + full_bytes
+                let ks_tail: u8x16 = load_masked(ks_u8, full_bytes, tail_count)
+                let pt_tail: u8x16 = load_masked(plaintext, tail_off, tail_count)
+                store_masked(ciphertext, tail_off, pt_tail .^ ks_tail, tail_count)
+            }
+        }
+
+        offset = offset + 64
+        ctr = ctr + 1
+    }
+}
