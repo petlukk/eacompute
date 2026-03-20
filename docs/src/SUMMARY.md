@@ -37,5 +37,6 @@
 
 # Blog
 
+- [Searching Encrypted Logs Without Decrypting Them (Much)](blog/searchable-cipher.md)
 - [How 30 Lines of Eä Beat NumPy by 6×](blog/numpy-6x.md)
 - [I Wrote a SIMD Compiler in 12K Lines of Rust](blog/12k-lines-of-rust.md)
