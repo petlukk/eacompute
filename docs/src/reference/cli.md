@@ -18,6 +18,7 @@ Compile an Ea source file to a native object file (`.o`) by default.
 | `--lib` | Produce a shared library (`.so`/`.dll`) and metadata (`.ea.json`) |
 | `--opt-level=N` | Optimization level 0--3 (default: 3) |
 | `--avx512` | Enable AVX-512 vector types and intrinsics. Errors on ARM targets |
+| `--dotprod` | Enable ARMv8.2-A dot product extension (`vdot_i32`). ARM targets only |
 | `--target=CPU` | LLVM CPU name, e.g. `skylake`, `znver3`, `native` (default: `native`) |
 | `--target-triple=T` | Cross-compile to a different architecture, e.g. `aarch64-unknown-linux-gnu` |
 | `--emit-llvm` | Write LLVM IR to a `.ll` file and print it to stdout |
@@ -48,6 +49,9 @@ ea kernel.ea --emit-llvm
 
 # Compile with AVX-512 support
 ea kernel.ea --lib --avx512
+
+# Cross-compile for ARM with dot product extension
+ea kernel.ea --lib --target-triple=aarch64-unknown-linux-gnu --dotprod
 
 # Generate C header
 ea kernel.ea --header
@@ -89,7 +93,7 @@ ea bind kernel.ea --python
 ea inspect <file.ea> [target flags]
 ```
 
-Post-optimization analysis of the compiled kernel. Shows instruction mix, loop structure, vector width usage, and register pressure. Accepts the same target flags as compile (`--target`, `--target-triple`, `--avx512`).
+Post-optimization analysis of the compiled kernel. Shows instruction mix, loop structure, vector width usage, and register pressure. Accepts the same target flags as compile (`--target`, `--target-triple`, `--avx512`, `--dotprod`).
 
 ### Example
 

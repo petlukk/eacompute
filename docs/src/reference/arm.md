@@ -32,6 +32,22 @@ The following intrinsics are x86-only and produce a compile error on ARM:
 
 All other intrinsics (loads, stores, math, reductions, splat, select, shuffle, conversions) work on ARM.
 
+## ARM-Specific Intrinsics
+
+| Intrinsic | Signature | Requires | Description |
+|-----------|-----------|----------|-------------|
+| `vdot_i32(a, b)` | `(i8x16, i8x16) -> i32x4` | `--dotprod` | Signed dot product, groups of 4 per lane. Maps to NEON `sdot`. |
+
+The `--dotprod` flag enables the ARMv8.2-A dot product extension. Using `vdot_i32` without it produces a compile error.
+
+## Cross-Platform Intrinsics
+
+These intrinsics work on both x86 and ARM with identical semantics:
+
+| Intrinsic | Signature | x86 instruction | ARM instruction |
+|-----------|-----------|-----------------|-----------------|
+| `shuffle_bytes(table, idx)` | `(u8x16, u8x16) -> u8x16` | SSSE3 `pshufb` | NEON `tbl` |
+
 ## Cross-Compilation
 
 Compile for ARM from an x86 host:
@@ -40,10 +56,17 @@ Compile for ARM from an x86 host:
 ea kernel.ea --lib --target-triple=aarch64-unknown-linux-gnu
 ```
 
-When compiling natively on an ARM machine, no special flags are needed:
+For intrinsics requiring hardware extensions, add the appropriate flag:
+
+```bash
+ea kernel.ea --lib --target-triple=aarch64-unknown-linux-gnu --dotprod
+```
+
+When compiling natively on an ARM machine, no special flags are needed (except `--dotprod` for dot product intrinsics):
 
 ```bash
 ea kernel.ea --lib
+ea kernel.ea --lib --dotprod   # for vdot_i32
 ```
 
 The `--avx512` flag is rejected on ARM targets with a compile error.

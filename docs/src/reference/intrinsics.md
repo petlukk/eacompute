@@ -281,7 +281,7 @@ let packed = narrow_f32x4_i8(float_pixels);
 
 ### Multiply-Add Byte Pairs
 
-Multiply unsigned bytes by signed bytes and add adjacent pairs. x86 only.
+Multiply unsigned bytes by signed bytes and add adjacent pairs. **x86 only.**
 
 | Intrinsic | Signature | Description |
 |-----------|-----------|-------------|
@@ -291,6 +291,29 @@ Multiply unsigned bytes by signed bytes and add adjacent pairs. x86 only.
 ```
 let products: i16x8 = maddubs_i16(unsigned_bytes, signed_weights);
 ```
+
+### vdot_i32
+
+Signed integer dot product: multiplies groups of 4 `i8` pairs and sums each group into one `i32` lane. **ARM only** -- requires `--dotprod` flag (ARMv8.2-A dot product extension). Maps to NEON `sdot`.
+
+```
+let dot: i32x4 = vdot_i32(activations, weights);
+acc = acc .+ vdot_i32(a, b);  // accumulate explicitly
+```
+
+| Signature | `(i8x16, i8x16) -> i32x4` |
+|-----------|---------------------------|
+
+### shuffle_bytes
+
+Byte-level table lookup: each byte in `indices` selects a byte from `table`. Cross-platform. x86: SSSE3 `pshufb`. ARM: NEON `tbl`. Out-of-range indices (>15) zero the lane on both platforms.
+
+```
+let result: u8x16 = shuffle_bytes(table, indices);
+```
+
+| Signature | `(u8x16, u8x16) -> u8x16` |
+|-----------|---------------------------|
 
 ## Debug
 
