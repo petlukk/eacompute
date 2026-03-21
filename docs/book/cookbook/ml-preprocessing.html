@@ -1,0 +1,325 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ML Preprocessing - Eä — Compute Kernel Compiler</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><li class="part-title">Getting Started</li><li class="chapter-item expanded "><a href="../getting-started/index.html"><strong aria-hidden="true">1.</strong> Make Python Fast in 60 Seconds</a></li><li class="chapter-item expanded "><a href="../getting-started/install.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../getting-started/first-kernel.html"><strong aria-hidden="true">3.</strong> Your First Kernel</a></li><li class="chapter-item expanded affix "><li class="part-title">Guide</li><li class="chapter-item expanded "><a href="../guide/why-ea.html"><strong aria-hidden="true">4.</strong> Why Eä?</a></li><li class="chapter-item expanded "><a href="../guide/language.html"><strong aria-hidden="true">5.</strong> Language Basics</a></li><li class="chapter-item expanded "><a href="../guide/simd.html"><strong aria-hidden="true">6.</strong> SIMD Vectors</a></li><li class="chapter-item expanded "><a href="../guide/kernels.html"><strong aria-hidden="true">7.</strong> Kernels</a></li><li class="chapter-item expanded "><a href="../guide/structs.html"><strong aria-hidden="true">8.</strong> Structs</a></li><li class="chapter-item expanded "><a href="../guide/common-intrinsics.html"><strong aria-hidden="true">9.</strong> Common Intrinsics</a></li><li class="chapter-item expanded affix "><li class="part-title">Reference</li><li class="chapter-item expanded "><a href="../reference/types.html"><strong aria-hidden="true">10.</strong> Type System</a></li><li class="chapter-item expanded "><a href="../reference/intrinsics.html"><strong aria-hidden="true">11.</strong> All Intrinsics</a></li><li class="chapter-item expanded "><a href="../reference/cli.html"><strong aria-hidden="true">12.</strong> CLI Reference</a></li><li class="chapter-item expanded "><a href="../reference/python-api.html"><strong aria-hidden="true">13.</strong> Python API</a></li><li class="chapter-item expanded "><a href="../reference/bindings.html"><strong aria-hidden="true">14.</strong> Binding Annotations</a></li><li class="chapter-item expanded "><a href="../reference/arm.html"><strong aria-hidden="true">15.</strong> ARM / NEON</a></li><li class="chapter-item expanded affix "><li class="part-title">Cookbook</li><li class="chapter-item expanded "><a href="../cookbook/numpy-comparison.html"><strong aria-hidden="true">16.</strong> Eä vs NumPy</a></li><li class="chapter-item expanded "><a href="../cookbook/image-processing.html"><strong aria-hidden="true">17.</strong> Image Processing</a></li><li class="chapter-item expanded "><a href="../cookbook/text-processing.html"><strong aria-hidden="true">18.</strong> Text Processing</a></li><li class="chapter-item expanded "><a href="../cookbook/ml-preprocessing.html" class="active"><strong aria-hidden="true">19.</strong> ML Preprocessing</a></li><li class="chapter-item expanded affix "><li class="part-title">Examples</li><li class="chapter-item expanded "><a href="../examples/cqt-audio-visualizer.html"><strong aria-hidden="true">20.</strong> CQT Audio Visualizer: Beating BLAS with 80 Lines of Ea</a></li><li class="chapter-item expanded affix "><li class="part-title">Blog</li><li class="chapter-item expanded "><a href="../blog/numpy-6x.html"><strong aria-hidden="true">21.</strong> How 30 Lines of Eä Beat NumPy by 6×</a></li><li class="chapter-item expanded "><a href="../blog/12k-lines-of-rust.html"><strong aria-hidden="true">22.</strong> I Wrote a SIMD Compiler in 12K Lines of Rust</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Eä — Compute Kernel Compiler</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/petlukk/eacompute" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="ml-preprocessing"><a class="header" href="#ml-preprocessing">ML Preprocessing</a></h1>
+<p>ML preprocessing pipelines often apply the same sequence of operations to every element in large arrays: normalize, scale, compute similarities. These are natural fits for Ea kernels because they fuse multiple operations into single-pass loops.</p>
+<h2 id="normalize-zero-mean-unit-variance"><a class="header" href="#normalize-zero-mean-unit-variance">Normalize: zero-mean, unit-variance</a></h2>
+<p>The standard normalization <code>(x - mean) / std</code> requires two operations per element. NumPy computes them as separate passes:</p>
+<pre><code class="language-python">normalized = (data - mean) / std  # 2 passes, 2 temporaries
+</code></pre>
+<p>Ea fuses this into one pass using FMA. Rewrite <code>(x - mean) / std</code> as <code>x * (1/std) + (-mean/std)</code>:</p>
+<pre><code>export func normalize(
+    src: *f32, dst: *mut f32,
+    inv_std: f32, neg_mean_div_std: f32,
+    n: i32
+) {
+    let s: f32x8 = splat(inv_std)
+    let b: f32x8 = splat(neg_mean_div_std)
+    let mut i: i32 = 0
+    while i &lt; n {
+        let v: f32x8 = load(src, i)
+        let result: f32x8 = fma(v, s, b)
+        store(dst, i, result)
+        i = i + 8
+    }
+}
+</code></pre>
+<p>The caller precomputes <code>inv_std = 1.0 / std</code> and <code>neg_mean_div_std = -mean / std</code> in Python. The kernel then does a single FMA per 8 elements -- one instruction that multiplies and adds simultaneously.</p>
+<h2 id="dot-product-dual-accumulator-pattern"><a class="header" href="#dot-product-dual-accumulator-pattern">Dot product: dual-accumulator pattern</a></h2>
+<p>A naive dot product uses one accumulator:</p>
+<pre><code>let mut acc: f32x8 = splat(0.0)
+while i &lt; n {
+    let a: f32x8 = load(x, i)
+    let b: f32x8 = load(y, i)
+    acc = fma(a, b, acc)
+    i = i + 8
+}
+</code></pre>
+<p>This leaves performance on the table. FMA has a latency of 4-5 cycles but a throughput of 1 per cycle. With one accumulator, each FMA waits for the previous one to finish.</p>
+<p><strong>Dual accumulators</strong> hide this latency by interleaving independent FMA chains:</p>
+<pre><code>export func dot_product(x: *f32, y: *f32, out: *mut f32, n: i32) {
+    let mut acc0: f32x8 = splat(0.0)
+    let mut acc1: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+    while i &lt; n - 15 {
+        let a0: f32x8 = load(x, i)
+        let b0: f32x8 = load(y, i)
+        acc0 = fma(a0, b0, acc0)
+        let a1: f32x8 = load(x, i + 8)
+        let b1: f32x8 = load(y, i + 8)
+        acc1 = fma(a1, b1, acc1)
+        i = i + 16
+    }
+    while i &lt; n {
+        let a: f32x8 = load(x, i)
+        let b: f32x8 = load(y, i)
+        acc0 = fma(a, b, acc0)
+        i = i + 8
+    }
+    let combined: f32x8 = acc0 .+ acc1
+    let result: f32 = horizontal_sum(combined)
+    store(out, 0, splat(result))
+}
+</code></pre>
+<p>The CPU can execute <code>fma(a0, b0, acc0)</code> and <code>fma(a1, b1, acc1)</code> in parallel because they use different accumulators. This typically doubles throughput on modern CPUs.</p>
+<h2 id="cosine-similarity"><a class="header" href="#cosine-similarity">Cosine similarity</a></h2>
+<p>Cosine similarity needs three reductions in one pass: <code>dot(a, b)</code>, <code>norm(a)</code>, and <code>norm(b)</code>. Computing these separately means three passes over the data. Ea fuses all three:</p>
+<pre><code>export func cosine_similarity(a: *f32, b: *f32, out: *mut f32, n: i32) {
+    let mut dot_acc: f32x8 = splat(0.0)
+    let mut norm_a_acc: f32x8 = splat(0.0)
+    let mut norm_b_acc: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+    while i &lt; n {
+        let va: f32x8 = load(a, i)
+        let vb: f32x8 = load(b, i)
+        dot_acc = fma(va, vb, dot_acc)
+        norm_a_acc = fma(va, va, norm_a_acc)
+        norm_b_acc = fma(vb, vb, norm_b_acc)
+        i = i + 8
+    }
+    let dot_val: f32 = horizontal_sum(dot_acc)
+    let norm_a_val: f32 = horizontal_sum(norm_a_acc)
+    let norm_b_val: f32 = horizontal_sum(norm_b_acc)
+    let result: f32 = dot_val / sqrt(norm_a_val * norm_b_val)
+    store(out, 0, splat(result))
+}
+</code></pre>
+<p>Three FMAs per loop iteration, all operating on the same loaded vectors. The data passes through cache once. NumPy would need <code>np.dot(a, b)</code>, <code>np.linalg.norm(a)</code>, and <code>np.linalg.norm(b)</code> -- three separate passes.</p>
+<h2 id="batch-operations"><a class="header" href="#batch-operations">Batch operations</a></h2>
+<p>For ML workloads, you often apply the same operation to many rows. The Python side handles the loop over rows, calling the Ea kernel for each:</p>
+<pre><code class="language-python">import ea
+
+lib = ea.load("similarity.ea")
+for i in range(num_queries):
+    lib.cosine_similarity(query[i], database[j], result, dim)
+</code></pre>
+<p>The kernel handles the inner loop (over vector dimensions) with SIMD. The outer loop (over queries or rows) stays in Python. This is the right split -- the inner loop is where SIMD matters.</p>
+<h2 id="real-world-package"><a class="header" href="#real-world-package">Real-world package</a></h2>
+<p><a href="https://github.com/petlukk/eavec">eavec</a> implements vector similarity search using the dual-accumulator FMA pattern. It computes cosine similarity across a database of vectors, returning the top-k most similar results.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../cookbook/text-processing.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../examples/cqt-audio-visualizer.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../cookbook/text-processing.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../examples/cqt-audio-visualizer.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

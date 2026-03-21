@@ -1,0 +1,303 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Text Processing - Eä — Compute Kernel Compiler</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><li class="part-title">Getting Started</li><li class="chapter-item expanded "><a href="../getting-started/index.html"><strong aria-hidden="true">1.</strong> Make Python Fast in 60 Seconds</a></li><li class="chapter-item expanded "><a href="../getting-started/install.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../getting-started/first-kernel.html"><strong aria-hidden="true">3.</strong> Your First Kernel</a></li><li class="chapter-item expanded affix "><li class="part-title">Guide</li><li class="chapter-item expanded "><a href="../guide/why-ea.html"><strong aria-hidden="true">4.</strong> Why Eä?</a></li><li class="chapter-item expanded "><a href="../guide/language.html"><strong aria-hidden="true">5.</strong> Language Basics</a></li><li class="chapter-item expanded "><a href="../guide/simd.html"><strong aria-hidden="true">6.</strong> SIMD Vectors</a></li><li class="chapter-item expanded "><a href="../guide/kernels.html"><strong aria-hidden="true">7.</strong> Kernels</a></li><li class="chapter-item expanded "><a href="../guide/structs.html"><strong aria-hidden="true">8.</strong> Structs</a></li><li class="chapter-item expanded "><a href="../guide/common-intrinsics.html"><strong aria-hidden="true">9.</strong> Common Intrinsics</a></li><li class="chapter-item expanded affix "><li class="part-title">Reference</li><li class="chapter-item expanded "><a href="../reference/types.html"><strong aria-hidden="true">10.</strong> Type System</a></li><li class="chapter-item expanded "><a href="../reference/intrinsics.html"><strong aria-hidden="true">11.</strong> All Intrinsics</a></li><li class="chapter-item expanded "><a href="../reference/cli.html"><strong aria-hidden="true">12.</strong> CLI Reference</a></li><li class="chapter-item expanded "><a href="../reference/python-api.html"><strong aria-hidden="true">13.</strong> Python API</a></li><li class="chapter-item expanded "><a href="../reference/bindings.html"><strong aria-hidden="true">14.</strong> Binding Annotations</a></li><li class="chapter-item expanded "><a href="../reference/arm.html"><strong aria-hidden="true">15.</strong> ARM / NEON</a></li><li class="chapter-item expanded affix "><li class="part-title">Cookbook</li><li class="chapter-item expanded "><a href="../cookbook/numpy-comparison.html"><strong aria-hidden="true">16.</strong> Eä vs NumPy</a></li><li class="chapter-item expanded "><a href="../cookbook/image-processing.html"><strong aria-hidden="true">17.</strong> Image Processing</a></li><li class="chapter-item expanded "><a href="../cookbook/text-processing.html" class="active"><strong aria-hidden="true">18.</strong> Text Processing</a></li><li class="chapter-item expanded "><a href="../cookbook/ml-preprocessing.html"><strong aria-hidden="true">19.</strong> ML Preprocessing</a></li><li class="chapter-item expanded affix "><li class="part-title">Examples</li><li class="chapter-item expanded "><a href="../examples/cqt-audio-visualizer.html"><strong aria-hidden="true">20.</strong> CQT Audio Visualizer: Beating BLAS with 80 Lines of Ea</a></li><li class="chapter-item expanded affix "><li class="part-title">Blog</li><li class="chapter-item expanded "><a href="../blog/numpy-6x.html"><strong aria-hidden="true">21.</strong> How 30 Lines of Eä Beat NumPy by 6×</a></li><li class="chapter-item expanded "><a href="../blog/12k-lines-of-rust.html"><strong aria-hidden="true">22.</strong> I Wrote a SIMD Compiler in 12K Lines of Rust</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Eä — Compute Kernel Compiler</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/petlukk/eacompute" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="text-processing"><a class="header" href="#text-processing">Text Processing</a></h1>
+<p>Text processing benefits from SIMD when you can skip large regions of uninteresting bytes. The key pattern is <strong>chunk-skip</strong>: load 32 bytes at a time, check if any byte matches a target character, and skip the entire chunk if none match.</p>
+<h2 id="the-chunk-skip-pattern"><a class="header" href="#the-chunk-skip-pattern">The chunk-skip pattern</a></h2>
+<p>Most bytes in a text file are not the character you are looking for. A newline scanner over a 1 MB file might find 10,000 newlines among 1,000,000 bytes -- 99% of chunks contain no match and can be skipped with a single comparison and branch.</p>
+<pre><code>export func count_newlines(data: *u8, n: i32) -&gt; i32 {
+    let newline: u8x32 = splat_u8x32(10)
+    let mut count: i32 = 0
+    let mut i: i32 = 0
+    while i &lt; n - 31 {
+        let chunk: u8x32 = load_u8x32(data, i)
+        let matches: u8x32 = chunk .== newline
+        let mask: i32 = movemask(matches)
+        if mask != 0 {
+            let mut j: i32 = 0
+            while j &lt; 32 {
+                if load_u8(data, i + j) == 10 {
+                    count = count + 1
+                }
+                j = j + 1
+            }
+        }
+        i = i + 32
+    }
+    let mut k: i32 = i
+    while k &lt; n {
+        if load_u8(data, k) == 10 {
+            count = count + 1
+        }
+        k = k + 1
+    }
+    count
+}
+</code></pre>
+<p>The structure:</p>
+<ol>
+<li><strong>Load 32 bytes</strong> as <code>u8x32</code></li>
+<li><strong>Compare</strong> with <code>splat_u8x32(target)</code> using <code>.==</code> to get a match vector</li>
+<li><strong><code>movemask()</code></strong> collapses the vector comparison to a single <code>i32</code> bitmask</li>
+<li><strong>If mask is 0</strong>: no matches in this chunk, skip ahead 32 bytes (fast path)</li>
+<li><strong>If mask is nonzero</strong>: scan the 32 bytes individually (slow path, but rare)</li>
+<li><strong>Scalar tail</strong>: handle remaining bytes that do not fill a full 32-byte chunk</li>
+</ol>
+<p>The fast path processes 32 bytes in about 3 instructions. On typical text, 90-99% of chunks take the fast path.</p>
+<h2 id="why-not-extract-individual-bit-positions"><a class="header" href="#why-not-extract-individual-bit-positions">Why not extract individual bit positions?</a></h2>
+<p>Ea does not have shift operators (<code>&lt;&lt;</code>, <code>&gt;&gt;</code>), so you cannot extract individual bit positions from the movemask result. Instead, when a chunk contains matches, fall back to byte-by-byte scanning within that 32-byte window. This is still fast because:</p>
+<ul>
+<li>Hot chunks are rare (most text is not your target character)</li>
+<li>The 32-byte scan is a tight loop that fits in L1 cache</li>
+<li>The overall speedup comes from skipping cold chunks, not from optimizing hot ones</li>
+</ul>
+<h2 id="arm-portability"><a class="header" href="#arm-portability">ARM portability</a></h2>
+<p><code>movemask</code> is an x86-only intrinsic (it maps to <code>vpmovmskb</code>). On ARM/NEON, there is no equivalent single instruction. For portable kernels, write separate x86 and ARM versions:</p>
+<ul>
+<li><strong>x86</strong>: use <code>u8x32</code> + <code>movemask</code> as shown above</li>
+<li><strong>ARM</strong>: use <code>u8x16</code> with scalar fallback, or structure the algorithm to avoid needing a bitmask</li>
+</ul>
+<p>See <a href="../reference/arm.html">ARM / NEON</a> for details on architecture-specific intrinsics.</p>
+<h2 id="csv-parsing"><a class="header" href="#csv-parsing">CSV parsing</a></h2>
+<p>CSV parsing combines the chunk-skip pattern with state tracking. You need to find commas and newlines while respecting quoted fields -- a comma inside quotes is not a delimiter.</p>
+<p>The approach:</p>
+<ol>
+<li>Scan for quote characters (<code>"</code>) using chunk-skip to track quote state</li>
+<li>Scan for delimiters (<code>,</code> and <code>\n</code>) using chunk-skip, filtering by quote state</li>
+<li>Parse numeric fields from the delimited regions</li>
+</ol>
+<p>This is compute-bound because each byte potentially involves comparison against multiple target characters plus state logic -- exactly the kind of branching work that NumPy cannot vectorize.</p>
+<p>For a complete CSV statistics package built on this pattern, see <a href="https://github.com/petlukk/eastat">eastat</a>.</p>
+<h2 id="tips"><a class="header" href="#tips">Tips</a></h2>
+<ul>
+<li><strong>Buffer alignment</strong>: SIMD loads from unaligned addresses work but may be slower on older hardware. If you control the buffer, align to 32 bytes.</li>
+<li><strong>Tail handling</strong>: always include a scalar loop for the last <code>n % 32</code> bytes. Forgetting the tail is the most common bug in SIMD text processing.</li>
+<li><strong>Multi-character search</strong>: to find any of several characters (e.g., <code>&lt;</code>, <code>&gt;</code>, <code>&amp;</code> for HTML), do multiple <code>.==</code> comparisons and combine with <code>.|</code> before the movemask.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../cookbook/image-processing.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../cookbook/ml-preprocessing.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../cookbook/image-processing.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../cookbook/ml-preprocessing.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

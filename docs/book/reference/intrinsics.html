@@ -1,0 +1,413 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>All Intrinsics - Eä — Compute Kernel Compiler</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><li class="part-title">Getting Started</li><li class="chapter-item expanded "><a href="../getting-started/index.html"><strong aria-hidden="true">1.</strong> Make Python Fast in 60 Seconds</a></li><li class="chapter-item expanded "><a href="../getting-started/install.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../getting-started/first-kernel.html"><strong aria-hidden="true">3.</strong> Your First Kernel</a></li><li class="chapter-item expanded affix "><li class="part-title">Guide</li><li class="chapter-item expanded "><a href="../guide/why-ea.html"><strong aria-hidden="true">4.</strong> Why Eä?</a></li><li class="chapter-item expanded "><a href="../guide/language.html"><strong aria-hidden="true">5.</strong> Language Basics</a></li><li class="chapter-item expanded "><a href="../guide/simd.html"><strong aria-hidden="true">6.</strong> SIMD Vectors</a></li><li class="chapter-item expanded "><a href="../guide/kernels.html"><strong aria-hidden="true">7.</strong> Kernels</a></li><li class="chapter-item expanded "><a href="../guide/structs.html"><strong aria-hidden="true">8.</strong> Structs</a></li><li class="chapter-item expanded "><a href="../guide/common-intrinsics.html"><strong aria-hidden="true">9.</strong> Common Intrinsics</a></li><li class="chapter-item expanded affix "><li class="part-title">Reference</li><li class="chapter-item expanded "><a href="../reference/types.html"><strong aria-hidden="true">10.</strong> Type System</a></li><li class="chapter-item expanded "><a href="../reference/intrinsics.html" class="active"><strong aria-hidden="true">11.</strong> All Intrinsics</a></li><li class="chapter-item expanded "><a href="../reference/cli.html"><strong aria-hidden="true">12.</strong> CLI Reference</a></li><li class="chapter-item expanded "><a href="../reference/python-api.html"><strong aria-hidden="true">13.</strong> Python API</a></li><li class="chapter-item expanded "><a href="../reference/bindings.html"><strong aria-hidden="true">14.</strong> Binding Annotations</a></li><li class="chapter-item expanded "><a href="../reference/arm.html"><strong aria-hidden="true">15.</strong> ARM / NEON</a></li><li class="chapter-item expanded affix "><li class="part-title">Cookbook</li><li class="chapter-item expanded "><a href="../cookbook/numpy-comparison.html"><strong aria-hidden="true">16.</strong> Eä vs NumPy</a></li><li class="chapter-item expanded "><a href="../cookbook/image-processing.html"><strong aria-hidden="true">17.</strong> Image Processing</a></li><li class="chapter-item expanded "><a href="../cookbook/text-processing.html"><strong aria-hidden="true">18.</strong> Text Processing</a></li><li class="chapter-item expanded "><a href="../cookbook/ml-preprocessing.html"><strong aria-hidden="true">19.</strong> ML Preprocessing</a></li><li class="chapter-item expanded affix "><li class="part-title">Examples</li><li class="chapter-item expanded "><a href="../examples/cqt-audio-visualizer.html"><strong aria-hidden="true">20.</strong> CQT Audio Visualizer: Beating BLAS with 80 Lines of Ea</a></li><li class="chapter-item expanded affix "><li class="part-title">Blog</li><li class="chapter-item expanded "><a href="../blog/numpy-6x.html"><strong aria-hidden="true">21.</strong> How 30 Lines of Eä Beat NumPy by 6×</a></li><li class="chapter-item expanded "><a href="../blog/12k-lines-of-rust.html"><strong aria-hidden="true">22.</strong> I Wrote a SIMD Compiler in 12K Lines of Rust</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Eä — Compute Kernel Compiler</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/petlukk/eacompute" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="all-intrinsics"><a class="header" href="#all-intrinsics">All Intrinsics</a></h1>
+<p>Complete reference for every built-in function in Ea.</p>
+<h2 id="memory"><a class="header" href="#memory">Memory</a></h2>
+<h3 id="load"><a class="header" href="#load">load</a></h3>
+<p>Load a vector from a pointer at a byte offset. The return type is inferred from context.</p>
+<pre><code>let v: f32x8 = load(ptr, i);
+</code></pre>
+<h3 id="typed-scalar-loads"><a class="header" href="#typed-scalar-loads">Typed Scalar Loads</a></h3>
+<p>Load a single scalar value from a pointer at a byte offset.</p>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Return Type</th></tr></thead><tbody>
+<tr><td><code>load_f32(ptr, i)</code></td><td><code>f32</code></td></tr>
+<tr><td><code>load_f64(ptr, i)</code></td><td><code>f64</code></td></tr>
+<tr><td><code>load_i32(ptr, i)</code></td><td><code>i32</code></td></tr>
+<tr><td><code>load_i16(ptr, i)</code></td><td><code>i16</code></td></tr>
+<tr><td><code>load_i8(ptr, i)</code></td><td><code>i8</code></td></tr>
+<tr><td><code>load_u8(ptr, i)</code></td><td><code>u8</code></td></tr>
+<tr><td><code>load_u16(ptr, i)</code></td><td><code>u16</code></td></tr>
+<tr><td><code>load_u32(ptr, i)</code></td><td><code>u32</code></td></tr>
+<tr><td><code>load_u64(ptr, i)</code></td><td><code>u64</code></td></tr>
+</tbody></table>
+</div>
+<pre><code>let x: f32 = load_f32(ptr, i);
+</code></pre>
+<h3 id="typed-vector-loads"><a class="header" href="#typed-vector-loads">Typed Vector Loads</a></h3>
+<p>Load a full vector from a pointer at a byte offset.</p>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Return Type</th></tr></thead><tbody>
+<tr><td><code>load_f32x4(ptr, i)</code></td><td><code>f32x4</code></td></tr>
+<tr><td><code>load_f32x8(ptr, i)</code></td><td><code>f32x8</code></td></tr>
+<tr><td><code>load_f32x16(ptr, i)</code></td><td><code>f32x16</code></td></tr>
+<tr><td><code>load_i32x4(ptr, i)</code></td><td><code>i32x4</code></td></tr>
+<tr><td><code>load_i32x8(ptr, i)</code></td><td><code>i32x8</code></td></tr>
+<tr><td><code>load_i16x8(ptr, i)</code></td><td><code>i16x8</code></td></tr>
+<tr><td><code>load_i8x16(ptr, i)</code></td><td><code>i8x16</code></td></tr>
+<tr><td><code>load_u8x16(ptr, i)</code></td><td><code>u8x16</code></td></tr>
+<tr><td><code>load_u8x32(ptr, i)</code></td><td><code>u8x32</code></td></tr>
+</tbody></table>
+</div>
+<pre><code>let v: f32x8 = load_f32x8(data, i * 32);
+</code></pre>
+<h3 id="store"><a class="header" href="#store">store</a></h3>
+<p>Write a vector to a pointer at a byte offset.</p>
+<pre><code>store(out, i, result);
+</code></pre>
+<h3 id="stream_store"><a class="header" href="#stream_store">stream_store</a></h3>
+<p>Non-temporal store that bypasses the CPU cache. Use for write-only output that will not be read back soon.</p>
+<pre><code>stream_store(out, i, result);
+</code></pre>
+<h3 id="load_masked"><a class="header" href="#load_masked">load_masked</a></h3>
+<p>Masked vector load. Lanes where the mask is false are not loaded.</p>
+<pre><code>let v: f32x8 = load_masked(ptr, i, mask);
+</code></pre>
+<h3 id="store_masked"><a class="header" href="#store_masked">store_masked</a></h3>
+<p>Masked vector store. Only lanes where the mask is true are written.</p>
+<pre><code>store_masked(out, i, value, mask);
+</code></pre>
+<h3 id="gather"><a class="header" href="#gather">gather</a></h3>
+<p>Load elements from scattered memory addresses using an index vector. x86 only -- not available on ARM.</p>
+<pre><code>let v: f32x8 = gather(ptr, indices);
+</code></pre>
+<h3 id="scatter"><a class="header" href="#scatter">scatter</a></h3>
+<p>Store elements to scattered memory addresses using an index vector. AVX-512 only (<code>--avx512</code> flag required).</p>
+<pre><code>scatter(ptr, indices, values);
+</code></pre>
+<h3 id="prefetch"><a class="header" href="#prefetch">prefetch</a></h3>
+<p>Issue a prefetch hint to bring data into cache.</p>
+<pre><code>prefetch(ptr, i);
+</code></pre>
+<h2 id="math"><a class="header" href="#math">Math</a></h2>
+<h3 id="sqrt"><a class="header" href="#sqrt">sqrt</a></h3>
+<p>Square root. Works on scalar <code>f32</code>/<code>f64</code> and all float vector types.</p>
+<pre><code>let y: f32 = sqrt(x);
+let v: f32x8 = sqrt(vec);
+</code></pre>
+<h3 id="rsqrt"><a class="header" href="#rsqrt">rsqrt</a></h3>
+<p>Reciprocal square root (approximate). Scalar <code>f32</code> and <code>f32</code> vector types.</p>
+<pre><code>let y: f32 = rsqrt(x);
+let v: f32x8 = rsqrt(vec);
+</code></pre>
+<h3 id="exp"><a class="header" href="#exp">exp</a></h3>
+<p>Exponential function. Float types.</p>
+<pre><code>let y: f32 = exp(x);
+</code></pre>
+<h3 id="fma"><a class="header" href="#fma">fma</a></h3>
+<p>Fused multiply-add: computes <code>a * b + c</code> in a single operation with one rounding step. Works on scalar <code>f32</code> and all float vector types.</p>
+<pre><code>let y: f32 = fma(a, b, c);
+let v: f32x8 = fma(va, vb, vc);
+</code></pre>
+<h3 id="min"><a class="header" href="#min">min</a></h3>
+<p>Element-wise minimum. Works on scalar (<code>i32</code>, <code>f32</code>, <code>f64</code>) and vector types.</p>
+<pre><code>let m: i32 = min(a, b);
+let v: f32x8 = min(va, vb);
+</code></pre>
+<h3 id="max"><a class="header" href="#max">max</a></h3>
+<p>Element-wise maximum. Works on scalar (<code>i32</code>, <code>f32</code>, <code>f64</code>) and vector types.</p>
+<pre><code>let m: i32 = max(a, b);
+let v: f32x8 = max(va, vb);
+</code></pre>
+<h2 id="reduction"><a class="header" href="#reduction">Reduction</a></h2>
+<p>Reduce a vector to a single scalar value.</p>
+<h3 id="reduce_add"><a class="header" href="#reduce_add">reduce_add</a></h3>
+<p>Sum all lanes.</p>
+<pre><code>let sum: f32 = reduce_add(v);   // f32x8 -&gt; f32
+let sum: i32 = reduce_add(iv);  // i32x8 -&gt; i32
+</code></pre>
+<h3 id="reduce_max"><a class="header" href="#reduce_max">reduce_max</a></h3>
+<p>Maximum across all lanes.</p>
+<pre><code>let m: f32 = reduce_max(v);
+</code></pre>
+<h3 id="reduce_min"><a class="header" href="#reduce_min">reduce_min</a></h3>
+<p>Minimum across all lanes.</p>
+<pre><code>let m: f32 = reduce_min(v);
+</code></pre>
+<h3 id="reduce_add_fast"><a class="header" href="#reduce_add_fast">reduce_add_fast</a></h3>
+<p>Unordered float reduction. Faster than <code>reduce_add</code> but does not guarantee summation order, so results may differ slightly due to floating-point rounding. Float vectors only.</p>
+<pre><code>let sum: f32 = reduce_add_fast(v);
+</code></pre>
+<h2 id="vector"><a class="header" href="#vector">Vector</a></h2>
+<h3 id="splat"><a class="header" href="#splat">splat</a></h3>
+<p>Broadcast a scalar value to all lanes of a vector. The vector type is inferred from context.</p>
+<pre><code>let v: f32x8 = splat(1.0);
+</code></pre>
+<h3 id="shuffle"><a class="header" href="#shuffle">shuffle</a></h3>
+<p>Reorder lanes of a vector according to an index tuple. The indices are compile-time constants.</p>
+<pre><code>let reversed: f32x4 = shuffle(v, (3, 2, 1, 0));
+</code></pre>
+<h3 id="select"><a class="header" href="#select">select</a></h3>
+<p>Per-lane conditional select. Where the mask is true, take from <code>a</code>; where false, take from <code>b</code>.</p>
+<pre><code>let result: f32x8 = select(mask, a, b);
+</code></pre>
+<h3 id="movemask"><a class="header" href="#movemask">movemask</a></h3>
+<p>Extract a comparison result bitmask from a boolean vector to a scalar <code>i32</code>. Each bit corresponds to the sign bit of one lane. <strong>x86 only</strong> -- not available on ARM.</p>
+<pre><code>let bits: i32 = movemask(cmp_result);
+</code></pre>
+<h2 id="conversion"><a class="header" href="#conversion">Conversion</a></h2>
+<h3 id="scalar-casts"><a class="header" href="#scalar-casts">Scalar Casts</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>to_f32(x)</code></td><td>Convert to <code>f32</code></td></tr>
+<tr><td><code>to_f64(x)</code></td><td>Convert to <code>f64</code></td></tr>
+<tr><td><code>to_i32(x)</code></td><td>Convert to <code>i32</code></td></tr>
+<tr><td><code>to_i64(x)</code></td><td>Convert to <code>i64</code></td></tr>
+</tbody></table>
+</div>
+<pre><code>let f: f32 = to_f32(i);
+let n: i32 = to_i32(x);
+</code></pre>
+<h3 id="widening-conversions"><a class="header" href="#widening-conversions">Widening Conversions</a></h3>
+<p>Widen narrow integer lanes to wider float or integer lanes. Only the first N lanes of the input are consumed.</p>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Input</th><th>Output</th></tr></thead><tbody>
+<tr><td><code>widen_i8_f32x4(v)</code></td><td><code>i8x16</code></td><td><code>f32x4</code></td></tr>
+<tr><td><code>widen_u8_f32x4(v)</code></td><td><code>u8x16</code></td><td><code>f32x4</code></td></tr>
+<tr><td><code>widen_i8_f32x8(v)</code></td><td><code>i8x16</code></td><td><code>f32x8</code></td></tr>
+<tr><td><code>widen_u8_f32x8(v)</code></td><td><code>u8x16</code></td><td><code>f32x8</code></td></tr>
+<tr><td><code>widen_u8_i32x4(v)</code></td><td><code>u8x16</code></td><td><code>i32x4</code></td></tr>
+<tr><td><code>widen_u8_i32x8(v)</code></td><td><code>u8x16</code></td><td><code>i32x8</code></td></tr>
+</tbody></table>
+</div>
+<pre><code>let pixels: f32x8 = widen_u8_f32x8(raw_bytes);
+</code></pre>
+<h3 id="narrowing-conversions"><a class="header" href="#narrowing-conversions">Narrowing Conversions</a></h3>
+<p>Convert wider lanes to narrower lanes, with clamping and rounding.</p>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Input</th><th>Output</th></tr></thead><tbody>
+<tr><td><code>narrow_f32x4_i8(v)</code></td><td><code>f32x4</code></td><td><code>i8</code> (4 bytes)</td></tr>
+</tbody></table>
+</div>
+<pre><code>let packed = narrow_f32x4_i8(float_pixels);
+</code></pre>
+<h3 id="multiply-add-byte-pairs"><a class="header" href="#multiply-add-byte-pairs">Multiply-Add Byte Pairs</a></h3>
+<p>Multiply unsigned bytes by signed bytes and add adjacent pairs. x86 only.</p>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Signature</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>maddubs_i16(a, b)</code></td><td><code>(u8x16, i8x16) -&gt; i16x8</code></td><td>Multiply and add adjacent pairs to 16-bit</td></tr>
+<tr><td><code>maddubs_i32(a, b)</code></td><td><code>(u8x16, i8x16) -&gt; i32x4</code></td><td>Multiply and add adjacent quads to 32-bit</td></tr>
+</tbody></table>
+</div>
+<pre><code>let products: i16x8 = maddubs_i16(unsigned_bytes, signed_weights);
+</code></pre>
+<h2 id="debug"><a class="header" href="#debug">Debug</a></h2>
+<h3 id="println"><a class="header" href="#println">println</a></h3>
+<p>Print a value to stdout. Accepts scalars (<code>i32</code>, <code>i64</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>, <code>f32</code>, <code>f64</code>, <code>bool</code>), string literals, and vector types. Lowers to C <code>printf</code>. No format strings.</p>
+<pre><code>println(42);
+println(3.14);
+println("hello");
+println(my_vector);
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../reference/types.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../reference/cli.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../reference/types.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../reference/cli.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

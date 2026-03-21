@@ -1,0 +1,2417 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Eä — Compute Kernel Compiler</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><li class="part-title">Getting Started</li><li class="chapter-item expanded "><a href="getting-started/index.html"><strong aria-hidden="true">1.</strong> Make Python Fast in 60 Seconds</a></li><li class="chapter-item expanded "><a href="getting-started/install.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="getting-started/first-kernel.html"><strong aria-hidden="true">3.</strong> Your First Kernel</a></li><li class="chapter-item expanded affix "><li class="part-title">Guide</li><li class="chapter-item expanded "><a href="guide/why-ea.html"><strong aria-hidden="true">4.</strong> Why Eä?</a></li><li class="chapter-item expanded "><a href="guide/language.html"><strong aria-hidden="true">5.</strong> Language Basics</a></li><li class="chapter-item expanded "><a href="guide/simd.html"><strong aria-hidden="true">6.</strong> SIMD Vectors</a></li><li class="chapter-item expanded "><a href="guide/kernels.html"><strong aria-hidden="true">7.</strong> Kernels</a></li><li class="chapter-item expanded "><a href="guide/structs.html"><strong aria-hidden="true">8.</strong> Structs</a></li><li class="chapter-item expanded "><a href="guide/common-intrinsics.html"><strong aria-hidden="true">9.</strong> Common Intrinsics</a></li><li class="chapter-item expanded affix "><li class="part-title">Reference</li><li class="chapter-item expanded "><a href="reference/types.html"><strong aria-hidden="true">10.</strong> Type System</a></li><li class="chapter-item expanded "><a href="reference/intrinsics.html"><strong aria-hidden="true">11.</strong> All Intrinsics</a></li><li class="chapter-item expanded "><a href="reference/cli.html"><strong aria-hidden="true">12.</strong> CLI Reference</a></li><li class="chapter-item expanded "><a href="reference/python-api.html"><strong aria-hidden="true">13.</strong> Python API</a></li><li class="chapter-item expanded "><a href="reference/bindings.html"><strong aria-hidden="true">14.</strong> Binding Annotations</a></li><li class="chapter-item expanded "><a href="reference/arm.html"><strong aria-hidden="true">15.</strong> ARM / NEON</a></li><li class="chapter-item expanded affix "><li class="part-title">Cookbook</li><li class="chapter-item expanded "><a href="cookbook/numpy-comparison.html"><strong aria-hidden="true">16.</strong> Eä vs NumPy</a></li><li class="chapter-item expanded "><a href="cookbook/image-processing.html"><strong aria-hidden="true">17.</strong> Image Processing</a></li><li class="chapter-item expanded "><a href="cookbook/text-processing.html"><strong aria-hidden="true">18.</strong> Text Processing</a></li><li class="chapter-item expanded "><a href="cookbook/ml-preprocessing.html"><strong aria-hidden="true">19.</strong> ML Preprocessing</a></li><li class="chapter-item expanded affix "><li class="part-title">Examples</li><li class="chapter-item expanded "><a href="examples/cqt-audio-visualizer.html"><strong aria-hidden="true">20.</strong> CQT Audio Visualizer: Beating BLAS with 80 Lines of Ea</a></li><li class="chapter-item expanded affix "><li class="part-title">Blog</li><li class="chapter-item expanded "><a href="blog/numpy-6x.html"><strong aria-hidden="true">21.</strong> How 30 Lines of Eä Beat NumPy by 6×</a></li><li class="chapter-item expanded "><a href="blog/12k-lines-of-rust.html"><strong aria-hidden="true">22.</strong> I Wrote a SIMD Compiler in 12K Lines of Rust</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Eä — Compute Kernel Compiler</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/petlukk/eacompute" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="make-python-fast-in-60-seconds"><a class="header" href="#make-python-fast-in-60-seconds">Make Python Fast in 60 Seconds</a></h1>
+<p>Eä is a compute kernel compiler. You write small, focused compute functions — Eä compiles them to native code and gives you Python functions that take NumPy arrays.</p>
+<p>No C. No Cython. No Numba JIT warmup. Just fast code.</p>
+<h2 id="the-pitch"><a class="header" href="#the-pitch">The pitch</a></h2>
+<pre><code class="language-bash">pip install ea-compiler
+</code></pre>
+<p>Write a kernel (<code>scale.ea</code>):</p>
+<pre><code>export func scale(src: *f32, dst: *mut f32, factor: f32, n: i32) {
+    let mut i: i32 = 0
+    while i &lt; n {
+        dst[i] = src[i] * factor
+        i = i + 1
+    }
+}
+</code></pre>
+<p>Call it from Python:</p>
+<pre><code class="language-python">import ea
+import numpy as np
+
+kernel = ea.load("scale.ea")
+src = np.random.randn(1_000_000).astype(np.float32)
+dst = np.empty_like(src)
+kernel.scale(src, dst, factor=2.0)
+</code></pre>
+<p>That's it. <code>ea.load()</code> compiles your kernel to a native shared library, caches it, and gives you a callable Python function. No Rust, no LLVM, no build step — just <code>pip install</code> and go.</p>
+<h2 id="what-makes-eä-different"><a class="header" href="#what-makes-eä-different">What makes Eä different?</a></h2>
+<ul>
+<li><strong>Explicit SIMD.</strong> You control the vector width. No auto-vectorization guessing.</li>
+<li><strong>No runtime.</strong> Compiles to plain <code>.so</code>/<code>.dll</code> files. Zero overhead beyond function call.</li>
+<li><strong>No magic.</strong> If your code looks like it processes 8 floats at a time, it does. No silent scalar fallback.</li>
+<li><strong>Instant bindings.</strong> Python, Rust, C++, PyTorch — generated from one source.</li>
+</ul>
+<h2 id="next-steps"><a class="header" href="#next-steps">Next steps</a></h2>
+<ul>
+<li><a href="getting-started/install.html">Install ea-compiler</a></li>
+<li><a href="getting-started/first-kernel.html">Write your first SIMD kernel</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
+<h2 id="from-pip-recommended"><a class="header" href="#from-pip-recommended">From pip (recommended)</a></h2>
+<pre><code class="language-bash">pip install ea-compiler
+</code></pre>
+<p>This gives you the <code>ea</code> compiler and the Python <code>ea.load()</code> API. No other dependencies needed (besides NumPy).</p>
+<p>Works on:</p>
+<ul>
+<li>Linux x86_64</li>
+<li>Linux aarch64 (ARM)</li>
+<li>Windows x86_64</li>
+</ul>
+<h2 id="verify-installation"><a class="header" href="#verify-installation">Verify installation</a></h2>
+<pre><code class="language-python">import ea
+print(ea.__version__)           # e.g., "1.7.0"
+print(ea.compiler_version())    # same, from the bundled binary
+</code></pre>
+<h2 id="building-from-source"><a class="header" href="#building-from-source">Building from source</a></h2>
+<p>For development or unsupported platforms, see the <a href="https://github.com/petlukk/eacompute">eacompute README</a> for instructions on building the compiler from source. This requires Rust and LLVM 18.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="your-first-kernel"><a class="header" href="#your-first-kernel">Your First Kernel</a></h1>
+<p>Let's write a kernel that scales an array by a constant factor, then upgrade it to use SIMD.</p>
+<h2 id="step-1-scalar-version"><a class="header" href="#step-1-scalar-version">Step 1: Scalar version</a></h2>
+<p>Create <code>scale.ea</code>:</p>
+<pre><code>export func scale(src: *f32, dst: *mut f32, factor: f32, n: i32) {
+    let mut i: i32 = 0
+    while i &lt; n {
+        dst[i] = src[i] * factor
+        i = i + 1
+    }
+}
+</code></pre>
+<p>Key things to notice:</p>
+<ul>
+<li><code>export</code> makes the function callable from Python (C ABI)</li>
+<li><code>*f32</code> is an immutable pointer to float32 — your input array</li>
+<li><code>*mut f32</code> is a mutable pointer — your output array</li>
+<li><code>n: i32</code> is the array length — the caller provides this</li>
+<li>All types are explicit. No inference, no ambiguity.</li>
+</ul>
+<h2 id="step-2-call-from-python"><a class="header" href="#step-2-call-from-python">Step 2: Call from Python</a></h2>
+<pre><code class="language-python">import ea
+import numpy as np
+
+kernel = ea.load("scale.ea")
+
+src = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+dst = np.empty_like(src)
+kernel.scale(src, dst, factor=2.0)
+print(dst)  # [2. 4. 6. 8.]
+</code></pre>
+<p><code>ea.load()</code> compiles <code>scale.ea</code> the first time, then caches the result in <code>__eacache__/</code>. Subsequent calls load from cache instantly.</p>
+<h2 id="step-3-simd-version"><a class="header" href="#step-3-simd-version">Step 3: SIMD version</a></h2>
+<p>Now let's process 8 floats at a time:</p>
+<pre><code>export func scale_simd(src: *f32, dst: *mut f32, factor: f32, n: i32) {
+    let s: f32x8 = splat(factor)
+    let mut i: i32 = 0
+    while i &lt; n {
+        let v: f32x8 = load(src, i)
+        store(dst, i, v .* s)
+        i = i + 8
+    }
+}
+</code></pre>
+<p>What changed:</p>
+<ul>
+<li><code>f32x8</code> — a vector of 8 floats (256-bit, uses AVX2 on x86)</li>
+<li><code>splat(factor)</code> — broadcasts the scalar to all 8 lanes</li>
+<li><code>load(src, i)</code> — loads 8 consecutive floats starting at index <code>i</code></li>
+<li><code>v .* s</code> — element-wise multiply (the dot prefix <code>.</code> means "vector operation")</li>
+<li><code>store(dst, i, ...)</code> — writes 8 floats back</li>
+<li>We increment by 8, not 1</li>
+</ul>
+<blockquote>
+<p><strong>Important:</strong> This only works when <code>n</code> is a multiple of 8. For arbitrary lengths, see <a href="getting-started/../guide/kernels.html">Kernels</a> for tail-handling strategies.</p>
+</blockquote>
+<h2 id="step-4-compare-performance"><a class="header" href="#step-4-compare-performance">Step 4: Compare performance</a></h2>
+<pre><code class="language-python">import ea
+import numpy as np
+import time
+
+kernel = ea.load("scale.ea")
+src = np.random.randn(10_000_000).astype(np.float32)
+dst = np.empty_like(src)
+
+# Eä scalar
+start = time.perf_counter()
+for _ in range(100):
+    kernel.scale(src, dst, factor=2.0)
+ea_scalar = (time.perf_counter() - start) / 100
+
+# Eä SIMD
+start = time.perf_counter()
+for _ in range(100):
+    kernel.scale_simd(src, dst, factor=2.0)
+ea_simd = (time.perf_counter() - start) / 100
+
+# NumPy
+start = time.perf_counter()
+for _ in range(100):
+    np.multiply(src, 2.0, out=dst)
+numpy_time = (time.perf_counter() - start) / 100
+
+print(f"Eä scalar: {ea_scalar*1000:.2f} ms")
+print(f"Eä SIMD:   {ea_simd*1000:.2f} ms")
+print(f"NumPy:     {numpy_time*1000:.2f} ms")
+</code></pre>
+<p>For this simple operation, all three will be similar — it's bandwidth-bound (one operation per element loaded). Eä shines on compute-bound workloads where there are multiple operations per element. See the <a href="getting-started/../cookbook/numpy-comparison.html">Cookbook</a> for real-world comparisons.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="why-ea"><a class="header" href="#why-ea">Why Ea</a></h1>
+<h2 id="what-ea-is"><a class="header" href="#what-ea-is">What Ea is</a></h2>
+<p>Ea is a compute kernel compiler. You write small, focused numerical routines in Ea's explicit syntax, compile them to native shared libraries (<code>.so</code> on Linux, <code>.dll</code> on Windows), and call them from Python, Rust, C++, or PyTorch via C ABI. Ea is not a general-purpose programming language. It has no standard library, no garbage collector, no runtime. It compiles kernels.</p>
+<h2 id="the-problem"><a class="header" href="#the-problem">The problem</a></h2>
+<p>Python is slow for tight numerical loops. When you need to run a custom algorithm over millions of elements -- a stencil, a reduction with custom logic, a chain of fused multiply-adds -- you hit a wall. The usual options are:</p>
+<ul>
+<li><strong>NumPy</strong>: fast for operations it supports, but custom multi-step algorithms require chaining calls that allocate intermediates and re-scan memory.</li>
+<li><strong>Numba</strong>: JIT-compiles Python, but debugging is difficult, compilation is unpredictable, and SIMD vectorization is implicit (you hope the compiler figures it out).</li>
+<li><strong>Cython</strong>: requires learning a hybrid language, managing build systems, and still gives you limited control over vectorization.</li>
+<li><strong>Writing C extensions</strong>: full control, but high friction. Manual Python/C bridging, header files, build scripts.</li>
+</ul>
+<p>Ea targets the gap: you want native-speed kernels with explicit SIMD, but you do not want to maintain a C build system.</p>
+<h2 id="the-philosophy"><a class="header" href="#the-philosophy">The philosophy</a></h2>
+<p>Ea is built on one principle: <strong>explicit over implicit</strong>.</p>
+<ul>
+<li>If you write <code>f32x8</code>, you get 8-wide SIMD. The compiler will not silently fall back to scalar code.</li>
+<li>If hardware does not support an operation (e.g., scatter without AVX-512), the compiler errors. It does not emit slow scalar code behind your back.</li>
+<li>All types are explicit. No type inference. You see exactly what is happening.</li>
+<li>All memory is caller-provided. Ea kernels never allocate. Pointers come from the host language.</li>
+</ul>
+<p>There are no hidden performance cliffs. The code you write is the code that runs.</p>
+<h2 id="when-to-use-ea"><a class="header" href="#when-to-use-ea">When to use Ea</a></h2>
+<p>Ea excels at <strong>compute-bound</strong> workloads where you do significant work per element loaded from memory:</p>
+<ul>
+<li><strong>Stencil operations</strong>: convolutions, blurs, edge detection -- each output element reads from multiple inputs.</li>
+<li><strong>Fused multiply-add chains</strong>: polynomial evaluation, IIR filters, dot products.</li>
+<li><strong>Custom reductions</strong>: computing statistics, finding patterns, accumulating results with non-trivial logic.</li>
+<li><strong>Particle simulations</strong>: N-body interactions, force calculations.</li>
+<li><strong>Image processing pipelines</strong>: per-pixel math with multiple operations fused into one pass.</li>
+</ul>
+<p>The common thread: you load data, do many arithmetic operations on it, then store results. The CPU spends most of its time computing, not waiting for memory.</p>
+<h2 id="when-not-to-use-ea"><a class="header" href="#when-not-to-use-ea">When NOT to use Ea</a></h2>
+<p>Ea is the wrong tool for:</p>
+<ul>
+<li><strong>Bandwidth-bound workloads</strong>: if you are just adding two arrays element-wise, NumPy already saturates memory bandwidth. Ea cannot make memory faster.</li>
+<li><strong>General programming</strong>: no strings, no file I/O, no networking, no data structures beyond structs.</li>
+<li><strong>Prototyping</strong>: write your algorithm in Python first, profile it, then port the hot loop to Ea.</li>
+<li><strong>GPU workloads</strong>: Ea targets CPUs (x86-64 with AVX2/AVX-512, AArch64 with NEON).</li>
+</ul>
+<p>A good rule of thumb: if your inner loop does fewer than 4 arithmetic operations per element loaded, NumPy is probably fast enough.</p>
+<h2 id="the-compilation-model"><a class="header" href="#the-compilation-model">The compilation model</a></h2>
+<pre><code>kernel.ea  --&gt;  ea --lib  --&gt;  kernel.so + kernel.ea.json
+                                   |
+                          ea bind --python
+                                   |
+                              kernel.py  (generated wrapper)
+</code></pre>
+<p>One <code>.ea</code> file is one compilation unit. There are no imports, no modules. If you need to compose kernels, you do it at the C level -- each kernel is an independent shared library with a C ABI entry point.</p>
+<p>The generated <code>.ea.json</code> metadata file describes the function signatures. The <code>ea bind</code> command reads it to generate idiomatic wrappers for your target language.</p>
+<h2 id="quick-taste"><a class="header" href="#quick-taste">Quick taste</a></h2>
+<p>Here is a complete Ea kernel that scales an array of floats using 8-wide SIMD:</p>
+<pre><code>export kernel vscale(data: *f32, out: *mut f32, factor: f32)
+    over i in n step 8
+    tail scalar {
+        out[i] = data[i] * factor
+    }
+{
+    let vf: f32x8 = splat(factor)
+    store(out, i, load(data, i) .* vf)
+}
+</code></pre>
+<p>Compile and use from Python:</p>
+<pre><code class="language-bash">ea kernel.ea --lib
+ea bind kernel.ea --python
+</code></pre>
+<pre><code class="language-python">import numpy as np
+from kernel import vscale
+
+data = np.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype=np.float32)
+result = vscale(data, factor=3.0)
+# result: [3.0, 6.0, 9.0, 12.0, 15.0]
+</code></pre>
+<p>The main body processes 8 elements at a time with SIMD. The <code>tail scalar</code> block handles any remainder elements one at a time. The <code>n</code> parameter (the array length) is automatically injected into the function signature from the <code>over i in n</code> clause.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="language-basics"><a class="header" href="#language-basics">Language Basics</a></h1>
+<p>This page covers Ea's scalar language features. For SIMD vector types and operations, see <a href="guide/simd.html">SIMD</a>.</p>
+<h2 id="scalar-types"><a class="header" href="#scalar-types">Scalar types</a></h2>
+<p>Ea has fixed-size numeric types. No type inference -- you always write the type explicitly.</p>
+<div class="table-wrapper"><table><thead><tr><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>i8</code>, <code>i16</code>, <code>i32</code>, <code>i64</code></td><td>Signed integers</td></tr>
+<tr><td><code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code></td><td>Unsigned integers</td></tr>
+<tr><td><code>f32</code>, <code>f64</code></td><td>Floating point</td></tr>
+<tr><td><code>bool</code></td><td>Boolean (<code>true</code> / <code>false</code>)</td></tr>
+</tbody></table>
+</div>
+<h2 id="variables"><a class="header" href="#variables">Variables</a></h2>
+<p>All variables must have an explicit type annotation. Variables are immutable by default.</p>
+<pre><code>let x: i32 = 5
+let y: f32 = 3.14
+let flag: bool = true
+</code></pre>
+<p>To make a variable mutable, use <code>mut</code>:</p>
+<pre><code>let mut counter: i32 = 0
+counter = counter + 1
+</code></pre>
+<h2 id="constants"><a class="header" href="#constants">Constants</a></h2>
+<p>Compile-time constants use <code>const</code>:</p>
+<pre><code>const PI: f32 = 3.14159
+const BATCH_SIZE: i32 = 256
+const EPSILON: f64 = 1e-9
+</code></pre>
+<p>Constants can be used in <code>static_assert</code> for compile-time checks:</p>
+<pre><code>const STEP: i32 = 8
+static_assert(STEP &gt; 0, "step must be positive")
+</code></pre>
+<h2 id="arithmetic-and-comparison"><a class="header" href="#arithmetic-and-comparison">Arithmetic and comparison</a></h2>
+<p>Standard arithmetic operators work on all numeric types:</p>
+<pre><code>let a: i32 = 10 + 3    // 13
+let b: i32 = 10 - 3    // 7
+let c: i32 = 10 * 3    // 30
+let d: i32 = 10 / 3    // 3 (integer division)
+let e: i32 = 10 % 3    // 1 (remainder)
+</code></pre>
+<p>Comparison operators return <code>bool</code>:</p>
+<pre><code>let lt: bool = a &lt; b
+let gt: bool = a &gt; b
+let le: bool = a &lt;= b
+let ge: bool = a &gt;= b
+let eq: bool = a == b
+let ne: bool = a != b
+</code></pre>
+<h2 id="logical-operators"><a class="header" href="#logical-operators">Logical operators</a></h2>
+<p>Ea uses words, not symbols, for logical operations:</p>
+<pre><code>let both: bool = a &gt; 0 and b &gt; 0
+let either: bool = a &gt; 0 or b &gt; 0
+let neither: bool = not (a &gt; 0 or b &gt; 0)
+</code></pre>
+<h2 id="control-flow"><a class="header" href="#control-flow">Control flow</a></h2>
+<h3 id="if--else-if--else"><a class="header" href="#if--else-if--else">if / else if / else</a></h3>
+<pre><code>if x &gt; 0 {
+    println(1)
+} else if x == 0 {
+    println(0)
+} else {
+    println(-1)
+}
+</code></pre>
+<h3 id="while-loops"><a class="header" href="#while-loops">while loops</a></h3>
+<pre><code>let mut i: i32 = 0
+while i &lt; n {
+    out[i] = data[i] * 2
+    i = i + 1
+}
+</code></pre>
+<h3 id="for-loops"><a class="header" href="#for-loops">for loops</a></h3>
+<p>Counted loops with an explicit step:</p>
+<pre><code>for i in 0..n step 1 {
+    out[i] = data[i] * 2
+}
+</code></pre>
+<p>The step is required. The range <code>0..n</code> is half-open: it includes 0 but excludes <code>n</code>.</p>
+<h3 id="foreach-loops"><a class="header" href="#foreach-loops">foreach loops</a></h3>
+<p>A simpler counted loop when the step is always 1:</p>
+<pre><code>foreach (i in 0..n) {
+    out[i] = data[i] * 2
+}
+</code></pre>
+<h3 id="loop-unrolling"><a class="header" href="#loop-unrolling">Loop unrolling</a></h3>
+<p>Wrap a loop in <code>unroll(N)</code> to unroll it at compile time:</p>
+<pre><code>unroll(4) {
+    foreach (j in 0..4) {
+        out[base + j] = data[base + j] * factor
+    }
+}
+</code></pre>
+<h2 id="functions"><a class="header" href="#functions">Functions</a></h2>
+<p>Functions are declared with <code>func</code>. All parameter and return types are explicit:</p>
+<pre><code>func square(x: f32) -&gt; f32 {
+    return x * x
+}
+
+func add(a: i32, b: i32) -&gt; i32 {
+    return a + b
+}
+</code></pre>
+<p>Functions without a return type return nothing (void):</p>
+<pre><code>func fill(out: *mut i32, n: i32, val: i32) {
+    foreach (i in 0..n) {
+        out[i] = val
+    }
+}
+</code></pre>
+<h3 id="exported-functions"><a class="header" href="#exported-functions">Exported functions</a></h3>
+<p>To make a function callable from C/Python/Rust, prefix it with <code>export</code>:</p>
+<pre><code>export func dot_product(a: *f32, b: *f32, n: i32) -&gt; f32 {
+    let mut sum: f32 = 0.0
+    foreach (i in 0..n) {
+        sum = sum + a[i] * b[i]
+    }
+    return sum
+}
+</code></pre>
+<p>Only <code>export func</code> (and <code>export kernel</code>) produce symbols visible from outside. Non-exported functions are internal helpers.</p>
+<h2 id="pointers"><a class="header" href="#pointers">Pointers</a></h2>
+<p>Pointers are how kernels receive data from the host language. There are four pointer variants:</p>
+<div class="table-wrapper"><table><thead><tr><th>Syntax</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>*T</code></td><td>Read-only pointer</td></tr>
+<tr><td><code>*mut T</code></td><td>Mutable pointer (can write through it)</td></tr>
+<tr><td><code>*restrict T</code></td><td>Read-only, no aliasing (enables optimizations)</td></tr>
+<tr><td><code>*restrict mut T</code></td><td>Mutable, no aliasing</td></tr>
+</tbody></table>
+</div>
+<h3 id="pointer-indexing"><a class="header" href="#pointer-indexing">Pointer indexing</a></h3>
+<p>Read from a pointer with bracket indexing:</p>
+<pre><code>let val: f32 = data[i]    // data is *f32
+</code></pre>
+<p>Write through a mutable pointer:</p>
+<pre><code>out[i] = val              // out is *mut f32
+</code></pre>
+<h2 id="type-casts"><a class="header" href="#type-casts">Type casts</a></h2>
+<p>Explicit casts convert between numeric types:</p>
+<pre><code>let x: i32 = 42
+let f: f32 = to_f32(x)       // 42.0
+let d: f64 = to_f64(x)       // 42.0
+let back: i32 = to_i32(f)    // 42
+let wide: i64 = to_i64(x)    // 42
+</code></pre>
+<p>There are no implicit conversions. Mixing types without a cast is a compile error.</p>
+<h2 id="println"><a class="header" href="#println">println</a></h2>
+<p><code>println</code> is the only output primitive. It exists for debugging:</p>
+<pre><code>println(42)
+println(3.14)
+println(true)
+println("hello")
+</code></pre>
+<p>It accepts integers, floats, bools, and string literals. It does not support format strings.</p>
+<h2 id="what-does-not-exist"><a class="header" href="#what-does-not-exist">What does not exist</a></h2>
+<p>Ea is deliberately minimal. The following features do not exist and are not planned:</p>
+<ul>
+<li>No generics or templates</li>
+<li>No traits or interfaces</li>
+<li>No modules or imports</li>
+<li>No heap allocation</li>
+<li>No strings (except literal arguments to <code>println</code>)</li>
+<li>No semicolons (statements are newline-separated)</li>
+<li>No closures or lambdas</li>
+<li>No enums or pattern matching</li>
+<li>No exceptions or error handling</li>
+</ul>
+<p>One file, one compilation unit. Compose at the C level.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="simd"><a class="header" href="#simd">SIMD</a></h1>
+<p>SIMD (Single Instruction, Multiple Data) lets you process multiple values in a single CPU instruction. Ea gives you direct control over SIMD vectors -- what you write is what the CPU executes.</p>
+<h2 id="vector-types"><a class="header" href="#vector-types">Vector types</a></h2>
+<p>A vector type holds a fixed number of elements of the same scalar type. The name encodes both the element type and the lane count:</p>
+<div class="table-wrapper"><table><thead><tr><th>Type</th><th>Elements</th><th>Bits</th><th>x86 requirement</th><th>ARM requirement</th></tr></thead><tbody>
+<tr><td><code>f32x4</code></td><td>4 x f32</td><td>128</td><td>SSE</td><td>NEON</td></tr>
+<tr><td><code>i32x4</code></td><td>4 x i32</td><td>128</td><td>SSE</td><td>NEON</td></tr>
+<tr><td><code>u8x16</code></td><td>16 x u8</td><td>128</td><td>SSE</td><td>NEON</td></tr>
+<tr><td><code>i8x16</code></td><td>16 x i8</td><td>128</td><td>SSE</td><td>NEON</td></tr>
+<tr><td><code>i16x8</code></td><td>8 x i16</td><td>128</td><td>SSE</td><td>NEON</td></tr>
+<tr><td><code>f64x2</code></td><td>2 x f64</td><td>128</td><td>SSE2</td><td>NEON</td></tr>
+<tr><td><code>f32x8</code></td><td>8 x f32</td><td>256</td><td>AVX2</td><td>not available</td></tr>
+<tr><td><code>i32x8</code></td><td>8 x i32</td><td>256</td><td>AVX2</td><td>not available</td></tr>
+<tr><td><code>u8x32</code></td><td>32 x u8</td><td>256</td><td>AVX2</td><td>not available</td></tr>
+<tr><td><code>f64x4</code></td><td>4 x f64</td><td>256</td><td>AVX2</td><td>not available</td></tr>
+<tr><td><code>f32x16</code></td><td>16 x f32</td><td>512</td><td>AVX-512</td><td>not available</td></tr>
+</tbody></table>
+</div>
+<p>If you use <code>f32x8</code> on a machine without AVX2, or on ARM, the compiler will error. No silent scalar fallback.</p>
+<p>To enable 512-bit vectors, compile with <code>--avx512</code>:</p>
+<pre><code class="language-bash">ea kernel.ea --lib --avx512
+</code></pre>
+<h2 id="dot-operators"><a class="header" href="#dot-operators">Dot operators</a></h2>
+<p>Element-wise vector operations use dot-prefixed operators. This distinguishes them from scalar operations and makes SIMD explicit in the source:</p>
+<div class="table-wrapper"><table><thead><tr><th>Operator</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>.+</code></td><td>Element-wise add</td></tr>
+<tr><td><code>.-</code></td><td>Element-wise subtract</td></tr>
+<tr><td><code>.*</code></td><td>Element-wise multiply</td></tr>
+<tr><td><code>./</code></td><td>Element-wise divide</td></tr>
+<tr><td><code>.&gt;</code></td><td>Element-wise greater than (returns bool vector)</td></tr>
+<tr><td><code>.&lt;</code></td><td>Element-wise less than</td></tr>
+<tr><td><code>.&gt;=</code></td><td>Element-wise greater or equal</td></tr>
+<tr><td><code>.&lt;=</code></td><td>Element-wise less or equal</td></tr>
+<tr><td><code>.==</code></td><td>Element-wise equal</td></tr>
+<tr><td><code>.!=</code></td><td>Element-wise not equal</td></tr>
+<tr><td><code>.&amp;</code></td><td>Element-wise bitwise AND</td></tr>
+<tr><td><code>.|</code></td><td>Element-wise bitwise OR</td></tr>
+<tr><td><code>.^</code></td><td>Element-wise bitwise XOR</td></tr>
+</tbody></table>
+</div>
+<p>Example:</p>
+<pre><code>let a: f32x4 = load(data, i)
+let b: f32x4 = load(data, i + 4)
+let sum: f32x4 = a .+ b
+let product: f32x4 = a .* b
+let mask: f32x4 = a .&gt; b
+</code></pre>
+<h2 id="creating-vectors"><a class="header" href="#creating-vectors">Creating vectors</a></h2>
+<h3 id="splat"><a class="header" href="#splat">splat</a></h3>
+<p>Broadcast a scalar value to all lanes:</p>
+<pre><code>let factor: f32 = 2.5
+let vf: f32x8 = splat(factor)
+// vf = [2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5]
+</code></pre>
+<h3 id="loading-from-memory"><a class="header" href="#loading-from-memory">Loading from memory</a></h3>
+<p>Load a vector from a pointer at an element offset:</p>
+<pre><code>let v: f32x8 = load(data, i)     // loads data[i..i+8]
+</code></pre>
+<p>The offset <code>i</code> is in elements, not bytes. <code>load(data, 8)</code> loads elements 8 through 15.</p>
+<p>There are also typed load intrinsics when you want to be explicit about the element type:</p>
+<pre><code>let v: f32x8 = load_f32(data, i)
+let v: f32x4 = load_f32x4(data, i)
+</code></pre>
+<h3 id="storing-to-memory"><a class="header" href="#storing-to-memory">Storing to memory</a></h3>
+<p>Write a vector to a mutable pointer:</p>
+<pre><code>store(out, i, result)     // writes result to out[i..i+8]
+</code></pre>
+<h2 id="element-access"><a class="header" href="#element-access">Element access</a></h2>
+<p>Read individual lanes from a vector by index:</p>
+<pre><code>let v: f32x4 = load(data, 0)
+let first: f32 = v[0]
+let second: f32 = v[1]
+</code></pre>
+<h2 id="conditional-selection"><a class="header" href="#conditional-selection">Conditional selection</a></h2>
+<p><code>select</code> picks lanes from two vectors based on a mask:</p>
+<pre><code>let mask: f32x4 = a .&gt; b
+let result: f32x4 = select(mask, a, b)
+// where a &gt; b, take a; otherwise take b
+</code></pre>
+<p>This compiles to a single blend instruction. There is no branching.</p>
+<h2 id="scalar-vs-simd-comparison"><a class="header" href="#scalar-vs-simd-comparison">Scalar vs SIMD comparison</a></h2>
+<p>Here is the same operation -- scaling an array -- written both ways.</p>
+<p><strong>Scalar</strong> (processes one element per iteration):</p>
+<pre><code>export func scale(data: *f32, out: *mut f32, factor: f32, n: i32) {
+    foreach (i in 0..n) {
+        out[i] = data[i] * factor
+    }
+}
+</code></pre>
+<p><strong>SIMD</strong> (processes 8 elements per iteration):</p>
+<pre><code>export kernel vscale(data: *f32, out: *mut f32, factor: f32)
+    over i in n step 8
+    tail scalar {
+        out[i] = data[i] * factor
+    }
+{
+    let vf: f32x8 = splat(factor)
+    store(out, i, load(data, i) .* vf)
+}
+</code></pre>
+<p>The SIMD version does 8 multiplications in a single instruction. On a workload that is compute-bound (multiple operations per element), this translates to a proportional speedup.</p>
+<h2 id="hardware-targeting"><a class="header" href="#hardware-targeting">Hardware targeting</a></h2>
+<p>By default, Ea targets AVX2 on x86-64 and NEON on AArch64. You can change this:</p>
+<pre><code class="language-bash"># Default (AVX2 on x86)
+ea kernel.ea --lib
+
+# Enable AVX-512
+ea kernel.ea --lib --avx512
+
+# Target a specific CPU
+ea kernel.ea --lib --target=skylake
+
+# Cross-compile for ARM
+ea kernel.ea --lib --target-triple=aarch64-unknown-linux-gnu
+</code></pre>
+<p>The compiler rejects code that requires features the target does not have. If you use <code>f32x8</code> and target ARM, you get a compile error, not slow code.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="kernels"><a class="header" href="#kernels">Kernels</a></h1>
+<p>The <code>kernel</code> construct is Ea's main abstraction for writing vectorized loops with automatic tail handling. It is syntactic sugar -- the compiler transforms it into a plain function with a while-loop before any further compilation.</p>
+<h2 id="basic-syntax"><a class="header" href="#basic-syntax">Basic syntax</a></h2>
+<pre><code>export kernel name(params)
+    over i in n step S
+    tail strategy { tail_body }
+{
+    main_body
+}
+</code></pre>
+<ul>
+<li><strong><code>name</code></strong>: the kernel's name, becomes the C ABI symbol</li>
+<li><strong><code>params</code></strong>: function parameters (pointers, scalars)</li>
+<li><strong><code>over i in n</code></strong>: the loop variable <code>i</code> iterates from 0 to <code>n</code></li>
+<li><strong><code>step S</code></strong>: how many elements the main body processes per iteration</li>
+<li><strong><code>tail strategy</code></strong>: how to handle remainder elements when <code>n</code> is not a multiple of <code>S</code></li>
+<li><strong><code>main_body</code></strong>: the code that runs for each full chunk of <code>S</code> elements</li>
+</ul>
+<p>The range variable (here <code>n</code>) is automatically injected as an <code>i32</code> parameter into the function signature. You do not declare it in the parameter list.</p>
+<h2 id="how-it-desugars"><a class="header" href="#how-it-desugars">How it desugars</a></h2>
+<p>A kernel like this:</p>
+<pre><code>export kernel scale(data: *f32, out: *mut f32, factor: f32)
+    over i in n step 4
+    tail scalar { out[i] = data[i] * factor }
+{
+    out[i] = data[i] * factor
+    out[i + 1] = data[i + 1] * factor
+    out[i + 2] = data[i + 2] * factor
+    out[i + 3] = data[i + 3] * factor
+}
+</code></pre>
+<p>becomes equivalent to:</p>
+<pre><code>export func scale(data: *f32, out: *mut f32, factor: f32, n: i32) {
+    let mut i: i32 = 0
+    while i + 4 &lt;= n {
+        out[i] = data[i] * factor
+        out[i + 1] = data[i + 1] * factor
+        out[i + 2] = data[i + 2] * factor
+        out[i + 3] = data[i + 3] * factor
+        i = i + 4
+    }
+    // tail: process remainder one at a time
+    while i &lt; n {
+        out[i] = data[i] * factor
+        i = i + 1
+    }
+}
+</code></pre>
+<p>The generated C signature is <code>void scale(float*, float*, float, int)</code> -- the <code>n</code> parameter appears last.</p>
+<h2 id="tail-strategies"><a class="header" href="#tail-strategies">Tail strategies</a></h2>
+<p>The tail handles remainder elements when <code>n</code> is not evenly divisible by the step.</p>
+<h3 id="tail-scalar"><a class="header" href="#tail-scalar">tail scalar</a></h3>
+<p>Process remainder elements one at a time. The tail body runs in a loop with step 1:</p>
+<pre><code>export kernel vscale(data: *f32, out: *mut f32, factor: f32)
+    over i in n step 8
+    tail scalar {
+        out[i] = data[i] * factor
+    }
+{
+    let vf: f32x8 = splat(factor)
+    store(out, i, load(data, i) .* vf)
+}
+</code></pre>
+<p>The main body uses 8-wide SIMD. The tail body is scalar code that handles 0 to 7 leftover elements. This is the most common tail strategy.</p>
+<h3 id="tail-mask"><a class="header" href="#tail-mask">tail mask</a></h3>
+<p>Use masked load/store for the remainder. The tail body runs once (not in a loop) and must handle all remaining elements using masked operations:</p>
+<pre><code>export kernel vscale(data: *f32, out: *mut f32, factor: f32)
+    over i in len step 4
+    tail mask {
+        let rem: i32 = len - i
+        let vf: f32x4 = splat(factor)
+        let v: f32x4 = load_masked(data, i, rem)
+        store_masked(out, i, v .* vf, rem)
+    }
+{
+    let vf: f32x4 = splat(factor)
+    store(out, i, load(data, i) .* vf)
+}
+</code></pre>
+<p>The <code>rem</code> variable tells the masked operations how many elements are valid. This avoids the scalar loop entirely but requires masked intrinsics.</p>
+<h3 id="tail-pad"><a class="header" href="#tail-pad">tail pad</a></h3>
+<p>The caller guarantees the input length is a multiple of the step. No tail body is generated:</p>
+<pre><code>export kernel fill(out: *mut i32, val: i32)
+    over i in n step 4
+    tail pad
+{
+    out[i] = val
+    out[i + 1] = val
+    out[i + 2] = val
+    out[i + 3] = val
+}
+</code></pre>
+<p>This produces the most efficient code but shifts the responsibility to the caller. If <code>n</code> is not a multiple of the step, the kernel will skip the remaining elements.</p>
+<h3 id="no-tail-clause"><a class="header" href="#no-tail-clause">No tail clause</a></h3>
+<p>If you omit the tail clause entirely, the kernel only runs the main body. Remaining elements are not processed:</p>
+<pre><code>export kernel double_it(data: *i32, out: *mut i32)
+    over i in n step 1
+{
+    out[i] = data[i] * 2
+}
+</code></pre>
+<p>With <code>step 1</code>, there is no remainder, so omitting the tail is safe. With larger steps, you must ensure <code>n</code> is always a multiple of the step, or accept that trailing elements are skipped.</p>
+<h2 id="complete-example"><a class="header" href="#complete-example">Complete example</a></h2>
+<p>A SIMD dot product kernel that handles any input length:</p>
+<pre><code>export kernel dot(a: *f32, b: *f32, out: *mut f32)
+    over i in n step 8
+    tail scalar {
+        out[0] = out[0] + a[i] * b[i]
+    }
+{
+    let va: f32x8 = load(a, i)
+    let vb: f32x8 = load(b, i)
+    let products: f32x8 = va .* vb
+    let sum: f32 = reduce_add(products)
+    out[0] = out[0] + sum
+}
+</code></pre>
+<p>The main body loads 8-wide vectors, multiplies them, reduces to a scalar sum, and accumulates into <code>out[0]</code>. The scalar tail handles any remaining 0-7 elements.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="structs"><a class="header" href="#structs">Structs</a></h1>
+<p>Structs in Ea are plain data containers with C-compatible memory layout. They have no methods, no constructors, no impl blocks. They exist so you can pass structured data between Ea kernels and host languages.</p>
+<h2 id="defining-a-struct"><a class="header" href="#defining-a-struct">Defining a struct</a></h2>
+<pre><code>struct Particle {
+    x: f32,
+    y: f32,
+    mass: f32,
+}
+</code></pre>
+<p>Fields can be any scalar type. The memory layout matches C struct layout, so a <code>Particle</code> in Ea is identical to:</p>
+<pre><code class="language-c">typedef struct { float x; float y; float mass; } Particle;
+</code></pre>
+<h2 id="creating-and-accessing"><a class="header" href="#creating-and-accessing">Creating and accessing</a></h2>
+<p>Inside Ea functions, you create a struct with literal syntax and access fields with dot notation:</p>
+<pre><code>func main() {
+    let p: Particle = Particle { x: 1.0, y: 2.0, mass: 10.0 }
+    println(p.x)      // 1
+    println(p.mass)    // 10
+}
+</code></pre>
+<p>Mutable structs support field assignment:</p>
+<pre><code>func main() {
+    let mut p: Particle = Particle { x: 0.0, y: 0.0, mass: 1.0 }
+    p.x = 3.5
+    p.y = 7.0
+    println(p.x)    // 3.5
+}
+</code></pre>
+<h2 id="struct-pointers"><a class="header" href="#struct-pointers">Struct pointers</a></h2>
+<p>In exported functions, structs are typically passed via pointer from the host language:</p>
+<pre><code>struct Point {
+    x: f32,
+    y: f32,
+}
+
+export func get_x(p: *Point) -&gt; f32 {
+    return p.x
+}
+
+export func set_point(p: *mut Point, nx: f32, ny: f32) {
+    p.x = nx
+    p.y = ny
+}
+</code></pre>
+<p>Read-only pointers (<code>*Point</code>) allow field reads. Mutable pointers (<code>*mut Point</code>) allow field writes.</p>
+<h2 id="arrays-of-structs"><a class="header" href="#arrays-of-structs">Arrays of structs</a></h2>
+<p>Pointer indexing works with struct arrays. Each element is a full struct:</p>
+<pre><code>struct Vec2 {
+    x: f32,
+    y: f32,
+}
+
+export func sum_x(vecs: *Vec2, n: i32) -&gt; f32 {
+    let mut total: f32 = 0.0
+    let mut i: i32 = 0
+    while i &lt; n {
+        total = total + vecs[i].x
+        i = i + 1
+    }
+    return total
+}
+</code></pre>
+<p>From C, this is called with a pointer to a contiguous array of structs:</p>
+<pre><code class="language-c">typedef struct { float x; float y; } Vec2;
+extern float sum_x(const Vec2*, int);
+
+Vec2 vecs[] = { {1.0f, 10.0f}, {2.0f, 20.0f}, {3.0f, 30.0f} };
+float result = sum_x(vecs, 3);  // 6.0
+</code></pre>
+<h2 id="passing-from-python"><a class="header" href="#passing-from-python">Passing from Python</a></h2>
+<p>Since Ea structs match C layout, you can use NumPy structured arrays or ctypes:</p>
+<pre><code class="language-python">import numpy as np
+
+particle_dtype = np.dtype([
+    ('x', np.float32),
+    ('y', np.float32),
+    ('mass', np.float32),
+])
+
+particles = np.zeros(1000, dtype=particle_dtype)
+</code></pre>
+<p>The generated Python bindings handle the pointer passing automatically.</p>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<ul>
+<li>No methods or impl blocks. Structs are data only.</li>
+<li>No nested structs.</li>
+<li>No generics. Write separate struct definitions for each concrete type.</li>
+<li>Struct fields must be scalar types.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="common-intrinsics"><a class="header" href="#common-intrinsics">Common Intrinsics</a></h1>
+<p>This page covers the most frequently used intrinsics. For the complete list, see the <a href="guide/../reference/intrinsics.html">Intrinsics Reference</a>.</p>
+<h2 id="splat-1"><a class="header" href="#splat-1">splat</a></h2>
+<p>Broadcast a scalar to all lanes of a vector:</p>
+<pre><code>let factor: f32 = 2.5
+let vf: f32x8 = splat(factor)
+// vf = [2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5]
+</code></pre>
+<p>Works with all vector types. The return type is inferred from the variable's type annotation.</p>
+<h2 id="load--store"><a class="header" href="#load--store">load / store</a></h2>
+<p>Load a vector from a pointer at an element offset. Store writes a vector back:</p>
+<pre><code>let v: f32x8 = load(data, i)       // read 8 floats starting at data[i]
+store(out, i, v)                    // write 8 floats starting at out[i]
+</code></pre>
+<p>Offsets are in elements, not bytes.</p>
+<h3 id="typed-loads"><a class="header" href="#typed-loads">Typed loads</a></h3>
+<p>When you want to be explicit about the element type:</p>
+<pre><code>let v: f32x8 = load_f32(data, i)
+let v: f32x4 = load_f32x4(data, i)
+</code></pre>
+<p>These are equivalent to plain <code>load</code> but make the element type visible in the source.</p>
+<h2 id="stream_store"><a class="header" href="#stream_store">stream_store</a></h2>
+<p>Non-temporal store that bypasses the CPU cache. Use for write-only output buffers where you will not read the data back soon:</p>
+<pre><code>let result: f32x8 = a .* b
+stream_store(out, i, result)
+</code></pre>
+<p>This avoids polluting the cache with output data, leaving more cache space for inputs. Only beneficial for large output arrays that will not be re-read immediately.</p>
+<h2 id="fma"><a class="header" href="#fma">fma</a></h2>
+<p>Fused multiply-add: computes <code>a * b + c</code> in a single instruction with a single rounding (more accurate than separate multiply and add):</p>
+<pre><code>// Scalar
+let result: f32 = fma(a, b, c)
+
+// Vector
+let va: f32x8 = load(a, i)
+let vb: f32x8 = load(b, i)
+let vc: f32x8 = load(c, i)
+let result: f32x8 = fma(va, vb, vc)
+</code></pre>
+<p>Works on <code>f32</code>, <code>f64</code>, and all float vector types. Maps to the hardware FMA instruction.</p>
+<h2 id="reduce_add"><a class="header" href="#reduce_add">reduce_add</a></h2>
+<p>Sum all lanes of a vector down to a scalar:</p>
+<pre><code>let v: f32x8 = load(data, i)
+let sum: f32 = reduce_add(v)
+</code></pre>
+<p>Works on all integer and float vector types. Useful for dot products, reductions, and histogram accumulation.</p>
+<h2 id="reduce_max--reduce_min"><a class="header" href="#reduce_max--reduce_min">reduce_max / reduce_min</a></h2>
+<p>Find the maximum or minimum value across all lanes:</p>
+<pre><code>let v: f32x4 = load(data, i)
+let biggest: f32 = reduce_max(v)
+let smallest: f32 = reduce_min(v)
+</code></pre>
+<p>Works on integer and float vector types.</p>
+<h2 id="select"><a class="header" href="#select">select</a></h2>
+<p>Per-lane conditional: where the mask is true, take from <code>a</code>; where false, take from <code>b</code>:</p>
+<pre><code>let mask: f32x8 = a .&gt; b
+let result: f32x8 = select(mask, a, b)
+// element-wise max(a, b)
+</code></pre>
+<p>Compiles to a blend instruction. No branching. This is how you write branchless SIMD code.</p>
+<h2 id="sqrt--rsqrt"><a class="header" href="#sqrt--rsqrt">sqrt / rsqrt</a></h2>
+<p>Square root and reciprocal square root (1/sqrt):</p>
+<pre><code>let x: f32 = 16.0
+let root: f32 = sqrt(x)       // 4.0
+
+let v: f32x8 = load(data, i)
+let roots: f32x8 = sqrt(v)
+let inv_roots: f32x8 = rsqrt(v)
+</code></pre>
+<p><code>rsqrt</code> uses the fast hardware approximation. Works on <code>f32</code>, <code>f64</code>, and float vector types.</p>
+<h2 id="min--max"><a class="header" href="#min--max">min / max</a></h2>
+<p>Element-wise minimum and maximum. Works on both scalars and vectors:</p>
+<pre><code>// Scalar
+let smaller: f32 = min(a, b)
+let larger: f32 = max(a, b)
+
+// Vector
+let va: f32x8 = load(data, i)
+let vb: f32x8 = load(data, j)
+let mins: f32x8 = min(va, vb)
+let maxs: f32x8 = max(va, vb)
+</code></pre>
+<h2 id="movemask"><a class="header" href="#movemask">movemask</a></h2>
+<p>Extract comparison results to an integer bitmask. x86 only:</p>
+<pre><code>let mask: f32x8 = a .&gt; b
+let bits: i32 = movemask(mask)
+// bit k is 1 if lane k of a &gt; lane k of b
+</code></pre>
+<p>Useful for branching on SIMD comparison results or counting matching elements. Each bit in the result corresponds to one vector lane.</p>
+<h2 id="masked-memory-operations"><a class="header" href="#masked-memory-operations">Masked memory operations</a></h2>
+<p>For tail handling, masked loads and stores read/write only the valid lanes:</p>
+<pre><code>let rem: i32 = n - i
+let v: f32x4 = load_masked(data, i, rem)    // load only 'rem' elements
+store_masked(out, i, result, rem)            // store only 'rem' elements
+</code></pre>
+<p>The <code>rem</code> parameter specifies how many elements (starting from lane 0) are valid. Lanes beyond <code>rem</code> are zero-filled on load and not written on store.</p>
+<h2 id="summary-table"><a class="header" href="#summary-table">Summary table</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Input</th><th>Output</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>splat(s)</code></td><td>scalar</td><td>vector</td><td>Broadcast to all lanes</td></tr>
+<tr><td><code>load(ptr, i)</code></td><td>pointer, offset</td><td>vector</td><td>Load vector from memory</td></tr>
+<tr><td><code>store(ptr, i, v)</code></td><td>pointer, offset, vector</td><td>void</td><td>Write vector to memory</td></tr>
+<tr><td><code>stream_store(ptr, i, v)</code></td><td>pointer, offset, vector</td><td>void</td><td>Non-temporal write</td></tr>
+<tr><td><code>fma(a, b, c)</code></td><td>3 values</td><td>same type</td><td><code>a * b + c</code> fused</td></tr>
+<tr><td><code>reduce_add(v)</code></td><td>vector</td><td>scalar</td><td>Sum all lanes</td></tr>
+<tr><td><code>reduce_max(v)</code></td><td>vector</td><td>scalar</td><td>Max across lanes</td></tr>
+<tr><td><code>reduce_min(v)</code></td><td>vector</td><td>scalar</td><td>Min across lanes</td></tr>
+<tr><td><code>select(m, a, b)</code></td><td>mask, 2 vectors</td><td>vector</td><td>Per-lane conditional</td></tr>
+<tr><td><code>sqrt(x)</code></td><td>scalar/vector</td><td>same type</td><td>Square root</td></tr>
+<tr><td><code>rsqrt(x)</code></td><td>scalar/vector</td><td>same type</td><td>Reciprocal square root</td></tr>
+<tr><td><code>min(a, b)</code></td><td>2 values</td><td>same type</td><td>Element-wise minimum</td></tr>
+<tr><td><code>max(a, b)</code></td><td>2 values</td><td>same type</td><td>Element-wise maximum</td></tr>
+<tr><td><code>movemask(m)</code></td><td>bool vector</td><td>i32</td><td>Extract lane mask to bits</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="type-system"><a class="header" href="#type-system">Type System</a></h1>
+<p>Ea is statically typed with no implicit conversions. Every variable, parameter, and expression has a concrete type known at compile time.</p>
+<h2 id="scalar-types-1"><a class="header" href="#scalar-types-1">Scalar Types</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Type</th><th>Size</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>i8</code></td><td>1 byte</td><td>Signed 8-bit integer</td></tr>
+<tr><td><code>u8</code></td><td>1 byte</td><td>Unsigned 8-bit integer</td></tr>
+<tr><td><code>i16</code></td><td>2 bytes</td><td>Signed 16-bit integer</td></tr>
+<tr><td><code>u16</code></td><td>2 bytes</td><td>Unsigned 16-bit integer</td></tr>
+<tr><td><code>i32</code></td><td>4 bytes</td><td>Signed 32-bit integer</td></tr>
+<tr><td><code>u32</code></td><td>4 bytes</td><td>Unsigned 32-bit integer</td></tr>
+<tr><td><code>i64</code></td><td>8 bytes</td><td>Signed 64-bit integer</td></tr>
+<tr><td><code>u64</code></td><td>8 bytes</td><td>Unsigned 64-bit integer</td></tr>
+<tr><td><code>f32</code></td><td>4 bytes</td><td>32-bit float (IEEE 754)</td></tr>
+<tr><td><code>f64</code></td><td>8 bytes</td><td>64-bit float (IEEE 754)</td></tr>
+<tr><td><code>bool</code></td><td>1 byte</td><td>Boolean (<code>true</code> or <code>false</code>)</td></tr>
+</tbody></table>
+</div>
+<p>Integer literals default to <code>i32</code>. Float literals default to <code>f32</code>. Use explicit casts (<code>to_f64(x)</code>, <code>to_i64(x)</code>) to convert between types.</p>
+<h2 id="vector-types-1"><a class="header" href="#vector-types-1">Vector Types</a></h2>
+<p>Vector types hold multiple lanes of the same scalar type. Element-wise operations use dot-operators (<code>.+</code>, <code>.-</code>, <code>.*</code>, <code>./</code>, etc.).</p>
+<h3 id="128-bit-vectors----sse-x86--neon-arm"><a class="header" href="#128-bit-vectors----sse-x86--neon-arm">128-bit Vectors -- SSE (x86) / NEON (ARM)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Type</th><th>Lanes</th><th>Element</th><th>Size</th></tr></thead><tbody>
+<tr><td><code>f32x4</code></td><td>4</td><td><code>f32</code></td><td>16 bytes</td></tr>
+<tr><td><code>f64x2</code></td><td>2</td><td><code>f64</code></td><td>16 bytes</td></tr>
+<tr><td><code>i32x4</code></td><td>4</td><td><code>i32</code></td><td>16 bytes</td></tr>
+<tr><td><code>i16x8</code></td><td>8</td><td><code>i16</code></td><td>16 bytes</td></tr>
+<tr><td><code>i8x16</code></td><td>16</td><td><code>i8</code></td><td>16 bytes</td></tr>
+<tr><td><code>u8x16</code></td><td>16</td><td><code>u8</code></td><td>16 bytes</td></tr>
+<tr><td><code>u16x8</code></td><td>8</td><td><code>u16</code></td><td>16 bytes</td></tr>
+</tbody></table>
+</div>
+<h3 id="256-bit-vectors----avx2-x86-only"><a class="header" href="#256-bit-vectors----avx2-x86-only">256-bit Vectors -- AVX2 (x86 only)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Type</th><th>Lanes</th><th>Element</th><th>Size</th></tr></thead><tbody>
+<tr><td><code>f32x8</code></td><td>8</td><td><code>f32</code></td><td>32 bytes</td></tr>
+<tr><td><code>f64x4</code></td><td>4</td><td><code>f64</code></td><td>32 bytes</td></tr>
+<tr><td><code>i32x8</code></td><td>8</td><td><code>i32</code></td><td>32 bytes</td></tr>
+<tr><td><code>i16x16</code></td><td>16</td><td><code>i16</code></td><td>32 bytes</td></tr>
+<tr><td><code>i8x32</code></td><td>32</td><td><code>i8</code></td><td>32 bytes</td></tr>
+<tr><td><code>u8x32</code></td><td>32</td><td><code>u8</code></td><td>32 bytes</td></tr>
+<tr><td><code>u16x16</code></td><td>16</td><td><code>u16</code></td><td>32 bytes</td></tr>
+</tbody></table>
+</div>
+<p>These types produce a compile error on ARM targets.</p>
+<h3 id="512-bit-vectors----avx-512-x86---avx512-flag-required"><a class="header" href="#512-bit-vectors----avx-512-x86---avx512-flag-required">512-bit Vectors -- AVX-512 (x86, <code>--avx512</code> flag required)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Type</th><th>Lanes</th><th>Element</th><th>Size</th></tr></thead><tbody>
+<tr><td><code>f32x16</code></td><td>16</td><td><code>f32</code></td><td>64 bytes</td></tr>
+<tr><td><code>f64x8</code></td><td>8</td><td><code>f64</code></td><td>64 bytes</td></tr>
+<tr><td><code>i32x16</code></td><td>16</td><td><code>i32</code></td><td>64 bytes</td></tr>
+</tbody></table>
+</div>
+<p>Using these types without <code>--avx512</code> produces a compile error.</p>
+<h2 id="pointer-types"><a class="header" href="#pointer-types">Pointer Types</a></h2>
+<p>Pointers represent caller-provided memory. Ea never allocates -- all memory comes from the host language.</p>
+<div class="table-wrapper"><table><thead><tr><th>Syntax</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>*T</code></td><td>Immutable pointer to <code>T</code></td></tr>
+<tr><td><code>*mut T</code></td><td>Mutable pointer to <code>T</code></td></tr>
+<tr><td><code>*restrict T</code></td><td>Immutable pointer, no-alias guarantee</td></tr>
+<tr><td><code>*restrict mut T</code></td><td>Mutable pointer, no-alias guarantee</td></tr>
+</tbody></table>
+</div>
+<p>The <code>restrict</code> qualifier tells the compiler that the pointer does not alias other pointers, enabling stronger optimizations. Use it when you can guarantee non-overlapping memory.</p>
+<h2 id="struct-types"><a class="header" href="#struct-types">Struct Types</a></h2>
+<p>User-defined value types declared with <code>struct</code>:</p>
+<pre><code>struct Pixel {
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32,
+}
+</code></pre>
+<p>Structs are passed by value. Access fields with dot syntax: <code>pixel.r</code>. Structs can contain scalar types, vector types, and other structs.</p>
+<h2 id="type-rules"><a class="header" href="#type-rules">Type Rules</a></h2>
+<ul>
+<li>No implicit conversions between types. Use <code>to_f32()</code>, <code>to_i32()</code>, etc.</li>
+<li>No generics or polymorphism. Write separate functions for each type.</li>
+<li>Vector dot-operators require both operands to have the same vector type.</li>
+<li>Comparisons on vectors (<code>.==</code>, <code>.&lt;</code>, <code>.&gt;</code>) produce boolean vectors, not scalar bools.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="all-intrinsics"><a class="header" href="#all-intrinsics">All Intrinsics</a></h1>
+<p>Complete reference for every built-in function in Ea.</p>
+<h2 id="memory"><a class="header" href="#memory">Memory</a></h2>
+<h3 id="load"><a class="header" href="#load">load</a></h3>
+<p>Load a vector from a pointer at a byte offset. The return type is inferred from context.</p>
+<pre><code>let v: f32x8 = load(ptr, i);
+</code></pre>
+<h3 id="typed-scalar-loads"><a class="header" href="#typed-scalar-loads">Typed Scalar Loads</a></h3>
+<p>Load a single scalar value from a pointer at a byte offset.</p>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Return Type</th></tr></thead><tbody>
+<tr><td><code>load_f32(ptr, i)</code></td><td><code>f32</code></td></tr>
+<tr><td><code>load_f64(ptr, i)</code></td><td><code>f64</code></td></tr>
+<tr><td><code>load_i32(ptr, i)</code></td><td><code>i32</code></td></tr>
+<tr><td><code>load_i16(ptr, i)</code></td><td><code>i16</code></td></tr>
+<tr><td><code>load_i8(ptr, i)</code></td><td><code>i8</code></td></tr>
+<tr><td><code>load_u8(ptr, i)</code></td><td><code>u8</code></td></tr>
+<tr><td><code>load_u16(ptr, i)</code></td><td><code>u16</code></td></tr>
+<tr><td><code>load_u32(ptr, i)</code></td><td><code>u32</code></td></tr>
+<tr><td><code>load_u64(ptr, i)</code></td><td><code>u64</code></td></tr>
+</tbody></table>
+</div>
+<pre><code>let x: f32 = load_f32(ptr, i);
+</code></pre>
+<h3 id="typed-vector-loads"><a class="header" href="#typed-vector-loads">Typed Vector Loads</a></h3>
+<p>Load a full vector from a pointer at a byte offset.</p>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Return Type</th></tr></thead><tbody>
+<tr><td><code>load_f32x4(ptr, i)</code></td><td><code>f32x4</code></td></tr>
+<tr><td><code>load_f32x8(ptr, i)</code></td><td><code>f32x8</code></td></tr>
+<tr><td><code>load_f32x16(ptr, i)</code></td><td><code>f32x16</code></td></tr>
+<tr><td><code>load_i32x4(ptr, i)</code></td><td><code>i32x4</code></td></tr>
+<tr><td><code>load_i32x8(ptr, i)</code></td><td><code>i32x8</code></td></tr>
+<tr><td><code>load_i16x8(ptr, i)</code></td><td><code>i16x8</code></td></tr>
+<tr><td><code>load_i8x16(ptr, i)</code></td><td><code>i8x16</code></td></tr>
+<tr><td><code>load_u8x16(ptr, i)</code></td><td><code>u8x16</code></td></tr>
+<tr><td><code>load_u8x32(ptr, i)</code></td><td><code>u8x32</code></td></tr>
+</tbody></table>
+</div>
+<pre><code>let v: f32x8 = load_f32x8(data, i * 32);
+</code></pre>
+<h3 id="store"><a class="header" href="#store">store</a></h3>
+<p>Write a vector to a pointer at a byte offset.</p>
+<pre><code>store(out, i, result);
+</code></pre>
+<h3 id="stream_store-1"><a class="header" href="#stream_store-1">stream_store</a></h3>
+<p>Non-temporal store that bypasses the CPU cache. Use for write-only output that will not be read back soon.</p>
+<pre><code>stream_store(out, i, result);
+</code></pre>
+<h3 id="load_masked"><a class="header" href="#load_masked">load_masked</a></h3>
+<p>Masked vector load. Lanes where the mask is false are not loaded.</p>
+<pre><code>let v: f32x8 = load_masked(ptr, i, mask);
+</code></pre>
+<h3 id="store_masked"><a class="header" href="#store_masked">store_masked</a></h3>
+<p>Masked vector store. Only lanes where the mask is true are written.</p>
+<pre><code>store_masked(out, i, value, mask);
+</code></pre>
+<h3 id="gather"><a class="header" href="#gather">gather</a></h3>
+<p>Load elements from scattered memory addresses using an index vector. x86 only -- not available on ARM.</p>
+<pre><code>let v: f32x8 = gather(ptr, indices);
+</code></pre>
+<h3 id="scatter"><a class="header" href="#scatter">scatter</a></h3>
+<p>Store elements to scattered memory addresses using an index vector. AVX-512 only (<code>--avx512</code> flag required).</p>
+<pre><code>scatter(ptr, indices, values);
+</code></pre>
+<h3 id="prefetch"><a class="header" href="#prefetch">prefetch</a></h3>
+<p>Issue a prefetch hint to bring data into cache.</p>
+<pre><code>prefetch(ptr, i);
+</code></pre>
+<h2 id="math"><a class="header" href="#math">Math</a></h2>
+<h3 id="sqrt"><a class="header" href="#sqrt">sqrt</a></h3>
+<p>Square root. Works on scalar <code>f32</code>/<code>f64</code> and all float vector types.</p>
+<pre><code>let y: f32 = sqrt(x);
+let v: f32x8 = sqrt(vec);
+</code></pre>
+<h3 id="rsqrt"><a class="header" href="#rsqrt">rsqrt</a></h3>
+<p>Reciprocal square root (approximate). Scalar <code>f32</code> and <code>f32</code> vector types.</p>
+<pre><code>let y: f32 = rsqrt(x);
+let v: f32x8 = rsqrt(vec);
+</code></pre>
+<h3 id="exp"><a class="header" href="#exp">exp</a></h3>
+<p>Exponential function. Float types.</p>
+<pre><code>let y: f32 = exp(x);
+</code></pre>
+<h3 id="fma-1"><a class="header" href="#fma-1">fma</a></h3>
+<p>Fused multiply-add: computes <code>a * b + c</code> in a single operation with one rounding step. Works on scalar <code>f32</code> and all float vector types.</p>
+<pre><code>let y: f32 = fma(a, b, c);
+let v: f32x8 = fma(va, vb, vc);
+</code></pre>
+<h3 id="min"><a class="header" href="#min">min</a></h3>
+<p>Element-wise minimum. Works on scalar (<code>i32</code>, <code>f32</code>, <code>f64</code>) and vector types.</p>
+<pre><code>let m: i32 = min(a, b);
+let v: f32x8 = min(va, vb);
+</code></pre>
+<h3 id="max"><a class="header" href="#max">max</a></h3>
+<p>Element-wise maximum. Works on scalar (<code>i32</code>, <code>f32</code>, <code>f64</code>) and vector types.</p>
+<pre><code>let m: i32 = max(a, b);
+let v: f32x8 = max(va, vb);
+</code></pre>
+<h2 id="reduction"><a class="header" href="#reduction">Reduction</a></h2>
+<p>Reduce a vector to a single scalar value.</p>
+<h3 id="reduce_add-1"><a class="header" href="#reduce_add-1">reduce_add</a></h3>
+<p>Sum all lanes.</p>
+<pre><code>let sum: f32 = reduce_add(v);   // f32x8 -&gt; f32
+let sum: i32 = reduce_add(iv);  // i32x8 -&gt; i32
+</code></pre>
+<h3 id="reduce_max"><a class="header" href="#reduce_max">reduce_max</a></h3>
+<p>Maximum across all lanes.</p>
+<pre><code>let m: f32 = reduce_max(v);
+</code></pre>
+<h3 id="reduce_min"><a class="header" href="#reduce_min">reduce_min</a></h3>
+<p>Minimum across all lanes.</p>
+<pre><code>let m: f32 = reduce_min(v);
+</code></pre>
+<h3 id="reduce_add_fast"><a class="header" href="#reduce_add_fast">reduce_add_fast</a></h3>
+<p>Unordered float reduction. Faster than <code>reduce_add</code> but does not guarantee summation order, so results may differ slightly due to floating-point rounding. Float vectors only.</p>
+<pre><code>let sum: f32 = reduce_add_fast(v);
+</code></pre>
+<h2 id="vector"><a class="header" href="#vector">Vector</a></h2>
+<h3 id="splat-2"><a class="header" href="#splat-2">splat</a></h3>
+<p>Broadcast a scalar value to all lanes of a vector. The vector type is inferred from context.</p>
+<pre><code>let v: f32x8 = splat(1.0);
+</code></pre>
+<h3 id="shuffle"><a class="header" href="#shuffle">shuffle</a></h3>
+<p>Reorder lanes of a vector according to an index tuple. The indices are compile-time constants.</p>
+<pre><code>let reversed: f32x4 = shuffle(v, (3, 2, 1, 0));
+</code></pre>
+<h3 id="select-1"><a class="header" href="#select-1">select</a></h3>
+<p>Per-lane conditional select. Where the mask is true, take from <code>a</code>; where false, take from <code>b</code>.</p>
+<pre><code>let result: f32x8 = select(mask, a, b);
+</code></pre>
+<h3 id="movemask-1"><a class="header" href="#movemask-1">movemask</a></h3>
+<p>Extract a comparison result bitmask from a boolean vector to a scalar <code>i32</code>. Each bit corresponds to the sign bit of one lane. <strong>x86 only</strong> -- not available on ARM.</p>
+<pre><code>let bits: i32 = movemask(cmp_result);
+</code></pre>
+<h2 id="conversion"><a class="header" href="#conversion">Conversion</a></h2>
+<h3 id="scalar-casts"><a class="header" href="#scalar-casts">Scalar Casts</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>to_f32(x)</code></td><td>Convert to <code>f32</code></td></tr>
+<tr><td><code>to_f64(x)</code></td><td>Convert to <code>f64</code></td></tr>
+<tr><td><code>to_i32(x)</code></td><td>Convert to <code>i32</code></td></tr>
+<tr><td><code>to_i64(x)</code></td><td>Convert to <code>i64</code></td></tr>
+</tbody></table>
+</div>
+<pre><code>let f: f32 = to_f32(i);
+let n: i32 = to_i32(x);
+</code></pre>
+<h3 id="widening-conversions"><a class="header" href="#widening-conversions">Widening Conversions</a></h3>
+<p>Widen narrow integer lanes to wider float or integer lanes. Only the first N lanes of the input are consumed.</p>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Input</th><th>Output</th></tr></thead><tbody>
+<tr><td><code>widen_i8_f32x4(v)</code></td><td><code>i8x16</code></td><td><code>f32x4</code></td></tr>
+<tr><td><code>widen_u8_f32x4(v)</code></td><td><code>u8x16</code></td><td><code>f32x4</code></td></tr>
+<tr><td><code>widen_i8_f32x8(v)</code></td><td><code>i8x16</code></td><td><code>f32x8</code></td></tr>
+<tr><td><code>widen_u8_f32x8(v)</code></td><td><code>u8x16</code></td><td><code>f32x8</code></td></tr>
+<tr><td><code>widen_u8_i32x4(v)</code></td><td><code>u8x16</code></td><td><code>i32x4</code></td></tr>
+<tr><td><code>widen_u8_i32x8(v)</code></td><td><code>u8x16</code></td><td><code>i32x8</code></td></tr>
+</tbody></table>
+</div>
+<pre><code>let pixels: f32x8 = widen_u8_f32x8(raw_bytes);
+</code></pre>
+<h3 id="narrowing-conversions"><a class="header" href="#narrowing-conversions">Narrowing Conversions</a></h3>
+<p>Convert wider lanes to narrower lanes, with clamping and rounding.</p>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Input</th><th>Output</th></tr></thead><tbody>
+<tr><td><code>narrow_f32x4_i8(v)</code></td><td><code>f32x4</code></td><td><code>i8</code> (4 bytes)</td></tr>
+</tbody></table>
+</div>
+<pre><code>let packed = narrow_f32x4_i8(float_pixels);
+</code></pre>
+<h3 id="multiply-add-byte-pairs"><a class="header" href="#multiply-add-byte-pairs">Multiply-Add Byte Pairs</a></h3>
+<p>Multiply unsigned bytes by signed bytes and add adjacent pairs. x86 only.</p>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Signature</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>maddubs_i16(a, b)</code></td><td><code>(u8x16, i8x16) -&gt; i16x8</code></td><td>Multiply and add adjacent pairs to 16-bit</td></tr>
+<tr><td><code>maddubs_i32(a, b)</code></td><td><code>(u8x16, i8x16) -&gt; i32x4</code></td><td>Multiply and add adjacent quads to 32-bit</td></tr>
+</tbody></table>
+</div>
+<pre><code>let products: i16x8 = maddubs_i16(unsigned_bytes, signed_weights);
+</code></pre>
+<h2 id="debug"><a class="header" href="#debug">Debug</a></h2>
+<h3 id="println-1"><a class="header" href="#println-1">println</a></h3>
+<p>Print a value to stdout. Accepts scalars (<code>i32</code>, <code>i64</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>, <code>f32</code>, <code>f64</code>, <code>bool</code>), string literals, and vector types. Lowers to C <code>printf</code>. No format strings.</p>
+<pre><code>println(42);
+println(3.14);
+println("hello");
+println(my_vector);
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="cli-reference"><a class="header" href="#cli-reference">CLI Reference</a></h1>
+<p>The <code>ea</code> binary provides three commands: compile (default), bind, and inspect.</p>
+<h2 id="compile"><a class="header" href="#compile">Compile</a></h2>
+<pre><code class="language-bash">ea &lt;file.ea&gt; [flags]
+</code></pre>
+<p>Compile an Ea source file to a native object file (<code>.o</code>) by default.</p>
+<h3 id="flags"><a class="header" href="#flags">Flags</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Flag</th><th>Effect</th></tr></thead><tbody>
+<tr><td><code>-o &lt;name&gt;</code></td><td>Link the object file into an executable via <code>cc</code></td></tr>
+<tr><td><code>--lib</code></td><td>Produce a shared library (<code>.so</code>/<code>.dll</code>) and metadata (<code>.ea.json</code>)</td></tr>
+<tr><td><code>--opt-level=N</code></td><td>Optimization level 0--3 (default: 3)</td></tr>
+<tr><td><code>--avx512</code></td><td>Enable AVX-512 vector types and intrinsics. Errors on ARM targets</td></tr>
+<tr><td><code>--target=CPU</code></td><td>LLVM CPU name, e.g. <code>skylake</code>, <code>znver3</code>, <code>native</code> (default: <code>native</code>)</td></tr>
+<tr><td><code>--target-triple=T</code></td><td>Cross-compile to a different architecture, e.g. <code>aarch64-unknown-linux-gnu</code></td></tr>
+<tr><td><code>--emit-llvm</code></td><td>Write LLVM IR to a <code>.ll</code> file and print it to stdout</td></tr>
+<tr><td><code>--emit-asm</code></td><td>Write assembly to a <code>.s</code> file</td></tr>
+<tr><td><code>--header</code></td><td>Generate a C header (<code>.h</code>) for the exported functions</td></tr>
+<tr><td><code>--emit-ast</code></td><td>Print the parsed AST. Does not require LLVM</td></tr>
+<tr><td><code>--emit-tokens</code></td><td>Print the token stream. Does not require LLVM</td></tr>
+<tr><td><code>--help</code> / <code>-h</code></td><td>Print usage information</td></tr>
+<tr><td><code>--version</code> / <code>-V</code></td><td>Print compiler version</td></tr>
+</tbody></table>
+</div>
+<h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
+<pre><code class="language-bash"># Compile to object file
+ea kernel.ea
+
+# Compile and link to executable
+ea kernel.ea -o kernel
+
+# Build shared library for Python/Rust/C++ consumption
+ea kernel.ea --lib
+
+# Cross-compile for ARM
+ea kernel.ea --lib --target-triple=aarch64-unknown-linux-gnu
+
+# Emit LLVM IR for debugging
+ea kernel.ea --emit-llvm
+
+# Compile with AVX-512 support
+ea kernel.ea --lib --avx512
+
+# Generate C header
+ea kernel.ea --header
+</code></pre>
+<p>Compiler status output goes to stderr, so <code>--emit-llvm</code> stdout is clean for piping.</p>
+<h2 id="bind"><a class="header" href="#bind">Bind</a></h2>
+<pre><code class="language-bash">ea bind &lt;file.ea&gt; --python [--rust] [--cpp] [--pytorch] [--cmake]
+</code></pre>
+<p>Generate language bindings from a compiled kernel. At least one language flag is required.</p>
+<p>Requires the <code>.ea.json</code> metadata file produced by <code>ea &lt;file.ea&gt; --lib</code>. Run the <code>--lib</code> compile first.</p>
+<h3 id="language-flags"><a class="header" href="#language-flags">Language Flags</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Flag</th><th>Output</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>--python</code></td><td><code>&lt;name&gt;.py</code></td><td>Python wrapper using <code>ctypes</code></td></tr>
+<tr><td><code>--rust</code></td><td><code>&lt;name&gt;.rs</code></td><td>Rust FFI bindings</td></tr>
+<tr><td><code>--cpp</code></td><td><code>&lt;name&gt;.hpp</code></td><td>C++ header with inline wrappers</td></tr>
+<tr><td><code>--pytorch</code></td><td><code>&lt;name&gt;_torch.py</code></td><td>PyTorch custom op wrapper</td></tr>
+<tr><td><code>--cmake</code></td><td><code>CMakeLists.txt</code></td><td>CMake build file for C++ integration</td></tr>
+</tbody></table>
+</div>
+<h3 id="example"><a class="header" href="#example">Example</a></h3>
+<pre><code class="language-bash"># Full workflow: compile, then generate Python bindings
+ea kernel.ea --lib
+ea bind kernel.ea --python
+</code></pre>
+<h2 id="inspect"><a class="header" href="#inspect">Inspect</a></h2>
+<pre><code class="language-bash">ea inspect &lt;file.ea&gt; [target flags]
+</code></pre>
+<p>Post-optimization analysis of the compiled kernel. Shows instruction mix, loop structure, vector width usage, and register pressure. Accepts the same target flags as compile (<code>--target</code>, <code>--target-triple</code>, <code>--avx512</code>).</p>
+<h3 id="example-1"><a class="header" href="#example-1">Example</a></h3>
+<pre><code class="language-bash">ea inspect kernel.ea
+ea inspect kernel.ea --avx512
+ea inspect kernel.ea --target-triple=aarch64-unknown-linux-gnu
+</code></pre>
+<h2 id="print-target"><a class="header" href="#print-target">Print Target</a></h2>
+<pre><code class="language-bash">ea --print-target
+</code></pre>
+<p>Print the resolved native CPU name for the current machine. Useful for understanding which CPU features the compiler will target by default.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="python-api"><a class="header" href="#python-api">Python API</a></h1>
+<p>The <code>ea</code> Python package (<code>pip install ea-compiler</code>) provides a high-level interface for compiling and loading Ea kernels.</p>
+<h2 id="functions-1"><a class="header" href="#functions-1">Functions</a></h2>
+<h3 id="eaload"><a class="header" href="#eaload">ea.load</a></h3>
+<pre><code class="language-python">ea.load(path, *, target="native", opt_level=3, avx512=False) -&gt; KernelModule
+</code></pre>
+<p>Compile an <code>.ea</code> file to a shared library and load it. Returns a <code>KernelModule</code> object with each exported function available as a method.</p>
+<div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>path</code></td><td><code>str</code></td><td>required</td><td>Path to the <code>.ea</code> source file</td></tr>
+<tr><td><code>target</code></td><td><code>str</code></td><td><code>"native"</code></td><td>LLVM CPU name (e.g. <code>"skylake"</code>, <code>"native"</code>)</td></tr>
+<tr><td><code>opt_level</code></td><td><code>int</code></td><td><code>3</code></td><td>Optimization level 0--3</td></tr>
+<tr><td><code>avx512</code></td><td><code>bool</code></td><td><code>False</code></td><td>Enable AVX-512 types and intrinsics</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-python">import ea
+import numpy as np
+
+k = ea.load("kernel.ea")
+a = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+b = np.zeros(3, dtype=np.float32)
+k.my_func(a, b, len(a))
+</code></pre>
+<h3 id="eacompile"><a class="header" href="#eacompile">ea.compile</a></h3>
+<pre><code class="language-python">ea.compile(path, *, emit_asm=False, emit_llvm=False, target="native", opt_level=3, avx512=False, lib=True) -&gt; Path
+</code></pre>
+<p>Compile an <code>.ea</code> file without loading it. Returns the path to the output file. Useful when you need the <code>.so</code> or <code>.ea.json</code> for another tool.</p>
+<div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>path</code></td><td><code>str</code></td><td>required</td><td>Path to the <code>.ea</code> source file</td></tr>
+<tr><td><code>emit_asm</code></td><td><code>bool</code></td><td><code>False</code></td><td>Also write a <code>.s</code> assembly file</td></tr>
+<tr><td><code>emit_llvm</code></td><td><code>bool</code></td><td><code>False</code></td><td>Also write a <code>.ll</code> LLVM IR file</td></tr>
+<tr><td><code>target</code></td><td><code>str</code></td><td><code>"native"</code></td><td>LLVM CPU name</td></tr>
+<tr><td><code>opt_level</code></td><td><code>int</code></td><td><code>3</code></td><td>Optimization level 0--3</td></tr>
+<tr><td><code>avx512</code></td><td><code>bool</code></td><td><code>False</code></td><td>Enable AVX-512</td></tr>
+<tr><td><code>lib</code></td><td><code>bool</code></td><td><code>True</code></td><td>Produce <code>.so</code> + <code>.ea.json</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="eaclear_cache"><a class="header" href="#eaclear_cache">ea.clear_cache</a></h3>
+<pre><code class="language-python">ea.clear_cache(path=None)
+</code></pre>
+<p>Clear the compilation cache. If <code>path</code> is given, clear only the cache for that <code>.ea</code> file. If <code>None</code>, clear the entire cache directory.</p>
+<h3 id="eacompiler_version"><a class="header" href="#eacompiler_version">ea.compiler_version</a></h3>
+<pre><code class="language-python">ea.compiler_version() -&gt; str
+</code></pre>
+<p>Return the version string of the <code>ea</code> compiler binary.</p>
+<h3 id="ea__version__"><a class="header" href="#ea__version__">ea.__version__</a></h3>
+<pre><code class="language-python">ea.__version__ -&gt; str
+</code></pre>
+<p>The version of the <code>ea</code> Python package.</p>
+<h2 id="exceptions"><a class="header" href="#exceptions">Exceptions</a></h2>
+<h3 id="eacompileerror"><a class="header" href="#eacompileerror">ea.CompileError</a></h3>
+<p>Raised when compilation fails. Inherits from <code>RuntimeError</code>.</p>
+<div class="table-wrapper"><table><thead><tr><th>Attribute</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>stderr</code></td><td><code>str</code></td><td>Full compiler error output</td></tr>
+<tr><td><code>exit_code</code></td><td><code>int</code></td><td>Compiler process exit code</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-python">try:
+    k = ea.load("broken.ea")
+except ea.CompileError as e:
+    print(e.stderr)
+    print(e.exit_code)
+</code></pre>
+<h2 id="caching"><a class="header" href="#caching">Caching</a></h2>
+<p>Compiled shared libraries are cached in a <code>__eacache__/</code> directory next to the <code>.ea</code> source file. The cache key includes the CPU name and compiler version:</p>
+<pre><code>__eacache__/{cpu}-{version}/kernel.so
+</code></pre>
+<p>The cache is invalidated by file modification time (mtime). If the source file is newer than the cached library, <code>ea.load()</code> recompiles automatically.</p>
+<h2 id="length-collapsing"><a class="header" href="#length-collapsing">Length Collapsing</a></h2>
+<p>When a function parameter named <code>n</code>, <code>len</code>, <code>length</code>, <code>count</code>, <code>size</code>, or <code>num</code> appears immediately after a pointer parameter and has an integer type, the Python binding automatically fills it from the array's length. You do not need to pass it explicitly.</p>
+<pre><code>// Ea source
+export func scale(data: *mut f32, n: i32, factor: f32) { ... }
+</code></pre>
+<pre><code class="language-python"># Python: n is auto-filled from len(data)
+k.scale(data, factor=2.0)
+</code></pre>
+<h2 id="output-allocation"><a class="header" href="#output-allocation">Output Allocation</a></h2>
+<p>Parameters annotated with <code>out</code> and a <code>[cap: ...]</code> clause are automatically allocated by the Python binding and returned as the function's result.</p>
+<pre><code>// Ea source
+export func transform(input: *f32, n: i32, out result: *mut f32 [cap: n]) { ... }
+</code></pre>
+<pre><code class="language-python"># Python: result is allocated and returned
+output = k.transform(input_array)
+</code></pre>
+<p>If <code>[count: path]</code> is also specified, the returned array is trimmed to the actual output length.</p>
+<h2 id="thread-safety"><a class="header" href="#thread-safety">Thread Safety</a></h2>
+<p>Loaded kernel modules and their functions are safe for concurrent use from multiple threads. The compiled code is stateless -- all memory is caller-provided via arguments.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="binding-annotations"><a class="header" href="#binding-annotations">Binding Annotations</a></h1>
+<p>Ea generates language bindings from compiled kernel metadata. This page documents the annotation syntax, the <code>.ea.json</code> metadata format, and the available binding generators.</p>
+<h2 id="output-annotations"><a class="header" href="#output-annotations">Output Annotations</a></h2>
+<p>Mark a parameter as caller-allocated output with the <code>out</code> keyword and a capacity clause:</p>
+<pre><code>export func filter(
+    input: *f32,
+    n: i32,
+    out result: *mut f32 [cap: n, count: out_count],
+    out out_count: *mut i32 [cap: 1],
+) { ... }
+</code></pre>
+<h3 id="syntax"><a class="header" href="#syntax">Syntax</a></h3>
+<pre><code>out name: *mut T [cap: &lt;expr&gt;]
+out name: *mut T [cap: &lt;expr&gt;, count: &lt;path&gt;]
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>Clause</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>cap</code></td><td>Yes</td><td>Number of elements to allocate. Can reference other parameters (e.g. <code>n</code>, <code>width * height</code>)</td></tr>
+<tr><td><code>count</code></td><td>No</td><td>Parameter or expression giving the actual output length. The binding trims the returned array to this length</td></tr>
+</tbody></table>
+</div>
+<p>In generated bindings, <code>out</code> parameters are not part of the function signature. They are allocated internally and returned as the function's result.</p>
+<h2 id="length-collapsing-1"><a class="header" href="#length-collapsing-1">Length Collapsing</a></h2>
+<p>When a pointer parameter is followed immediately by an integer parameter whose name matches one of the recognized patterns, the binding generators automatically fill the integer from the array's length.</p>
+<h3 id="recognized-names"><a class="header" href="#recognized-names">Recognized Names</a></h3>
+<p><code>n</code>, <code>len</code>, <code>length</code>, <code>count</code>, <code>size</code>, <code>num</code></p>
+<h3 id="rules"><a class="header" href="#rules">Rules</a></h3>
+<ol>
+<li>The integer parameter must appear immediately after a pointer parameter</li>
+<li>The integer parameter must have an integer type (<code>i32</code>, <code>i64</code>, <code>u32</code>, etc.)</li>
+<li>The pointer and integer are collapsed into a single array argument in the binding</li>
+</ol>
+<pre><code>// These two parameters collapse into one array argument:
+export func sum(data: *f32, n: i32) -&gt; f32 { ... }
+</code></pre>
+<pre><code class="language-python"># Python: just pass the array, n is filled automatically
+result = k.sum(my_array)
+</code></pre>
+<h2 id="metadata-format-eajson"><a class="header" href="#metadata-format-eajson">Metadata Format (.ea.json)</a></h2>
+<p>Compiling with <code>--lib</code> produces a <code>.ea.json</code> file alongside the shared library. This file describes the exported API and is consumed by <code>ea bind</code>.</p>
+<pre><code class="language-json">{
+  "library": "libkernel.so",
+  "exports": [
+    {
+      "name": "scale",
+      "args": [
+        {"name": "data", "type": "*mut f32"},
+        {"name": "n", "type": "i32"},
+        {"name": "factor", "type": "f32"}
+      ],
+      "return_type": null
+    }
+  ],
+  "structs": [
+    {
+      "name": "Point",
+      "fields": [
+        {"name": "x", "type": "f32"},
+        {"name": "y", "type": "f32"}
+      ]
+    }
+  ]
+}
+</code></pre>
+<p>Output-annotated parameters include additional fields:</p>
+<pre><code class="language-json">{
+  "name": "result",
+  "type": "*mut f32",
+  "output": true,
+  "cap": "n",
+  "count": "out_count"
+}
+</code></pre>
+<h2 id="binding-generators"><a class="header" href="#binding-generators">Binding Generators</a></h2>
+<p>Generate bindings with <code>ea bind &lt;file.ea&gt;</code> and one or more language flags. The <code>.ea.json</code> file must exist (run <code>ea &lt;file.ea&gt; --lib</code> first).</p>
+<div class="table-wrapper"><table><thead><tr><th>Flag</th><th>Output File</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>--python</code></td><td><code>&lt;name&gt;.py</code></td><td>Python wrapper using <code>ctypes</code>. Arrays as NumPy ndarrays.</td></tr>
+<tr><td><code>--rust</code></td><td><code>&lt;name&gt;.rs</code></td><td>Rust <code>extern "C"</code> declarations with safe wrapper functions</td></tr>
+<tr><td><code>--cpp</code></td><td><code>&lt;name&gt;.hpp</code></td><td>C++ header-only bindings with <code>std::span</code> parameters</td></tr>
+<tr><td><code>--pytorch</code></td><td><code>&lt;name&gt;_torch.py</code></td><td>PyTorch custom op with <code>torch.Tensor</code> parameters</td></tr>
+<tr><td><code>--cmake</code></td><td><code>CMakeLists.txt</code></td><td>CMake project for linking the shared library in C++</td></tr>
+</tbody></table>
+</div>
+<p>All generated bindings use C ABI function pointers loaded from the shared library at runtime.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="arm--neon"><a class="header" href="#arm--neon">ARM / NEON</a></h1>
+<p>Ea supports AArch64 with NEON vector instructions. This page documents the differences from x86 and how to write portable kernels.</p>
+<h2 id="vector-width"><a class="header" href="#vector-width">Vector Width</a></h2>
+<p>ARM NEON provides 128-bit vector registers. Only 128-bit vector types are available:</p>
+<div class="table-wrapper"><table><thead><tr><th>Supported</th><th>Not Supported</th></tr></thead><tbody>
+<tr><td><code>f32x4</code></td><td><code>f32x8</code>, <code>f32x16</code></td></tr>
+<tr><td><code>f64x2</code></td><td><code>f64x4</code>, <code>f64x8</code></td></tr>
+<tr><td><code>i32x4</code></td><td><code>i32x8</code>, <code>i32x16</code></td></tr>
+<tr><td><code>i16x8</code></td><td><code>i16x16</code></td></tr>
+<tr><td><code>i8x16</code></td><td><code>i8x32</code></td></tr>
+<tr><td><code>u8x16</code></td><td><code>u8x32</code></td></tr>
+<tr><td><code>u16x8</code></td><td><code>u16x16</code></td></tr>
+</tbody></table>
+</div>
+<p>Using a 256-bit or 512-bit vector type on an ARM target produces a compile error. This is intentional -- Ea does not silently fall back to scalar code.</p>
+<h2 id="unavailable-intrinsics"><a class="header" href="#unavailable-intrinsics">Unavailable Intrinsics</a></h2>
+<p>The following intrinsics are x86-only and produce a compile error on ARM:</p>
+<div class="table-wrapper"><table><thead><tr><th>Intrinsic</th><th>Reason</th></tr></thead><tbody>
+<tr><td><code>movemask(v)</code></td><td>No ARM equivalent for extracting lane sign bits to a bitmask</td></tr>
+<tr><td><code>gather(ptr, indices)</code></td><td>No hardware gather support in NEON</td></tr>
+<tr><td><code>scatter(ptr, indices, values)</code></td><td>AVX-512 only</td></tr>
+<tr><td><code>maddubs_i16(a, b)</code></td><td>x86 PMADDUBSW instruction, no NEON equivalent</td></tr>
+<tr><td><code>maddubs_i32(a, b)</code></td><td>x86 specific</td></tr>
+</tbody></table>
+</div>
+<p>All other intrinsics (loads, stores, math, reductions, splat, select, shuffle, conversions) work on ARM.</p>
+<h2 id="cross-compilation"><a class="header" href="#cross-compilation">Cross-Compilation</a></h2>
+<p>Compile for ARM from an x86 host:</p>
+<pre><code class="language-bash">ea kernel.ea --lib --target-triple=aarch64-unknown-linux-gnu
+</code></pre>
+<p>When compiling natively on an ARM machine, no special flags are needed:</p>
+<pre><code class="language-bash">ea kernel.ea --lib
+</code></pre>
+<p>The <code>--avx512</code> flag is rejected on ARM targets with a compile error.</p>
+<h2 id="writing-portable-kernels"><a class="header" href="#writing-portable-kernels">Writing Portable Kernels</a></h2>
+<h3 id="strategy-1-use-128-bit-types-everywhere"><a class="header" href="#strategy-1-use-128-bit-types-everywhere">Strategy 1: Use 128-bit types everywhere</a></h3>
+<p>Use <code>f32x4</code>, <code>i32x4</code>, etc. These work on both x86 (SSE) and ARM (NEON).</p>
+<pre><code>kernel scale(data: *mut f32, factor: f32) range(n) step(4) {
+    let v: f32x4 = load(data, i);
+    let f: f32x4 = splat(factor);
+    store(data, i, v .* f);
+}
+</code></pre>
+<p>This sacrifices throughput on x86 (which could use <code>f32x8</code> with AVX2) but runs everywhere.</p>
+<h3 id="strategy-2-separate-kernel-files"><a class="header" href="#strategy-2-separate-kernel-files">Strategy 2: Separate kernel files</a></h3>
+<p>Write platform-specific kernels in separate files and load the right one at runtime:</p>
+<pre><code># kernel_x86.ea  -- uses f32x8 for AVX2
+# kernel_arm.ea  -- uses f32x4 for NEON
+</code></pre>
+<pre><code class="language-python">import platform
+if platform.machine() == "aarch64":
+    k = ea.load("kernel_arm.ea")
+else:
+    k = ea.load("kernel_x86.ea")
+</code></pre>
+<p>Both files export the same function signatures, so the calling code does not change.</p>
+<h3 id="strategy-3-use-the-kernel-construct"><a class="header" href="#strategy-3-use-the-kernel-construct">Strategy 3: Use the kernel construct</a></h3>
+<p>The <code>kernel</code> construct with <code>step(N)</code> lets you pick the vector width per file while keeping the loop logic identical. Write two <code>.ea</code> files with different step sizes and vector types, but the same exported function name and parameters.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="ea-vs-numpy"><a class="header" href="#ea-vs-numpy">Ea vs NumPy</a></h1>
+<p>When does writing a kernel in Ea actually beat NumPy? The answer comes down to one thing: <strong>arithmetic intensity</strong> -- how many operations you perform per byte loaded from memory.</p>
+<h2 id="the-memory-bandwidth-wall"><a class="header" href="#the-memory-bandwidth-wall">The memory bandwidth wall</a></h2>
+<p>Modern CPUs can process arithmetic far faster than they can load data from DRAM. A single DDR4 channel delivers ~30-40 GB/s. NumPy's ufuncs are already compiled C with SIMD -- for simple operations, they saturate this bandwidth just like hand-written SIMD would.</p>
+<p><strong>Rule of thumb:</strong> if your operation does fewer than 2 arithmetic ops per element loaded, it is bandwidth-bound. Ea will match NumPy but not beat it.</p>
+<h2 id="bandwidth-bound-ea-matches-no-win"><a class="header" href="#bandwidth-bound-ea-matches-no-win">Bandwidth-bound: Ea matches, no win</a></h2>
+<h3 id="array-scaling"><a class="header" href="#array-scaling">Array scaling</a></h3>
+<pre><code>export func scale(src: *f32, dst: *mut f32, factor: f32, n: i32) {
+    let f: f32x8 = splat(factor)
+    let mut i: i32 = 0
+    while i &lt; n {
+        let v: f32x8 = load(src, i)
+        store(dst, i, v .* f)
+        i = i + 8
+    }
+}
+</code></pre>
+<pre><code class="language-python">dst = src * factor  # NumPy: one SIMD multiply per element, same speed
+</code></pre>
+<p>One multiply per element loaded. Both Ea and NumPy hit ~35 GB/s on typical hardware. No winner.</p>
+<h3 id="simple-element-wise-ops"><a class="header" href="#simple-element-wise-ops">Simple element-wise ops</a></h3>
+<p>Any operation that loads an element, does one thing, and stores the result is bandwidth-bound:</p>
+<ul>
+<li><code>dst[i] = src[i] + offset</code></li>
+<li><code>dst[i] = abs(src[i])</code></li>
+<li><code>dst[i] = src_a[i] + src_b[i]</code></li>
+</ul>
+<p>NumPy already handles these at memory bandwidth speed. Writing an Ea kernel gains you nothing.</p>
+<h2 id="compute-bound-ea-wins"><a class="header" href="#compute-bound-ea-wins">Compute-bound: Ea wins</a></h2>
+<h3 id="fused-scale--bias--clamp"><a class="header" href="#fused-scale--bias--clamp">Fused scale + bias + clamp</a></h3>
+<p>NumPy must make three separate passes over memory:</p>
+<pre><code class="language-python">dst = np.clip(src * scale + bias, 0.0, 1.0)  # 3 temporaries, 3 passes
+</code></pre>
+<p>Each pass loads the full array, computes one operation, and writes a temporary. For a 100 MB array, that is 600 MB of memory traffic.</p>
+<p>Ea fuses everything into a single pass:</p>
+<pre><code>export func fused_scale_bias_clamp(src: *f32, dst: *mut f32, scale: f32, bias: f32, n: i32) {
+    let s: f32x8 = splat(scale)
+    let b: f32x8 = splat(bias)
+    let zero: f32x8 = splat(0.0)
+    let one: f32x8 = splat(1.0)
+    let mut i: i32 = 0
+    while i &lt; n {
+        let v: f32x8 = load(src, i)
+        let result: f32x8 = fma(v, s, b)
+        let clamped: f32x8 = min(max(result, zero), one)
+        store(dst, i, clamped)
+        i = i + 8
+    }
+}
+</code></pre>
+<p>One load, one FMA, two comparisons, one store. The data stays in registers the entire time. This is 3-5x faster than the NumPy version on large arrays because it reads memory once instead of three times.</p>
+<h3 id="stencil-operations"><a class="header" href="#stencil-operations">Stencil operations</a></h3>
+<p>Convolutions, Sobel filters, and any operation that reads multiple neighboring elements per output pixel have high arithmetic intensity. A 3x3 Sobel kernel reads 9 values and performs 9 multiplications plus 8 additions per output -- well above the compute-bound threshold.</p>
+<p>See <a href="cookbook/image-processing.html">Image Processing</a> for stencil patterns.</p>
+<h3 id="custom-reductions-with-branching"><a class="header" href="#custom-reductions-with-branching">Custom reductions with branching</a></h3>
+<p>NumPy cannot express per-element branching in vectorized form. Operations like "accumulate values, but skip negatives and double values above a threshold" require Python-level loops or awkward <code>np.where</code> chains.</p>
+<p>Ea gives you SIMD comparisons and masked operations in a single loop body, keeping the pipeline full.</p>
+<h3 id="dot-products-and-fma-chains"><a class="header" href="#dot-products-and-fma-chains">Dot products and FMA chains</a></h3>
+<p>Any reduction that multiplies and accumulates benefits from FMA (fused multiply-add) and register-level accumulation:</p>
+<pre><code>let acc: f32x8 = fma(a, b, acc)  // a * b + acc in one instruction
+</code></pre>
+<p>NumPy's <code>np.dot</code> is fast for large matrices (it calls BLAS), but for custom reductions, per-row operations, or non-standard accumulation patterns, Ea's explicit FMA beats NumPy's element-wise approach.</p>
+<p>See <a href="cookbook/ml-preprocessing.html">ML Preprocessing</a> for dot product and similarity patterns.</p>
+<h2 id="decision-checklist"><a class="header" href="#decision-checklist">Decision checklist</a></h2>
+<p>Before writing an Ea kernel, ask:</p>
+<ol>
+<li><strong>How many ops per element?</strong> If just one (scale, offset, abs), stay with NumPy.</li>
+<li><strong>Does NumPy need multiple passes?</strong> If your expression chains 3+ operations, Ea's fusion wins.</li>
+<li><strong>Is there a stencil or neighbor access?</strong> High arithmetic intensity -- Ea wins.</li>
+<li><strong>Is there branching logic per element?</strong> NumPy cannot vectorize this -- Ea wins.</li>
+<li><strong>Is it a standard BLAS operation?</strong> Use NumPy/SciPy -- they call optimized libraries.</li>
+</ol>
+<h2 id="real-world-packages"><a class="header" href="#real-world-packages">Real-world packages</a></h2>
+<p>These packages demonstrate Ea beating NumPy on compute-bound workloads:</p>
+<ul>
+<li><a href="https://github.com/petlukk/easobel">easobel</a> -- Sobel edge detection (stencil, ~9 ops/pixel)</li>
+<li><a href="https://github.com/petlukk/eastat">eastat</a> -- CSV parsing (branching SIMD scan)</li>
+<li><a href="https://github.com/petlukk/eavec">eavec</a> -- Vector similarity search (FMA-heavy dot products)</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="image-processing"><a class="header" href="#image-processing">Image Processing</a></h1>
+<p>Image processing is one of Ea's strongest use cases. Stencil operations (convolution, edge detection, blur) read multiple neighbors per output pixel, giving high arithmetic intensity that keeps the CPU compute-bound rather than memory-bound.</p>
+<h2 id="sobel-edge-detection"><a class="header" href="#sobel-edge-detection">Sobel edge detection</a></h2>
+<p>The Sobel filter computes horizontal and vertical gradients using 3x3 stencils. Each output pixel reads 9 input values and performs 9 multiplications plus additions -- well above the threshold where Ea beats NumPy.</p>
+<p>The pattern: for each pixel, load the 3x3 neighborhood, multiply by Sobel coefficients, and sum:</p>
+<pre><code>export func sobel_x(
+    src: *f32, dst: *mut f32,
+    width: i32, height: i32
+) {
+    let neg1: f32x8 = splat(-1.0)
+    let pos1: f32x8 = splat(1.0)
+    let neg2: f32x8 = splat(-2.0)
+    let pos2: f32x8 = splat(2.0)
+    let mut y: i32 = 1
+    while y &lt; height - 1 {
+        let mut x: i32 = 0
+        while x &lt; width - 2 {
+            let row_above: i32 = (y - 1) * width + x
+            let row_center: i32 = y * width + x
+            let row_below: i32 = (y + 1) * width + x
+
+            let tl: f32x8 = load(src, row_above)
+            let tr: f32x8 = load(src, row_above + 2)
+            let ml: f32x8 = load(src, row_center)
+            let mr: f32x8 = load(src, row_center + 2)
+            let bl: f32x8 = load(src, row_below)
+            let br: f32x8 = load(src, row_below + 2)
+
+            let gx: f32x8 = (tr .* pos1) .+ (mr .* pos2) .+ (br .* pos1)
+                .+ (tl .* neg1) .+ (ml .* neg2) .+ (bl .* neg1)
+            store(dst, row_center + 1, gx)
+            x = x + 8
+        }
+        y = y + 1
+    }
+}
+</code></pre>
+<p>For a production-ready Sobel implementation with both Gx/Gy gradients and magnitude computation, see <a href="https://github.com/petlukk/easobel">easobel</a>.</p>
+<h2 id="pixel-pipeline-u8-to-f32-and-back"><a class="header" href="#pixel-pipeline-u8-to-f32-and-back">Pixel pipeline: u8 to f32 and back</a></h2>
+<p>Images from disk arrive as <code>u8</code> (0-255). SIMD math works best on <code>f32</code>. The typical pattern:</p>
+<ol>
+<li>Load u8 pixels</li>
+<li>Widen to f32 (0.0 to 255.0)</li>
+<li>Process in f32 (normalize, filter, blend)</li>
+<li>Narrow back to u8</li>
+</ol>
+<h3 id="widening-u8-to-f32"><a class="header" href="#widening-u8-to-f32">Widening: u8 to f32</a></h3>
+<pre><code>export func normalize_u8_to_f32(src: *u8, dst: *mut f32, n: i32) {
+    let scale: f32x4 = splat(0.00392156862)
+    let mut i: i32 = 0
+    while i &lt; n {
+        let pixels: f32x4 = widen_u8_f32x4(src, i)
+        let normalized: f32x4 = pixels .* scale
+        store(dst, i, normalized)
+        i = i + 4
+    }
+}
+</code></pre>
+<p><code>widen_u8_f32x4(ptr, offset)</code> loads 4 bytes from <code>src + offset</code>, zero-extends each to 32 bits, and converts to float. The result is a <code>f32x4</code> with values in 0.0 to 255.0. Multiply by <code>1/255</code> to get the 0.0-1.0 range.</p>
+<h3 id="narrowing-f32-to-u8"><a class="header" href="#narrowing-f32-to-u8">Narrowing: f32 to u8</a></h3>
+<pre><code>export func f32_to_u8(src: *f32, dst: *mut u8, n: i32) {
+    let s255: f32x4 = splat(255.0)
+    let zero: f32x4 = splat(0.0)
+    let mut i: i32 = 0
+    while i &lt; n {
+        let v: f32x4 = load(src, i)
+        let clamped: f32x4 = min(max(v, zero), s255)
+        narrow_f32x4_i8(dst, i, clamped)
+        i = i + 4
+    }
+}
+</code></pre>
+<p><code>narrow_f32x4_i8(ptr, offset, vec)</code> converts 4 floats to integers, saturates to 0-255, and stores 4 bytes. Always clamp before narrowing to avoid overflow.</p>
+<h3 id="putting-it-together"><a class="header" href="#putting-it-together">Putting it together</a></h3>
+<p>A full pixel pipeline (load u8, process in f32, store u8) processes 4 pixels per iteration on both x86 and ARM. Use <code>f32x4</code> for the pipeline to keep it portable -- <code>f32x8</code> works only on x86 with AVX2.</p>
+<h2 id="why-image-stencils-are-compute-bound"><a class="header" href="#why-image-stencils-are-compute-bound">Why image stencils are compute-bound</a></h2>
+<p>A 3x3 convolution on a single-channel image performs 9 multiplications and 8 additions per output pixel, but only produces 1 output value. That is 17 arithmetic operations per output float -- far above the ~2 ops/element threshold where Ea's operation fusion matters.</p>
+<p>For multi-channel images (RGB, RGBA), the arithmetic intensity is even higher because you process 3-4 channels per pixel position.</p>
+<p>Compare this to simple brightness adjustment (<code>pixel * 1.1</code>), which is 1 op per element -- bandwidth-bound, and NumPy handles it just as fast. See <a href="cookbook/numpy-comparison.html">Ea vs NumPy</a> for more on this distinction.</p>
+<h2 id="tips"><a class="header" href="#tips">Tips</a></h2>
+<ul>
+<li><strong>Border handling</strong>: the examples above skip border pixels (starting at y=1, ending at height-1). For production kernels, handle borders separately with scalar code or clamped indexing.</li>
+<li><strong>Separable filters</strong>: Gaussian blur and similar filters can be split into horizontal and vertical passes, reducing a 3x3 stencil from 9 to 6 operations. Each pass is still compute-bound.</li>
+<li><strong>ARM portability</strong>: use <code>f32x4</code> and <code>i32x4</code> for kernels that need to run on both x86 and ARM. The 128-bit types work on both architectures.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="text-processing"><a class="header" href="#text-processing">Text Processing</a></h1>
+<p>Text processing benefits from SIMD when you can skip large regions of uninteresting bytes. The key pattern is <strong>chunk-skip</strong>: load 32 bytes at a time, check if any byte matches a target character, and skip the entire chunk if none match.</p>
+<h2 id="the-chunk-skip-pattern"><a class="header" href="#the-chunk-skip-pattern">The chunk-skip pattern</a></h2>
+<p>Most bytes in a text file are not the character you are looking for. A newline scanner over a 1 MB file might find 10,000 newlines among 1,000,000 bytes -- 99% of chunks contain no match and can be skipped with a single comparison and branch.</p>
+<pre><code>export func count_newlines(data: *u8, n: i32) -&gt; i32 {
+    let newline: u8x32 = splat_u8x32(10)
+    let mut count: i32 = 0
+    let mut i: i32 = 0
+    while i &lt; n - 31 {
+        let chunk: u8x32 = load_u8x32(data, i)
+        let matches: u8x32 = chunk .== newline
+        let mask: i32 = movemask(matches)
+        if mask != 0 {
+            let mut j: i32 = 0
+            while j &lt; 32 {
+                if load_u8(data, i + j) == 10 {
+                    count = count + 1
+                }
+                j = j + 1
+            }
+        }
+        i = i + 32
+    }
+    let mut k: i32 = i
+    while k &lt; n {
+        if load_u8(data, k) == 10 {
+            count = count + 1
+        }
+        k = k + 1
+    }
+    count
+}
+</code></pre>
+<p>The structure:</p>
+<ol>
+<li><strong>Load 32 bytes</strong> as <code>u8x32</code></li>
+<li><strong>Compare</strong> with <code>splat_u8x32(target)</code> using <code>.==</code> to get a match vector</li>
+<li><strong><code>movemask()</code></strong> collapses the vector comparison to a single <code>i32</code> bitmask</li>
+<li><strong>If mask is 0</strong>: no matches in this chunk, skip ahead 32 bytes (fast path)</li>
+<li><strong>If mask is nonzero</strong>: scan the 32 bytes individually (slow path, but rare)</li>
+<li><strong>Scalar tail</strong>: handle remaining bytes that do not fill a full 32-byte chunk</li>
+</ol>
+<p>The fast path processes 32 bytes in about 3 instructions. On typical text, 90-99% of chunks take the fast path.</p>
+<h2 id="why-not-extract-individual-bit-positions"><a class="header" href="#why-not-extract-individual-bit-positions">Why not extract individual bit positions?</a></h2>
+<p>Ea does not have shift operators (<code>&lt;&lt;</code>, <code>&gt;&gt;</code>), so you cannot extract individual bit positions from the movemask result. Instead, when a chunk contains matches, fall back to byte-by-byte scanning within that 32-byte window. This is still fast because:</p>
+<ul>
+<li>Hot chunks are rare (most text is not your target character)</li>
+<li>The 32-byte scan is a tight loop that fits in L1 cache</li>
+<li>The overall speedup comes from skipping cold chunks, not from optimizing hot ones</li>
+</ul>
+<h2 id="arm-portability"><a class="header" href="#arm-portability">ARM portability</a></h2>
+<p><code>movemask</code> is an x86-only intrinsic (it maps to <code>vpmovmskb</code>). On ARM/NEON, there is no equivalent single instruction. For portable kernels, write separate x86 and ARM versions:</p>
+<ul>
+<li><strong>x86</strong>: use <code>u8x32</code> + <code>movemask</code> as shown above</li>
+<li><strong>ARM</strong>: use <code>u8x16</code> with scalar fallback, or structure the algorithm to avoid needing a bitmask</li>
+</ul>
+<p>See <a href="cookbook/../reference/arm.html">ARM / NEON</a> for details on architecture-specific intrinsics.</p>
+<h2 id="csv-parsing"><a class="header" href="#csv-parsing">CSV parsing</a></h2>
+<p>CSV parsing combines the chunk-skip pattern with state tracking. You need to find commas and newlines while respecting quoted fields -- a comma inside quotes is not a delimiter.</p>
+<p>The approach:</p>
+<ol>
+<li>Scan for quote characters (<code>"</code>) using chunk-skip to track quote state</li>
+<li>Scan for delimiters (<code>,</code> and <code>\n</code>) using chunk-skip, filtering by quote state</li>
+<li>Parse numeric fields from the delimited regions</li>
+</ol>
+<p>This is compute-bound because each byte potentially involves comparison against multiple target characters plus state logic -- exactly the kind of branching work that NumPy cannot vectorize.</p>
+<p>For a complete CSV statistics package built on this pattern, see <a href="https://github.com/petlukk/eastat">eastat</a>.</p>
+<h2 id="tips-1"><a class="header" href="#tips-1">Tips</a></h2>
+<ul>
+<li><strong>Buffer alignment</strong>: SIMD loads from unaligned addresses work but may be slower on older hardware. If you control the buffer, align to 32 bytes.</li>
+<li><strong>Tail handling</strong>: always include a scalar loop for the last <code>n % 32</code> bytes. Forgetting the tail is the most common bug in SIMD text processing.</li>
+<li><strong>Multi-character search</strong>: to find any of several characters (e.g., <code>&lt;</code>, <code>&gt;</code>, <code>&amp;</code> for HTML), do multiple <code>.==</code> comparisons and combine with <code>.|</code> before the movemask.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="ml-preprocessing"><a class="header" href="#ml-preprocessing">ML Preprocessing</a></h1>
+<p>ML preprocessing pipelines often apply the same sequence of operations to every element in large arrays: normalize, scale, compute similarities. These are natural fits for Ea kernels because they fuse multiple operations into single-pass loops.</p>
+<h2 id="normalize-zero-mean-unit-variance"><a class="header" href="#normalize-zero-mean-unit-variance">Normalize: zero-mean, unit-variance</a></h2>
+<p>The standard normalization <code>(x - mean) / std</code> requires two operations per element. NumPy computes them as separate passes:</p>
+<pre><code class="language-python">normalized = (data - mean) / std  # 2 passes, 2 temporaries
+</code></pre>
+<p>Ea fuses this into one pass using FMA. Rewrite <code>(x - mean) / std</code> as <code>x * (1/std) + (-mean/std)</code>:</p>
+<pre><code>export func normalize(
+    src: *f32, dst: *mut f32,
+    inv_std: f32, neg_mean_div_std: f32,
+    n: i32
+) {
+    let s: f32x8 = splat(inv_std)
+    let b: f32x8 = splat(neg_mean_div_std)
+    let mut i: i32 = 0
+    while i &lt; n {
+        let v: f32x8 = load(src, i)
+        let result: f32x8 = fma(v, s, b)
+        store(dst, i, result)
+        i = i + 8
+    }
+}
+</code></pre>
+<p>The caller precomputes <code>inv_std = 1.0 / std</code> and <code>neg_mean_div_std = -mean / std</code> in Python. The kernel then does a single FMA per 8 elements -- one instruction that multiplies and adds simultaneously.</p>
+<h2 id="dot-product-dual-accumulator-pattern"><a class="header" href="#dot-product-dual-accumulator-pattern">Dot product: dual-accumulator pattern</a></h2>
+<p>A naive dot product uses one accumulator:</p>
+<pre><code>let mut acc: f32x8 = splat(0.0)
+while i &lt; n {
+    let a: f32x8 = load(x, i)
+    let b: f32x8 = load(y, i)
+    acc = fma(a, b, acc)
+    i = i + 8
+}
+</code></pre>
+<p>This leaves performance on the table. FMA has a latency of 4-5 cycles but a throughput of 1 per cycle. With one accumulator, each FMA waits for the previous one to finish.</p>
+<p><strong>Dual accumulators</strong> hide this latency by interleaving independent FMA chains:</p>
+<pre><code>export func dot_product(x: *f32, y: *f32, out: *mut f32, n: i32) {
+    let mut acc0: f32x8 = splat(0.0)
+    let mut acc1: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+    while i &lt; n - 15 {
+        let a0: f32x8 = load(x, i)
+        let b0: f32x8 = load(y, i)
+        acc0 = fma(a0, b0, acc0)
+        let a1: f32x8 = load(x, i + 8)
+        let b1: f32x8 = load(y, i + 8)
+        acc1 = fma(a1, b1, acc1)
+        i = i + 16
+    }
+    while i &lt; n {
+        let a: f32x8 = load(x, i)
+        let b: f32x8 = load(y, i)
+        acc0 = fma(a, b, acc0)
+        i = i + 8
+    }
+    let combined: f32x8 = acc0 .+ acc1
+    let result: f32 = horizontal_sum(combined)
+    store(out, 0, splat(result))
+}
+</code></pre>
+<p>The CPU can execute <code>fma(a0, b0, acc0)</code> and <code>fma(a1, b1, acc1)</code> in parallel because they use different accumulators. This typically doubles throughput on modern CPUs.</p>
+<h2 id="cosine-similarity"><a class="header" href="#cosine-similarity">Cosine similarity</a></h2>
+<p>Cosine similarity needs three reductions in one pass: <code>dot(a, b)</code>, <code>norm(a)</code>, and <code>norm(b)</code>. Computing these separately means three passes over the data. Ea fuses all three:</p>
+<pre><code>export func cosine_similarity(a: *f32, b: *f32, out: *mut f32, n: i32) {
+    let mut dot_acc: f32x8 = splat(0.0)
+    let mut norm_a_acc: f32x8 = splat(0.0)
+    let mut norm_b_acc: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+    while i &lt; n {
+        let va: f32x8 = load(a, i)
+        let vb: f32x8 = load(b, i)
+        dot_acc = fma(va, vb, dot_acc)
+        norm_a_acc = fma(va, va, norm_a_acc)
+        norm_b_acc = fma(vb, vb, norm_b_acc)
+        i = i + 8
+    }
+    let dot_val: f32 = horizontal_sum(dot_acc)
+    let norm_a_val: f32 = horizontal_sum(norm_a_acc)
+    let norm_b_val: f32 = horizontal_sum(norm_b_acc)
+    let result: f32 = dot_val / sqrt(norm_a_val * norm_b_val)
+    store(out, 0, splat(result))
+}
+</code></pre>
+<p>Three FMAs per loop iteration, all operating on the same loaded vectors. The data passes through cache once. NumPy would need <code>np.dot(a, b)</code>, <code>np.linalg.norm(a)</code>, and <code>np.linalg.norm(b)</code> -- three separate passes.</p>
+<h2 id="batch-operations"><a class="header" href="#batch-operations">Batch operations</a></h2>
+<p>For ML workloads, you often apply the same operation to many rows. The Python side handles the loop over rows, calling the Ea kernel for each:</p>
+<pre><code class="language-python">import ea
+
+lib = ea.load("similarity.ea")
+for i in range(num_queries):
+    lib.cosine_similarity(query[i], database[j], result, dim)
+</code></pre>
+<p>The kernel handles the inner loop (over vector dimensions) with SIMD. The outer loop (over queries or rows) stays in Python. This is the right split -- the inner loop is where SIMD matters.</p>
+<h2 id="real-world-package"><a class="header" href="#real-world-package">Real-world package</a></h2>
+<p><a href="https://github.com/petlukk/eavec">eavec</a> implements vector similarity search using the dual-accumulator FMA pattern. It computes cosine similarity across a database of vectors, returning the top-k most similar results.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="beating-numpys-blas-at-constant-q-transform-with-80-lines-of-ea"><a class="header" href="#beating-numpys-blas-at-constant-q-transform-with-80-lines-of-ea">Beating NumPy's BLAS at Constant-Q Transform with 80 Lines of Ea</a></h1>
+<p>A SIMD kernel compiler, a DFT nobody asked for, and an honest benchmark.</p>
+<hr />
+<h2 id="the-problem-1"><a class="header" href="#the-problem-1">The Problem</a></h2>
+<p>Audio spectrum visualizers typically use FFT. FFT gives you linearly-spaced frequency bins — great for math, terrible for music. Human pitch perception is logarithmic: the distance from C2 to C3 (one octave) matters as much as C5 to C6. But FFT allocates equal resolution across the entire spectrum, wasting detail in the bass and over-resolving the treble.</p>
+<p>The Constant-Q Transform (CQT) solves this. Each frequency bin gets its own window length — long windows for low frequencies (more cycles needed to resolve pitch), short windows for high frequencies. The result: 84 bins spanning 7 octaves, one per semitone, C2 through B8.</p>
+<p>The catch: FFT can't do CQT. You need a DFT-per-bin, which is O(n*k) instead of O(n log n). The standard NumPy approach is to build a complex kernel matrix and let BLAS handle it with a single matrix-vector multiply.</p>
+<p>We wanted to see if a hand-written SIMD kernel in <a href="https://petlukk.github.io/eacompute/">Ea</a> could beat that.</p>
+<h2 id="what-is-ea"><a class="header" href="#what-is-ea">What is Ea</a></h2>
+<p>Ea is a compute kernel compiler. You write <code>.ea</code> files in a C-like language with explicit SIMD vector types, compile them to native shared libraries, and call them from Python with NumPy arrays. No C toolchain, no Cython, no JIT warmup.</p>
+<pre><code>export func scale(src: *f32, dst: *mut f32, factor: f32, n: i32) {
+    let s: f32x8 = splat(factor)
+    let mut i: i32 = 0
+    while i &lt; n {
+        let v: f32x8 = load(src, i)
+        store(dst, i, v .* s)
+        i = i + 8
+    }
+}
+</code></pre>
+<p>Ea doesn't have sin or cos intrinsics. This is a deliberate design choice — trig is a policy decision (how many polynomial terms? what accuracy? what range?) that the language refuses to hide behind a simple-looking function call. If you need trig, you precompute tables in Python or write an explicit FMA polynomial chain.</p>
+<p>This turns out to be the key insight for CQT.</p>
+<h2 id="the-design"><a class="header" href="#the-design">The Design</a></h2>
+<p>A CQT with 84 bins (7 octaves, 12 semitones each) starting at C2 (65.4 Hz) at 44.1 kHz sample rate has these properties:</p>
+<div class="table-wrapper"><table><thead><tr><th>Bin</th><th>Note</th><th>Frequency</th><th>Window Length</th></tr></thead><tbody>
+<tr><td>0</td><td>C2</td><td>65.4 Hz</td><td>11,339 samples</td></tr>
+<tr><td>33</td><td>A4</td><td>440 Hz</td><td>1,684 samples</td></tr>
+<tr><td>83</td><td>B8</td><td>7,903 Hz</td><td>94 samples</td></tr>
+</tbody></table>
+</div>
+<p>The quality factor Q = 16.8 (constant across all bins — that's what "constant-Q" means). Total work per frame: 200,476 FMA operations across all bins.</p>
+<p>The approach: precompute cos/sin twiddle factor tables in Python (one-time cost, 1.6 MB), then let Ea handle the per-frame FMA loop. We bake the Hann window directly into the twiddle factors during precomputation:</p>
+<pre><code class="language-python"># Python: precompute once
+for k in range(n_bins):
+    n_k = int(lengths[k])
+    i = np.arange(n_k, dtype=np.float64)
+    window = 0.5 * (1 - np.cos(2 * np.pi * i / n_k))
+    angle = 2 * np.pi * freqs[k] * i / SAMPLE_RATE
+    cos_parts.append((window * np.cos(angle)).astype(np.float32))
+    sin_parts.append((window * -np.sin(angle)).astype(np.float32))
+</code></pre>
+<p>This means the Ea kernel needs zero trig and zero windowing logic. The inner loop is pure FMA.</p>
+<h2 id="the-kernel"><a class="header" href="#the-kernel">The Kernel</a></h2>
+<h3 id="version-1-direct-dft-with-dual-accumulators"><a class="header" href="#version-1-direct-dft-with-dual-accumulators">Version 1: Direct DFT with Dual Accumulators</a></h3>
+<p>The first kernel processes one frequency bin at a time. For each bin, it reads the audio segment, multiplies against precomputed cos and sin twiddle factors, accumulates, and computes the magnitude. Smoothing (exponential decay for the "falling bars" effect) is fused into the output — no separate kernel call, no intermediate array.</p>
+<p>Two independent FMA accumulator chains (r0/r1, i0/i1) hide pipeline latency on superscalar CPUs. This is the same technique used in high-performance reduction kernels.</p>
+<pre><code>export func cqt_fused(
+    audio: *f32,
+    cos_table: *f32,
+    sin_table: *f32,
+    offsets: *i32,      // per-bin start offset into twiddle tables
+    lengths: *i32,      // per-bin window length
+    prev_mags: *f32,
+    out_mags: *mut f32,
+    alpha: f32,         // decay factor
+    n_bins: i32,
+    max_window_len: i32
+) {
+    let mut k: i32 = 0
+    while k &lt; n_bins {
+        let off: i32 = offsets[k]
+        let win_len: i32 = lengths[k]
+        let audio_start: i32 = max_window_len - win_len
+
+        let mut r0: f32x8 = splat(0.0)
+        let mut r1: f32x8 = splat(0.0)
+        let mut i0: f32x8 = splat(0.0)
+        let mut i1: f32x8 = splat(0.0)
+
+        let mut i: i32 = 0
+        while i + 16 &lt;= win_len {
+            prefetch(cos_table, off + i + 64)
+            prefetch(sin_table, off + i + 64)
+
+            let s0: f32x8 = load(audio, audio_start + i)
+            let s1: f32x8 = load(audio, audio_start + i + 8)
+            let c0: f32x8 = load(cos_table, off + i)
+            let c1: f32x8 = load(cos_table, off + i + 8)
+            let sn0: f32x8 = load(sin_table, off + i)
+            let sn1: f32x8 = load(sin_table, off + i + 8)
+
+            r0 = fma(s0, c0, r0)
+            r1 = fma(s1, c1, r1)
+            i0 = fma(s0, sn0, i0)
+            i1 = fma(s1, sn1, i1)
+
+            i = i + 16
+        }
+
+        // 8-element and scalar tails omitted for brevity
+
+        let real: f32 = reduce_add(r0 .+ r1)
+        let imag: f32 = reduce_add(i0 .+ i1)
+        let mag: f32 = sqrt(real * real + imag * imag)
+
+        // Fused smooth decay
+        let decayed: f32 = prev_mags[k] * alpha
+        if mag &gt; decayed {
+            out_mags[k] = mag
+        } else {
+            out_mags[k] = decayed
+        }
+
+        k = k + 1
+    }
+}
+</code></pre>
+<p>The generated assembly for the hot loop is clean — the Ea compiler folds twiddle loads directly into <code>vfmadd231ps</code> memory operands, so the audio loads (<code>vmovups</code>) are the only explicit loads:</p>
+<pre><code class="language-asm">.LBB0_4:
+    prefetcht0  (%rsi,%r12,4)      ; prefetch cos_table
+    prefetcht0  (%rdx,%r12,4)      ; prefetch sin_table
+    vmovups     (%rdi,%r12,4), %ymm5   ; load audio[i..i+7]
+    vmovups     (%rdi,%r12,4), %ymm6   ; load audio[i+8..i+15]
+    vfmadd231ps (%rsi,%r12,4), %ymm5, %ymm3  ; r0 += audio * cos
+    vfmadd231ps (%rsi,%rbp,4), %ymm6, %ymm4  ; r1 += audio * cos
+    vfmadd231ps (%rdx,%r12,4), %ymm5, %ymm2  ; i0 += audio * sin
+    vfmadd231ps (%rdx,%rbp,4), %ymm6, %ymm1  ; i1 += audio * sin
+</code></pre>
+<p>Four FMAs per iteration, each operating on 8 floats. 64 floating-point multiply-adds per loop cycle.</p>
+<h3 id="first-benchmark-the-lie"><a class="header" href="#first-benchmark-the-lie">First Benchmark: The Lie</a></h3>
+<p>Our first benchmark compared this against a Python for-loop CQT:</p>
+<pre><code class="language-python">def numpy_cqt(audio, freqs, max_window_len):
+    magnitudes = np.empty(N_BINS, dtype=np.float32)
+    for k in range(N_BINS):
+        n_k = int(np.ceil(Q * SAMPLE_RATE / freqs[k]))
+        segment = audio[start:start + n_k]
+        window = 0.5 * (1 - np.cos(2 * np.pi * i / n_k))
+        kernel = window * np.exp(-2j * np.pi * freqs[k] * i / SAMPLE_RATE)
+        magnitudes[k] = np.abs(np.sum(segment * kernel))
+    return magnitudes
+</code></pre>
+<p>Result: <strong>153x faster</strong>. We almost shipped this number.</p>
+<p>The problem: this "NumPy CQT" is a Python for-loop with per-bin allocations. Nobody would write production CQT this way. The honest NumPy approach is to precompute a <code>(84, 11339)</code> complex kernel matrix and do a single <code>np.dot</code>:</p>
+<pre><code class="language-python"># Precompute once: (n_bins, max_window_len) complex64 matrix
+kernel_matrix = np.zeros((N_BINS, max_window_len), dtype=np.complex64)
+for k in range(N_BINS):
+    # ... fill in windowed complex exponentials, zero-pad shorter bins
+
+# Per frame: single BLAS call
+magnitudes = np.abs(kernel_matrix @ audio)
+</code></pre>
+<p>This calls directly into OpenBLAS/MKL — decades of hand-tuned assembly for matrix-vector multiply.</p>
+<h3 id="honest-benchmark-v1"><a class="header" href="#honest-benchmark-v1">Honest Benchmark v1</a></h3>
+<p>Methodology:</p>
+<ul>
+<li>All competitors precompute everything they can (tables, windows, indices)</li>
+<li>Only per-frame work is timed: transform + magnitude + smoothing</li>
+<li>Same smoothing (<code>max(current, previous * alpha)</code>) applied to all</li>
+</ul>
+<p>With N=500 iterations and inadequate warmup:</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>Time</th></tr></thead><tbody>
+<tr><td>Ea CQT</td><td>0.098 ms</td></tr>
+<tr><td>NumPy matmul</td><td>0.085 ms</td></tr>
+</tbody></table>
+</div>
+<p>NumPy was winning. The 153x headline collapsed to <strong>Ea being 1.1x slower</strong>.</p>
+<h3 id="fixing-the-benchmark"><a class="header" href="#fixing-the-benchmark">Fixing the Benchmark</a></h3>
+<p>The N=500 result was noisy. WSL2 scheduling and insufficient warmup made the numbers unreliable. We moved to a min-of-trials methodology: 10 independent trials of 2,000 iterations each, reporting both min (best-case, no OS interference) and median (real-world scheduling).</p>
+<p>With proper warmup (200+ iterations before timing):</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>Min</th><th>Median</th></tr></thead><tbody>
+<tr><td>Ea CQT</td><td>50 us</td><td>55 us</td></tr>
+<tr><td>NumPy matmul</td><td>95 us</td><td>190 us</td></tr>
+</tbody></table>
+</div>
+<p>Ea was already <strong>1.9x faster at best</strong>, <strong>3.5x at median</strong>. The initial "1.1x slower" was just noise.</p>
+<h2 id="optimization-attempts"><a class="header" href="#optimization-attempts">Optimization Attempts</a></h2>
+<h3 id="quad-accumulators"><a class="header" href="#quad-accumulators">Quad Accumulators</a></h3>
+<p>Theory: 4 independent FMA chains (8 accumulator registers) should hide more pipeline latency than 2 chains.</p>
+<p>Result: <strong>slower</strong> (100 us vs 83 us). With 8 YMM accumulator registers + 12 data registers for loads, we exceed x86-64's 16 YMM register limit. The compiler spills to stack memory, killing the very latency hiding we wanted.</p>
+<h3 id="interleaved-loads"><a class="header" href="#interleaved-loads">Interleaved Loads</a></h3>
+<p>Theory: load cos, immediately FMA, then load sin and FMA. Give the memory subsystem more time to fetch by interleaving loads with compute.</p>
+<p>Result: <strong>slower</strong> (191 us vs 53 us). The original pattern — batch all loads, then batch all FMAs — is better for out-of-order execution. The CPU's reorder buffer can schedule loads far ahead of their consumers when they're grouped together.</p>
+<h3 id="merged-twiddle-table"><a class="header" href="#merged-twiddle-table">Merged Twiddle Table</a></h3>
+<p>Theory: interleave cos and sin data for each bin into a single contiguous memory region <code>[cos_bin0 | sin_bin0 | cos_bin1 | ...]</code> to halve cache line traffic.</p>
+<p>Result: <strong>no change</strong> (53.8 us vs 53.1 us). The hardware prefetcher already handles two sequential streams efficiently. The second stream (sin_table) gets prefetched in parallel with the first (cos_table) because the access pattern is identical — sequential scan with the same stride.</p>
+<h3 id="in-place-smoothing"><a class="header" href="#in-place-smoothing">In-Place Smoothing</a></h3>
+<p>Instead of writing to <code>out_mags</code> and copying back to <code>prev_mags</code> in Python, the kernel reads and writes the same buffer:</p>
+<pre><code>export func cqt_inplace(
+    audio: *f32,
+    cos_table: *f32,
+    sin_table: *f32,
+    offsets: *i32,
+    lengths: *i32,
+    mags: *mut f32,    // read previous, write smoothed result
+    alpha: f32,
+    n_bins: i32,
+    max_window_len: i32
+)
+</code></pre>
+<p>Result: <strong>~5% faster</strong> (47.8 us vs 50.2 us). Modest win from eliminating a 336-byte numpy copy per frame plus one Python function call.</p>
+<h2 id="final-numbers"><a class="header" href="#final-numbers">Final Numbers</a></h2>
+<p>Methodology: 10 trials of 2,000 iterations each, 200-iteration warmup per trial, min-of-trials reported. All precomputation excluded. All competitors include smoothing. NumPy uses pre-allocated output buffers (<code>out=</code> parameter) to avoid allocation overhead.</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>Min</th><th>Median</th></tr></thead><tbody>
+<tr><td><strong>Ea CQT (fused SIMD)</strong></td><td><strong>~50 us</strong></td><td><strong>~55 us</strong></td></tr>
+<tr><td>NumPy CQT (BLAS matmul)</td><td>~95 us</td><td>~190 us</td></tr>
+<tr><td>NumPy FFT (wrong result)</td><td>~106 us</td><td>~118 us</td></tr>
+</tbody></table>
+</div>
+<p><strong>Ea vs BLAS: 1.9x faster (min), 3.5x (median)</strong>
+<strong>Ea vs FFT: 2.1x faster — and FFT gives the wrong answer</strong>
+<strong>Throughput: 7.8 GFLOP/s</strong></p>
+<h3 id="why-ea-wins"><a class="header" href="#why-ea-wins">Why Ea Wins</a></h3>
+<p><strong>1. Ea reads 4.8x less data.</strong>
+The BLAS matmul uses a dense (84, 11339) complex64 matrix — 7.4 MB per frame, including all the zero-padded regions where shorter bins have no data. Ea's variable-length inner loops skip zeros entirely, touching only 200,476 real elements (1.6 MB).</p>
+<p><strong>2. Real vs complex arithmetic.</strong>
+BLAS operates on complex64 (pairs of float32). Every BLAS FMA processes a complex multiply-add — 4 real multiplies and 2 real adds per element. Ea works directly in float32, doing 2 real FMAs per element (one for the cos component, one for sin).</p>
+<p><strong>3. Fused pipeline.</strong>
+Ea does window + transform + magnitude + smoothing in one function call. NumPy requires 4 separate calls: <code>matmul</code>, <code>abs</code>, <code>maximum</code>, <code>copyto</code>. Each call crosses the Python/C boundary, allocates or writes to buffers, and makes a separate pass over the output data.</p>
+<p><strong>4. Lower scheduling jitter.</strong>
+One ctypes call has less interrupt surface than four NumPy calls. This explains the median gap (3.5x) being larger than the min gap (1.9x) — Ea's single kernel call is less likely to be interrupted mid-computation.</p>
+<h3 id="why-ea-doesnt-win-more"><a class="header" href="#why-ea-doesnt-win-more">Why Ea Doesn't Win More</a></h3>
+<p>The dual-accumulator inner loop is already close to optimal for AVX2. The generated assembly has 4 <code>vfmadd231ps</code> instructions per iteration with memory operands — the compiler is folding loads into FMAs. There's no instruction waste.</p>
+<p>The bottleneck is memory bandwidth. At 50 us for 1.6 MB of twiddle table reads, we're pulling ~32 GB/s — respectable for L3 cache, but below the theoretical memory bandwidth. The per-bin overhead (loading offsets/lengths, setting up accumulators, horizontal reduction) fragments what could be one continuous stream into 84 separate sweeps.</p>
+<p>BLAS doesn't have this problem. Its matmul is one uninterrupted sweep through a dense matrix, which modern CPUs and prefetchers are specifically optimized for. BLAS trades compute (touching zeros) for access pattern regularity — and on some runs, when the OS cooperates perfectly, that trade nearly pays off.</p>
+<h2 id="the-code"><a class="header" href="#the-code">The Code</a></h2>
+<p>Three files. The full kernel (<code>cqt.ea</code>, 80 lines), the Python visualizer, and the benchmark. The kernel uses the language as intended: explicit types, explicit vector widths, explicit memory access. No hidden costs.</p>
+<pre><code class="language-python">import ea
+import numpy as np
+
+kernel = ea.load("cqt.ea")
+
+# Precompute tables once
+freqs = F_MIN * 2 ** (np.arange(84) / 12)
+lengths = np.ceil(Q * SAMPLE_RATE / freqs).astype(np.int32)
+
+# ... build cos/sin twiddle tables with baked-in Hann window ...
+
+# Per frame: one call, ~50 us
+kernel.cqt_fused(
+    audio_buffer, cos_table, sin_table,
+    offsets, lengths, prev_mags, out_mags,
+    decay_alpha, n_bins, max_window_len,
+)
+</code></pre>
+<p>The full source is on <a href="https://github.com/petlukk/eacompute">GitHub</a>.</p>
+<h2 id="what-we-learned"><a class="header" href="#what-we-learned">What We Learned</a></h2>
+<p>The first benchmark said 153x. That was a lie — comparing optimized SIMD against a Python for-loop. The second benchmark said 1.1x slower. That was noise — insufficient warmup on a noisy WSL2 scheduler. The real number is <strong>1.9x faster</strong>, earned by reading less data, using simpler arithmetic, and fusing the pipeline.</p>
+<p>Three optimization attempts failed (quad accumulators, interleaved loads, merged tables) and one gave a modest 5% win (in-place smoothing). The lesson: when the compiler is already generating clean assembly, micro-optimizations rarely help. The wins came from the algorithm design — variable-length windows, baked-in windowing, fused smoothing — not from squeezing the inner loop.</p>
+<p>Ea didn't win by being a faster compiler. It won by making it easy to write the right algorithm. A kernel that skips zeros, fuses four operations, and makes one function call will beat a kernel that touches every element of a zero-padded matrix and makes four function calls — even when the latter is backed by BLAS.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="how-30-lines-of-eä-beat-numpy-by-6"><a class="header" href="#how-30-lines-of-eä-beat-numpy-by-6">How 30 Lines of Eä Beat NumPy by 6×</a></h1>
+<p><em>And why your framework is probably slower than a for-loop.</em></p>
+<hr />
+<h2 id="the-pitch-1"><a class="header" href="#the-pitch-1">The Pitch</a></h2>
+<p>Here's a fused multiply-add: <code>out[i] = a[i] * b[i] + c[i]</code>. Sixteen million times.</p>
+<p>NumPy does it in 46 milliseconds. Eä does it in 7 milliseconds. That's <strong>6.6× faster</strong>.</p>
+<p>Here's the kicker: the Eä kernel is 30 lines. The NumPy version is one line. And the one-liner loses because it's actually <em>two lines pretending to be one</em>.</p>
+<h2 id="the-numpy-version"><a class="header" href="#the-numpy-version">The NumPy Version</a></h2>
+<pre><code class="language-python">out = a * b + c
+</code></pre>
+<p>Simple. Elegant. Two full scans of 64 MB of data.</p>
+<p>NumPy computes <code>a * b</code> first, writes 64 MB to a temporary array, then reads it back to add <code>c</code>. That's 256 MB of memory traffic for 192 MB of actual data. Every element gets loaded, stored, loaded again, and stored again.</p>
+<p>On a modern CPU at ~35 GB/s memory bandwidth, that's a floor of about 7 milliseconds just for memory. NumPy hits 46 ms because it also has Python dispatch overhead, array allocation, and — crucially — it can't fuse the multiply and add into a single instruction.</p>
+<h2 id="the-eä-version"><a class="header" href="#the-eä-version">The Eä Version</a></h2>
+<pre><code>export func fma_f32x8(
+    a: *restrict f32,
+    b: *restrict f32,
+    c: *restrict f32,
+    out: *mut f32,
+    n: i32
+) {
+    let mut acc0: f32x8 = splat(0.0)
+    let mut acc1: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+    while i + 16 &lt;= n {
+        let va0: f32x8 = load(a, i)
+        let vb0: f32x8 = load(b, i)
+        let vc0: f32x8 = load(c, i)
+        store(out, i, fma(va0, vb0, vc0))
+
+        let va1: f32x8 = load(a, i + 8)
+        let vb1: f32x8 = load(b, i + 8)
+        let vc1: f32x8 = load(c, i + 8)
+        store(out, i + 8, fma(va1, vb1, vc1))
+
+        i = i + 16
+    }
+    while i &lt; n {
+        out[i] = a[i] * b[i] + c[i]
+        i = i + 1
+    }
+}
+</code></pre>
+<p>One pass. Load a, b, c, fuse multiply-add in a single <code>vfmadd</code> instruction, store result. Each element is touched once. Total memory traffic: 256 MB (same 4 arrays), but only one scan instead of two.</p>
+<p>The <code>*restrict</code> tells LLVM the arrays don't alias, enabling aggressive optimization. The <code>f32x8</code> processes 8 floats per instruction on AVX2. The 2× unroll (processing 16 elements per iteration) hides memory latency.</p>
+<p>That's it. No magic. Just not doing twice the work.</p>
+<h2 id="but-ill-just-use-ray"><a class="header" href="#but-ill-just-use-ray">"But I'll Just Use Ray"</a></h2>
+<p>We benchmarked that too. For science.</p>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Time</th><th>Throughput</th><th>vs NumPy</th></tr></thead><tbody>
+<tr><td>NumPy (multiply + add)</td><td>46,000 µs</td><td>5.6 GB/s</td><td>baseline</td></tr>
+<tr><td><strong>Eä (1 thread)</strong></td><td><strong>6,900 µs</strong></td><td><strong>37.0 GB/s</strong></td><td><strong>6.6×</strong></td></tr>
+<tr><td>Eä (2 threads)</td><td>6,500 µs</td><td>39.1 GB/s</td><td>7.0×</td></tr>
+<tr><td>Dask (2 chunks)</td><td>56,000 µs</td><td>4.6 GB/s</td><td>0.8×</td></tr>
+<tr><td>Ray (2 workers)</td><td>89,000 µs</td><td>2.9 GB/s</td><td>0.5×</td></tr>
+</tbody></table>
+</div>
+<p>Ray is <strong>twice as slow as NumPy</strong>. For FMA. On two cores. On the same machine.</p>
+<p>Why? Serialization. Ray pickles your 64 MB arrays, sends them to worker processes, unpickles them, runs NumPy (which does two passes), pickles the results, and sends them back. The actual compute takes 46 ms. The overhead takes another 43 ms.</p>
+<p>Dask is better — it chunks lazily and uses NumPy under the hood — but it still can't fuse operations or control SIMD width. It's paying for an abstraction layer over code that's already fast enough.</p>
+<p>The uncomfortable truth: for single-machine numerical work, <strong>a for-loop that touches memory once will beat a distributed framework that touches memory twice</strong>.</p>
+<h2 id="the-dot-product-story"><a class="header" href="#the-dot-product-story">The Dot Product Story</a></h2>
+<p>We weren't always winning. Our first benchmark had Eä's dot product at 0.27× of BLAS. Embarrassing.</p>
+<pre><code>// The naive version — DO NOT ship this
+export func dot_naive(a: *f32, b: *f32, n: i32) -&gt; f32 {
+    let mut acc: f32 = 0.0
+    let mut i: i32 = 0
+    while i &lt; n {
+        acc = acc + a[i] * b[i]
+        i = i + 1
+    }
+    return acc
+}
+</code></pre>
+<p>Single scalar accumulator. Each iteration depends on the previous one. The CPU stalls waiting for the addition to complete before it can start the next multiply. Classic dependency chain bottleneck.</p>
+<p>BLAS uses the trick every HPC programmer knows: <strong>multiple independent accumulators</strong>.</p>
+<pre><code>// The optimized version — ships in autoresearch/kernels/dot_product/
+export func dot_f32x8(a: *restrict f32, b: *restrict f32, len: i32) -&gt; f32 {
+    let mut acc0: f32x8 = splat(0.0)
+    let mut acc1: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+    while i + 32 &lt;= len {
+        acc0 = fma(load(a, i),      load(b, i),      acc0)
+        acc1 = fma(load(a, i + 8),  load(b, i + 8),  acc1)
+        acc0 = fma(load(a, i + 16), load(b, i + 16), acc0)
+        acc1 = fma(load(a, i + 24), load(b, i + 24), acc1)
+        i = i + 32
+    }
+    // ... tail handling ...
+    return reduce_add_fast(acc0 .+ acc1)
+}
+</code></pre>
+<p>Two f32x8 accumulators (<code>acc0</code>, <code>acc1</code>) with 4× unroll. The CPU has 16 FMA operations in flight that don't depend on each other. The result:</p>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Time</th><th>GB/s</th><th>vs BLAS</th></tr></thead><tbody>
+<tr><td>NumPy BLAS sdot</td><td>3,535 µs</td><td>35.9</td><td>baseline</td></tr>
+<tr><td>Eä naive (scalar)</td><td>13,222 µs</td><td>9.7</td><td>0.27×</td></tr>
+<tr><td>Eä f32x4 (1 acc)</td><td>4,474 µs</td><td>28.6</td><td>0.79×</td></tr>
+<tr><td><strong>Eä f32x8 (dual acc, 4× unroll)</strong></td><td><strong>3,500 µs</strong></td><td><strong>36.6</strong></td><td><strong>1.01×</strong></td></tr>
+</tbody></table>
+</div>
+<p>From 0.27× to 1.01× — by changing the loop structure, not the algorithm. Both versions compute the same dot product. The fast one just asks the CPU to think about 32 elements instead of 1.</p>
+<h2 id="what-youre-actually-seeing"><a class="header" href="#what-youre-actually-seeing">What You're Actually Seeing</a></h2>
+<p>This isn't "Eä is fast." Eä is a thin wrapper around LLVM. The FMA kernel compiles to about 12 assembly instructions in the inner loop. Eä's job is to make writing those 12 instructions feel like writing 30 lines of readable code instead of 200 lines of intrinsics.</p>
+<p>The real insight is about NumPy's cost model:</p>
+<div class="table-wrapper"><table><thead><tr><th>Operation</th><th>NumPy</th><th>Eä</th></tr></thead><tbody>
+<tr><td><code>a * b + c</code></td><td>2 passes over data</td><td>1 pass (fused FMA)</td></tr>
+<tr><td>Temporary arrays</td><td>1 allocation (64 MB)</td><td>0 allocations</td></tr>
+<tr><td>SIMD width</td><td>"whatever the compiler picks"</td><td>explicit f32x8</td></tr>
+<tr><td>Memory round-trips</td><td>2 (multiply result → RAM → add)</td><td>0</td></tr>
+</tbody></table>
+</div>
+<p>NumPy is fast <em>per operation</em>. But real workloads aren't one operation — they're pipelines. And every <code>np.</code> call is a full scan of your data.</p>
+<h2 id="when-eä-doesnt-win"><a class="header" href="#when-eä-doesnt-win">When Eä Doesn't Win</a></h2>
+<p>Bandwidth-bound operations with a single arithmetic op per element. Scaling an array:</p>
+<pre><code class="language-python">out = src * 2.5
+</code></pre>
+<p>NumPy: 5,631 µs. Eä: 6,138 µs. <strong>NumPy wins</strong> (by 8%).</p>
+<p>Both saturate memory bandwidth at ~22 GB/s. There's nothing to fuse. One multiply per element loaded. No amount of SIMD cleverness makes DRAM faster.</p>
+<p>This is the honest dividing line: if your inner loop does <strong>fewer than ~4 operations per element</strong>, NumPy is fast enough. If it does more, you're leaving performance on the table.</p>
+<h2 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h2>
+<pre><code class="language-bash">pip install ea-compiler
+</code></pre>
+<pre><code class="language-python">import ea
+
+kernel = ea.load("fma.ea")
+
+import numpy as np
+a = np.random.rand(16_000_000).astype(np.float32)
+b = np.random.rand(16_000_000).astype(np.float32)
+c = np.random.rand(16_000_000).astype(np.float32)
+out = np.zeros(16_000_000, dtype=np.float32)
+
+kernel.fma_f32x8(a, b, c, out)  # 7 ms instead of 46 ms
+</code></pre>
+<p>No Cython. No Numba. No C compiler. No JIT warmup. Write a <code>.ea</code> file, call <code>ea.load()</code>, pass NumPy arrays.</p>
+<p>The compiler handles SIMD, the binding handles types, and the hardware handles the rest.</p>
+<hr />
+<p><em>All benchmarks measured on a 2-core machine. Your numbers will be different, probably better (more cores = more bandwidth). The ratios hold. <a href="https://github.com/petlukk/eacompute">Source code and methodology on GitHub.</a></em></p>
+<p><em>Eä is open-source (Apache 2.0). The compiler is ~12,000 lines of Rust with 475+ tests. <a href="https://petlukk.github.io/eacompute/">Documentation.</a> <a href="https://github.com/petlukk/eacompute">GitHub.</a></em></p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="i-wrote-a-simd-compiler-in-12k-lines-of-rust"><a class="header" href="#i-wrote-a-simd-compiler-in-12k-lines-of-rust">I Wrote a SIMD Compiler in 12K Lines of Rust</a></h1>
+<p><em>And then an LLM optimized the kernels better than I could.</em></p>
+<hr />
+<h2 id="the-elevator-pitch"><a class="header" href="#the-elevator-pitch">The Elevator Pitch</a></h2>
+<p>Eä is a compiler for SIMD compute kernels. You write a <code>.ea</code> file with explicit vector types, compile it to a <code>.so</code>, and call it from Python with zero glue code. It generates native bindings for Python, Rust, C++, PyTorch, and CMake. It targets x86-64 (AVX2/AVX-512) and AArch64 (NEON).</p>
+<p>The compiler is 12,000 lines of Rust. It has 475 tests. It took me about a year. And I'm not a great developer — more of an ideas person who got very lucky with timing.</p>
+<h2 id="why"><a class="header" href="#why">Why</a></h2>
+<p>I kept writing the same code. Take a Python script, find the slow loop, rewrite it in C with SIMD intrinsics, write a ctypes wrapper, debug pointer arithmetic for two hours, get a 5× speedup, then do it all again next week for a different project.</p>
+<p>The friction wasn't the SIMD part. I actually like thinking about load/store patterns and accumulator strategies. The friction was everything <em>around</em> it: the header files, the build system, the ctypes declarations, the dtype validation. I spent 20% of my time on the kernel and 80% on plumbing.</p>
+<p>So I thought: what if a compiler could handle the plumbing?</p>
+<p>Write the kernel in a simple language. Compile to a shared library. Auto-generate the Python wrapper with type checking, length inference, and output allocation. One command. No Makefile.</p>
+<p>That was the idea. The tricky part was making it actually work.</p>
+<h2 id="the-first-attempt-10k-lines-of-pain"><a class="header" href="#the-first-attempt-10k-lines-of-pain">The First Attempt (10K Lines of Pain)</a></h2>
+<p>I should tell you about the compiler I wrote before this one.</p>
+<p>It also targeted LLVM. It also generated SIMD code. The codegen was 10,000 lines in a single file. The parser was hand-written but handled way too many features. There were no hard limits on file size, no style rules, no test discipline. I kept adding things — generics, a module system, type inference — because why not?</p>
+<p>The codebase became unmaintainable in about three months. I couldn't change anything without breaking something else. The codegen file had functions that called functions that called functions eight levels deep, and half of them were handling edge cases for features nobody used.</p>
+<p>I threw it away.</p>
+<p>The lesson: a SIMD kernel compiler doesn't need generics. It doesn't need modules. It doesn't need type inference. It needs to compile <code>load</code>, <code>store</code>, <code>fma</code>, and <code>splat</code> correctly, generate clean bindings, and stay small enough that one person can hold it in their head.</p>
+<h2 id="the-hard-rules"><a class="header" href="#the-hard-rules">The Hard Rules</a></h2>
+<p>For the second attempt, I wrote the rules before I wrote the code:</p>
+<ol>
+<li><strong>No file exceeds 500 lines.</strong> Split before you hit the limit.</li>
+<li><strong>Every feature proven by end-to-end test.</strong> If it's not tested, it doesn't exist.</li>
+<li><strong>No fake functions.</strong> If hardware doesn't support an operation, the compiler errors. No silent fallbacks.</li>
+<li><strong>No premature features.</strong> Don't build what isn't needed yet.</li>
+<li><strong>Delete, don't comment.</strong> Dead code gets removed.</li>
+</ol>
+<p>The 500-line rule was the hardest to follow and the most valuable. It forced me to split the type checker into 7 files, the codegen into 10 files, and the parser into 4 files. Each file does one thing. When I need to change how <code>store</code> is type-checked, I open <code>intrinsics_memory.rs</code> (309 lines) and the answer is right there. No grepping through 10K lines of spaghetti.</p>
+<p>Was it frustrating? Constantly. I'd be in the middle of adding a feature, hit 480 lines, and have to stop and refactor before I could finish. But every time I did, the code got better. The refactor always revealed something — a responsibility that should have been split earlier, a function that was doing two things.</p>
+<p>The "no premature features" rule was the other hard one. I kept wanting to add generics. Or a module system. Or traits. And every time, I'd ask myself: does this serve the goal of compiling SIMD kernels to callable shared libraries? The answer was always no. Eä is monomorphic by design. You write <code>f32x8</code>, you get <code>f32x8</code>. No hidden specialization, no surprise codegen, no combinatorial explosion of type instances.</p>
+<p>It's not a limitation — it's the point.</p>
+<h2 id="the-architecture"><a class="header" href="#the-architecture">The Architecture</a></h2>
+<pre><code>.ea → Lexer (logos) → Parser → Desugar → Type Check → Codegen (LLVM 18) → .o / .so
+                                                                          → .ea.json → ea bind
+</code></pre>
+<p>The most important insight: <strong>the desugarer is the most important pass.</strong></p>
+<p>Eä has a <code>kernel</code> construct that looks like this:</p>
+<pre><code>export kernel vscale(data: *f32, out: *mut f32, factor: f32)
+    over i in n step 8
+    tail scalar { out[i] = data[i] * factor }
+{
+    store(out, i, load(data, i) .* splat(factor))
+}
+</code></pre>
+<p>The desugarer turns this into a plain function with a while-loop and a tail loop. After desugaring, there are no kernels in the AST — just functions with loops. The type checker and codegen never see <code>kernel</code>. They only see <code>func</code>.</p>
+<p>This means every downstream pass is simpler. The type checker doesn't need special kernel logic. The codegen doesn't need to handle iteration. The desugarer handles all of it: injecting the <code>n</code> parameter, generating the loop variable, building the main loop with step, building the tail loop with the chosen strategy.</p>
+<p>The desugar pass is 340 lines. It eliminates an entire class of complexity from the remaining 11,660 lines.</p>
+<h2 id="the-binding-generators"><a class="header" href="#the-binding-generators">The Binding Generators</a></h2>
+<p>This is the part people don't expect. The compiler generates <code>.ea.json</code> metadata describing each exported function's signature. Then <code>ea bind</code> reads the JSON and generates idiomatic wrappers:</p>
+<pre><code class="language-bash">ea bind kernel.ea --python --rust --cpp --pytorch --cmake
+</code></pre>
+<p>The Python generator does something clever: <strong>length collapsing</strong>. If your kernel takes <code>(data: *f32, n: i32)</code>, the generated Python function takes just <code>data</code> — and fills <code>n</code> from <code>data.size</code> automatically. Output parameters marked with <code>out</code> get auto-allocated. The generated code checks dtypes, casts pointers, and handles all the ctypes plumbing that used to take me an afternoon.</p>
+<p>Five binding generators, each 200-460 lines. No serde — the JSON parser is hand-written (65 lines). The generated code is clean enough that you can read it, modify it, and learn from it.</p>
+<h2 id="error-messages-the-quiet-win"><a class="header" href="#error-messages-the-quiet-win">Error Messages (The Quiet Win)</a></h2>
+<p>I spent more time on error messages than on codegen.</p>
+<p>The compiler has "did you mean?" suggestions with Levenshtein distance, dot-operator hints ("cannot use '+' on vectors, use '.+'"), <code>let mut</code> suggestions, type conversion hints, multi-character underlines showing the full expression span, and clear messages that never leak internal compiler state.</p>
+<pre><code>kernel.ea:5:12  error[type]: cannot use '+' on vectors. Use '.+' for element-wise vector operations
+        return a + b
+               ^^^^^
+</code></pre>
+<p>Nobody notices good error messages. But everyone notices bad ones. The difference between a user who gives up and a user who fixes their code is often one helpful error message.</p>
+<h2 id="the-autoresearch-system-the-fun-part"><a class="header" href="#the-autoresearch-system-the-fun-part">The Autoresearch System (The Fun Part)</a></h2>
+<p>This is where it gets interesting.</p>
+<p>I built an automated optimization loop: an LLM reads the kernel source, the benchmark results, and the optimization history, then proposes a modified kernel. The system compiles it, benchmarks it across multiple data sizes (to catch cache-fitting illusions), verifies correctness against a C reference, and accepts or rejects the change. Then it iterates.</p>
+<p>The first time I ran it on our FMA kernel, it found a 10% improvement in 30 iterations. I thought the kernel was already optimal — I'd hand-tuned it, looked at the assembly, counted the instructions. The LLM found that 12× unrolling with stream stores beat my 4× unrolling with regular stores at DRAM scale.</p>
+<p>Then I let it run on the matrix multiplication kernel. It found a 56% improvement by switching from ijk to ikj loop order with 8× k-unrolling. I knew about loop tiling. I teach people about loop tiling. But I didn't think to apply it to that specific kernel because the matrices were "small enough." The LLM didn't have that assumption.</p>
+<p>27 benchmark kernels, all scored on largest-size (real-world) data with GB/s bandwidth metrics. The system includes bottleneck classification that tells the LLM whether a kernel is DRAM-bound (don't bother with compute tricks), compute-bound (try wider SIMD, more accumulators), or mixed. The biggest wins:</p>
+<div class="table-wrapper"><table><thead><tr><th>Kernel</th><th>Improvement</th><th>What Changed</th></tr></thead><tbody>
+<tr><td>Bitonic sort</td><td><strong>97%</strong></td><td>Replaced O(n²) Shellsort with sorting network</td></tr>
+<tr><td>Matmul</td><td><strong>56%</strong></td><td>k×8 unroll, cache-friendly access</td></tr>
+<tr><td>Conv2d 3×3</td><td><strong>47%</strong></td><td>4× column unroll, prefetch, restrict</td></tr>
+<tr><td>Edge detect</td><td><strong>41%</strong></td><td>f32x4 → f32x8 upgrade</td></tr>
+</tbody></table>
+</div>
+<p>The humbling lesson: I thought I was good at optimization. I'm okay. But an LLM with a benchmark harness and 50 iterations to burn is better, because it doesn't have assumptions about what "should" work.</p>
+<h2 id="the-numbers"><a class="header" href="#the-numbers">The Numbers</a></h2>
+<pre><code>Source:          12,000 lines of Rust
+Tests:           475 end-to-end
+Test method:     compile Eä → link with C → run binary → compare stdout
+CI:              x86-64, AArch64 (native), Windows
+LLVM backend:    18.1 via inkwell 0.8
+Binding targets: Python, Rust, C++, PyTorch, CMake
+</code></pre>
+<p>Performance on a real workload (16M float32 elements):</p>
+<pre><code>FMA (fused multiply-add):  6.6× faster than NumPy, 37.0 GB/s
+Dot product:               Matches BLAS at 36.6 GB/s
+SAXPY:                     2.1× faster than NumPy (single-pass fusion)
+</code></pre>
+<h2 id="what-id-do-differently"><a class="header" href="#what-id-do-differently">What I'd Do Differently</a></h2>
+<p><strong>Start with the binding generator.</strong> I built the compiler first and added bindings later. But the bindings are what make Eä useful. If I'd started by designing the ideal Python API and worked backward to the compiler, some early decisions would have been different.</p>
+<p><strong>Add <code>ea inspect</code> earlier.</strong> The instruction analysis tool that shows you vector/scalar instruction counts, FMA operations, load/store ratio, and performance hints. I added it late, but it would have caught optimization issues months earlier.</p>
+<p><strong>Write fewer features, sooner.</strong> Eä has <code>kernel</code>, <code>foreach</code>, <code>for</code>, <code>while</code>, structs, output annotations, conditional compilation, static assertions, and 30+ intrinsics. Most users need <code>kernel</code>, <code>load</code>, <code>store</code>, <code>fma</code>, and <code>splat</code>. I should have shipped a useful subset earlier and iterated based on real usage.</p>
+<h2 id="the-real-story"><a class="header" href="#the-real-story">The Real Story</a></h2>
+<p>I'm not a compiler engineer. I don't have a CS degree. I'm the kind of person who has ideas and wants to see if they work.</p>
+<p>What changed is the tooling. I built Eä with the help of AI models — Claude for the heavy lifting, my own judgment for the architecture and design decisions. The hard rules came from me (learned the painful way from the first attempt). The implementation speed came from having a capable coding assistant.</p>
+<p>A year ago, I couldn't have built this. Not because I didn't have the ideas — I had the ideas for years. But the gap between "I know what a SIMD kernel compiler should do" and "I have a working SIMD kernel compiler" was too wide for one person.</p>
+<p>That gap is smaller now. Not zero — you still need to know what you're building and why. The AI doesn't know your domain, your constraints, your users. But it can write the lexer while you think about the type system. It can generate 475 tests while you think about the binding API. It can iterate on a kernel 50 times while you sleep.</p>
+<p>My advice: if you have an idea that feels too ambitious for one person, the calculus has changed. Try it. Set hard rules so the codebase stays manageable. Write tests for everything. And don't be afraid to throw away your first attempt.</p>
+<p>I threw away 10K lines of bad compiler and started over. Best decision I made.</p>
+<hr />
+<p><em>Eä is open-source under Apache 2.0. <a href="https://github.com/petlukk/eacompute">GitHub</a> · <a href="https://petlukk.github.io/eacompute/">Documentation</a> · <a href="https://pypi.org/project/ea-compiler/">pip install ea-compiler</a></em></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+    </div>
+    </body>
+</html>
