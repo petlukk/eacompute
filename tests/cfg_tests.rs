@@ -90,6 +90,23 @@ mod tests {
     }
 
     #[test]
+    fn test_cfg_rejects_invalid_target() {
+        let source = r#"
+            #[cfg(arm64)]
+            export func f() -> i32 {
+                return 1
+            }
+        "#;
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let err = ea_compiler::parse(tokens).unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("unknown cfg target") && msg.contains("arm64"),
+            "expected 'unknown cfg target' error for 'arm64', got: {msg}"
+        );
+    }
+
+    #[test]
     fn test_cfg_no_attribute_always_included() {
         assert_output(
             r#"

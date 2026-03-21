@@ -42,6 +42,12 @@ impl Parser {
             let target =
                 self.expect_kind(TokenKind::Identifier, "expected target (x86_64 or aarch64)")?;
             let target_name = target.lexeme.clone();
+            if target_name != "x86_64" && target_name != "aarch64" {
+                return Err(CompileError::parse_error(
+                    format!("unknown cfg target '{target_name}', expected 'x86_64' or 'aarch64'"),
+                    target.position.clone(),
+                ));
+            }
             self.expect_kind(TokenKind::RightParen, "expected ')'")?;
             self.expect_kind(TokenKind::RightBracket, "expected ']'")?;
             Some(target_name)
