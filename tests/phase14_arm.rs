@@ -184,6 +184,45 @@ mod tests {
         );
     }
 
+    // === ARM: shuffle_bytes should compile ===
+
+    #[test]
+    fn test_arm_accepts_shuffle_bytes() {
+        try_compile(
+            r#"
+            export func f(table: u8x16, idx: u8x16) -> u8x16 {
+                return shuffle_bytes(table, idx)
+            }
+            "#,
+            &arm_opts(),
+        )
+        .expect("shuffle_bytes should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_shuffle_bytes_ir_contains_tbl() {
+        let source = r#"
+            export func f(table: u8x16, idx: u8x16) -> u8x16 {
+                return shuffle_bytes(table, idx)
+            }
+        "#;
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("shuf.ll");
+        let opts = CompileOptions {
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+            opt_level: 0,
+            ..CompileOptions::default()
+        };
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts)
+            .expect("shuffle_bytes IR compilation failed");
+
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
+        assert!(
+            ir.contains("aarch64.neon.tbl1"),
+            "expected aarch64.neon.tbl1 in IR, got:\n{ir}"
+        );
+    }
+
     // === ARM: gather/scatter should error ===
 
     #[test]

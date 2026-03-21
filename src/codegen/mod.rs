@@ -9,6 +9,8 @@ mod simd;
 #[cfg(feature = "llvm")]
 mod simd_arithmetic;
 #[cfg(feature = "llvm")]
+mod simd_dotprod;
+#[cfg(feature = "llvm")]
 mod simd_masked;
 #[cfg(feature = "llvm")]
 mod simd_math;

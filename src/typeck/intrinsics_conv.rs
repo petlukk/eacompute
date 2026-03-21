@@ -203,4 +203,41 @@ impl TypeChecker {
             )),
         }
     }
+
+    pub(super) fn check_shuffle_bytes(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "shuffle_bytes expects 2 arguments: (u8x16, u8x16)",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (
+                Type::Vector {
+                    elem: ea,
+                    width: 16,
+                },
+                Type::Vector {
+                    elem: eb,
+                    width: 16,
+                },
+            ) if matches!(ea.as_ref(), Type::U8) && matches!(eb.as_ref(), Type::U8) => {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::U8),
+                    width: 16,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("shuffle_bytes expects (u8x16, u8x16), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
 }
