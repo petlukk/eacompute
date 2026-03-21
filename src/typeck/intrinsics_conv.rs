@@ -166,4 +166,41 @@ impl TypeChecker {
             )),
         }
     }
+
+    pub(super) fn check_vdot_i32(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "vdot_i32 expects 2 arguments: (i8x16, i8x16)",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (
+                Type::Vector {
+                    elem: ea,
+                    width: 16,
+                },
+                Type::Vector {
+                    elem: eb,
+                    width: 16,
+                },
+            ) if matches!(ea.as_ref(), Type::I8) && matches!(eb.as_ref(), Type::I8) => {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::I32),
+                    width: 4,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("vdot_i32 expects (i8x16, i8x16), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
 }

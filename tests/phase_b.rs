@@ -358,6 +358,28 @@ mod tests {
         );
     }
 
+    // === vdot_i32: ARM-only, should error on x86 ===
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_x86_rejects_vdot_i32() {
+        use ea_compiler::{CompileOptions, OutputMode};
+
+        let source = r#"
+            export func f(a: i8x16, b: i8x16) -> i32x4 {
+                return vdot_i32(a, b)
+            }
+        "#;
+        let dir = tempfile::TempDir::new().unwrap();
+        let obj_path = dir.path().join("test.o");
+        let opts = CompileOptions::default();
+        let err =
+            ea_compiler::compile_with_options(source, &obj_path, OutputMode::ObjectFile, &opts)
+                .unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("ARM"), "expected ARM mention, got: {msg}");
+    }
+
     // === AVX-512: f32x16 ===
 
     /// Verify f32x16 type-checks and emits <16 x float> LLVM IR.

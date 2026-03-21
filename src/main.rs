@@ -111,6 +111,13 @@ fn main() {
             "--avx512" => {
                 extra_features = "+avx512f,+avx512vl,+avx512bw".to_string();
             }
+            "--dotprod" => {
+                if extra_features.is_empty() {
+                    extra_features = "+dotprod".to_string();
+                } else {
+                    extra_features = format!("{extra_features},+dotprod");
+                }
+            }
             other => {
                 eprintln!("error: unknown option '{other}'");
                 process::exit(1);
@@ -341,6 +348,12 @@ fn handle_inspect(args: &[String]) {
             target_triple = Some(val.to_string());
         } else if arg == "--avx512" {
             extra_features = "+avx512f,+avx512vl,+avx512bw".to_string();
+        } else if arg == "--dotprod" {
+            if extra_features.is_empty() {
+                extra_features = "+dotprod".to_string();
+            } else {
+                extra_features = format!("{extra_features},+dotprod");
+            }
         } else {
             eprintln!("error: unknown inspect option '{arg}'");
             process::exit(1);

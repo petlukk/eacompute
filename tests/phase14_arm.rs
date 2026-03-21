@@ -118,6 +118,72 @@ mod tests {
         assert!(msg.contains("x86"), "expected x86 mention, got: {msg}");
     }
 
+    // === ARM: vdot_i32 should compile ===
+
+    fn arm_dotprod_opts() -> CompileOptions {
+        CompileOptions {
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+            extra_features: "+dotprod".to_string(),
+            ..CompileOptions::default()
+        }
+    }
+
+    #[test]
+    fn test_arm_accepts_vdot_i32() {
+        try_compile(
+            r#"
+            export func f(a: i8x16, b: i8x16) -> i32x4 {
+                return vdot_i32(a, b)
+            }
+            "#,
+            &arm_dotprod_opts(),
+        )
+        .expect("vdot_i32 should compile on ARM with --dotprod");
+    }
+
+    #[test]
+    fn test_arm_rejects_vdot_i32_without_dotprod() {
+        let err = try_compile(
+            r#"
+            export func f(a: i8x16, b: i8x16) -> i32x4 {
+                return vdot_i32(a, b)
+            }
+            "#,
+            &arm_opts(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("--dotprod"),
+            "expected --dotprod hint, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_arm_vdot_i32_ir_contains_sdot() {
+        let source = r#"
+            export func f(a: i8x16, b: i8x16) -> i32x4 {
+                return vdot_i32(a, b)
+            }
+        "#;
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("vdot.ll");
+        let opts = CompileOptions {
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+            extra_features: "+dotprod".to_string(),
+            opt_level: 0,
+            ..CompileOptions::default()
+        };
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts)
+            .expect("vdot_i32 IR compilation failed");
+
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
+        assert!(
+            ir.contains("aarch64.neon.sdot"),
+            "expected aarch64.neon.sdot in IR, got:\n{ir}"
+        );
+    }
+
     // === ARM: gather/scatter should error ===
 
     #[test]

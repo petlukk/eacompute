@@ -372,6 +372,54 @@ impl<'ctx> CodeGenerator<'ctx> {
         Ok(result)
     }
 
+    /// vdot_i32(i8x16, i8x16) -> i32x4
+    /// ARM NEON dot product: signed × signed, groups of 4 products per i32 lane.
+    /// Maps to llvm.aarch64.neon.sdot.v4i32.v16i8 with a zero accumulator.
+    pub(super) fn compile_vdot_i32(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        if !self.is_arm {
+            return Err(CompileError::codegen_error(
+                "vdot_i32 is ARM-only (NEON dot product); no x86 equivalent",
+            ));
+        }
+        if !self.dotprod {
+            return Err(CompileError::codegen_error(
+                "vdot_i32 requires ARMv8.2-A dot product extension; compile with --dotprod",
+            ));
+        }
+        let a = self.compile_expr(&args[0], function)?.into_vector_value(); // i8x16
+        let b = self.compile_expr(&args[1], function)?.into_vector_value(); // i8x16
+
+        let i8x16_ty = self.context.i8_type().vec_type(16);
+        let i32x4_ty = self.context.i32_type().vec_type(4);
+
+        // Zero accumulator — caller does explicit .+ for accumulation
+        let zero_acc = i32x4_ty.const_zero();
+
+        let sdot_fn_type =
+            i32x4_ty.fn_type(&[i32x4_ty.into(), i8x16_ty.into(), i8x16_ty.into()], false);
+        let sdot = self
+            .module
+            .get_function("llvm.aarch64.neon.sdot.v4i32.v16i8")
+            .unwrap_or_else(|| {
+                self.module
+                    .add_function("llvm.aarch64.neon.sdot.v4i32.v16i8", sdot_fn_type, None)
+            });
+
+        let result = self
+            .builder
+            .build_call(sdot, &[zero_acc.into(), a.into(), b.into()], "vdot_i32")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .try_as_basic_value()
+            .basic()
+            .ok_or_else(|| CompileError::codegen_error("vdot_i32 did not return a value"))?;
+
+        Ok(result)
+    }
+
     /// movemask(vec) -> i32
     /// Extracts the MSB of each byte into a scalar bitmask.
     /// Accepts <N x i1> (from comparisons — sext to i8 first) or <N x i8> (raw byte vectors).
