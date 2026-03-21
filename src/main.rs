@@ -172,7 +172,7 @@ fn main() {
             .unwrap_or("output");
 
         if emit_llvm {
-            let ir_path = PathBuf::from(format!("{stem}.ll"));
+            let ir_path = PathBuf::from(output_exe.clone().unwrap_or_else(|| format!("{stem}.ll")));
             match ea_compiler::compile_with_options(&source, &ir_path, OutputMode::LlvmIr, &opts) {
                 Ok(()) => {
                     let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
@@ -187,7 +187,7 @@ fn main() {
         }
 
         if emit_asm {
-            let asm_path = PathBuf::from(format!("{stem}.s"));
+            let asm_path = PathBuf::from(output_exe.clone().unwrap_or_else(|| format!("{stem}.s")));
             match ea_compiler::compile_with_options(&source, &asm_path, OutputMode::Asm, &opts) {
                 Ok(()) => {
                     eprintln!("wrote {}", asm_path.display());
