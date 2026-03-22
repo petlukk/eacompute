@@ -1,4 +1,4 @@
-# Beating NumPy's BLAS at Constant-Q Transform with 80 Lines of Ea
+# Beating NumPy's BLAS at Constant-Q Transform with 80 Lines of Eä
 
 A SIMD kernel compiler, a DFT nobody asked for, and an honest benchmark.
 
@@ -12,11 +12,11 @@ The Constant-Q Transform (CQT) solves this. Each frequency bin gets its own wind
 
 The catch: FFT can't do CQT. You need a DFT-per-bin, which is O(n*k) instead of O(n log n). The standard NumPy approach is to build a complex kernel matrix and let BLAS handle it with a single matrix-vector multiply.
 
-We wanted to see if a hand-written SIMD kernel in [Ea](https://petlukk.github.io/eacompute/) could beat that.
+We wanted to see if a hand-written SIMD kernel in [Eä](https://petlukk.github.io/eacompute/) could beat that.
 
-## What is Ea
+## What is Eä
 
-Ea is a compute kernel compiler. You write `.ea` files in a C-like language with explicit SIMD vector types, compile them to native shared libraries, and call them from Python with NumPy arrays. No C toolchain, no Cython, no JIT warmup.
+Eä is a compute kernel compiler. You write `.ea` files in a C-like language with explicit SIMD vector types, compile them to native shared libraries, and call them from Python with NumPy arrays. No C toolchain, no Cython, no JIT warmup.
 
 ```
 export func scale(src: *f32, dst: *mut f32, factor: f32, n: i32) {
@@ -30,7 +30,7 @@ export func scale(src: *f32, dst: *mut f32, factor: f32, n: i32) {
 }
 ```
 
-Ea doesn't have sin or cos intrinsics. This is a deliberate design choice — trig is a policy decision (how many polynomial terms? what accuracy? what range?) that the language refuses to hide behind a simple-looking function call. If you need trig, you precompute tables in Python or write an explicit FMA polynomial chain.
+Eä doesn't have sin or cos intrinsics. This is a deliberate design choice — trig is a policy decision (how many polynomial terms? what accuracy? what range?) that the language refuses to hide behind a simple-looking function call. If you need trig, you precompute tables in Python or write an explicit FMA polynomial chain.
 
 This turns out to be the key insight for CQT.
 
@@ -46,7 +46,7 @@ A CQT with 84 bins (7 octaves, 12 semitones each) starting at C2 (65.4 Hz) at 44
 
 The quality factor Q = 16.8 (constant across all bins — that's what "constant-Q" means). Total work per frame: 200,476 FMA operations across all bins.
 
-The approach: precompute cos/sin twiddle factor tables in Python (one-time cost, 1.6 MB), then let Ea handle the per-frame FMA loop. We bake the Hann window directly into the twiddle factors during precomputation:
+The approach: precompute cos/sin twiddle factor tables in Python (one-time cost, 1.6 MB), then let Eä handle the per-frame FMA loop. We bake the Hann window directly into the twiddle factors during precomputation:
 
 ```python
 # Python: precompute once
@@ -59,7 +59,7 @@ for k in range(n_bins):
     sin_parts.append((window * -np.sin(angle)).astype(np.float32))
 ```
 
-This means the Ea kernel needs zero trig and zero windowing logic. The inner loop is pure FMA.
+This means the Eä kernel needs zero trig and zero windowing logic. The inner loop is pure FMA.
 
 ## The Kernel
 
@@ -132,7 +132,7 @@ export func cqt_fused(
 }
 ```
 
-The generated assembly for the hot loop is clean — the Ea compiler folds twiddle loads directly into `vfmadd231ps` memory operands, so the audio loads (`vmovups`) are the only explicit loads:
+The generated assembly for the hot loop is clean — the Eä compiler folds twiddle loads directly into `vfmadd231ps` memory operands, so the audio loads (`vmovups`) are the only explicit loads:
 
 ```asm
 .LBB0_4:
@@ -191,10 +191,10 @@ With N=500 iterations and inadequate warmup:
 
 | | Time |
 |---|---|
-| Ea CQT | 0.098 ms |
+| Eä CQT | 0.098 ms |
 | NumPy matmul | 0.085 ms |
 
-NumPy was winning. The 153x headline collapsed to **Ea being 1.1x slower**.
+NumPy was winning. The 153x headline collapsed to **Eä being 1.1x slower**.
 
 ### Fixing the Benchmark
 
@@ -204,10 +204,10 @@ With proper warmup (200+ iterations before timing):
 
 | | Min | Median |
 |---|---|---|
-| Ea CQT | 50 us | 55 us |
+| Eä CQT | 50 us | 55 us |
 | NumPy matmul | 95 us | 190 us |
 
-Ea was already **1.9x faster at best**, **3.5x at median**. The initial "1.1x slower" was just noise.
+Eä was already **1.9x faster at best**, **3.5x at median**. The initial "1.1x slower" was just noise.
 
 ## Optimization Attempts
 
@@ -255,29 +255,29 @@ Methodology: 10 trials of 2,000 iterations each, 200-iteration warmup per trial,
 
 | | Min | Median |
 |---|---|---|
-| **Ea CQT (fused SIMD)** | **~50 us** | **~55 us** |
+| **Eä CQT (fused SIMD)** | **~50 us** | **~55 us** |
 | NumPy CQT (BLAS matmul) | ~95 us | ~190 us |
 | NumPy FFT (wrong result) | ~106 us | ~118 us |
 
-**Ea vs BLAS: 1.9x faster (min), 3.5x (median)**
-**Ea vs FFT: 2.1x faster — and FFT gives the wrong answer**
+**Eä vs BLAS: 1.9x faster (min), 3.5x (median)**
+**Eä vs FFT: 2.1x faster — and FFT gives the wrong answer**
 **Throughput: 7.8 GFLOP/s**
 
-### Why Ea Wins
+### Why Eä Wins
 
-**1. Ea reads 4.8x less data.**
-The BLAS matmul uses a dense (84, 11339) complex64 matrix — 7.4 MB per frame, including all the zero-padded regions where shorter bins have no data. Ea's variable-length inner loops skip zeros entirely, touching only 200,476 real elements (1.6 MB).
+**1. Eä reads 4.8x less data.**
+The BLAS matmul uses a dense (84, 11339) complex64 matrix — 7.4 MB per frame, including all the zero-padded regions where shorter bins have no data. Eä's variable-length inner loops skip zeros entirely, touching only 200,476 real elements (1.6 MB).
 
 **2. Real vs complex arithmetic.**
-BLAS operates on complex64 (pairs of float32). Every BLAS FMA processes a complex multiply-add — 4 real multiplies and 2 real adds per element. Ea works directly in float32, doing 2 real FMAs per element (one for the cos component, one for sin).
+BLAS operates on complex64 (pairs of float32). Every BLAS FMA processes a complex multiply-add — 4 real multiplies and 2 real adds per element. Eä works directly in float32, doing 2 real FMAs per element (one for the cos component, one for sin).
 
 **3. Fused pipeline.**
-Ea does window + transform + magnitude + smoothing in one function call. NumPy requires 4 separate calls: `matmul`, `abs`, `maximum`, `copyto`. Each call crosses the Python/C boundary, allocates or writes to buffers, and makes a separate pass over the output data.
+Eä does window + transform + magnitude + smoothing in one function call. NumPy requires 4 separate calls: `matmul`, `abs`, `maximum`, `copyto`. Each call crosses the Python/C boundary, allocates or writes to buffers, and makes a separate pass over the output data.
 
 **4. Lower scheduling jitter.**
-One ctypes call has less interrupt surface than four NumPy calls. This explains the median gap (3.5x) being larger than the min gap (1.9x) — Ea's single kernel call is less likely to be interrupted mid-computation.
+One ctypes call has less interrupt surface than four NumPy calls. This explains the median gap (3.5x) being larger than the min gap (1.9x) — Eä's single kernel call is less likely to be interrupted mid-computation.
 
-### Why Ea Doesn't Win More
+### Why Eä Doesn't Win More
 
 The dual-accumulator inner loop is already close to optimal for AVX2. The generated assembly has 4 `vfmadd231ps` instructions per iteration with memory operands — the compiler is folding loads into FMAs. There's no instruction waste.
 
@@ -317,4 +317,4 @@ The first benchmark said 153x. That was a lie — comparing optimized SIMD again
 
 Three optimization attempts failed (quad accumulators, interleaved loads, merged tables) and one gave a modest 5% win (in-place smoothing). The lesson: when the compiler is already generating clean assembly, micro-optimizations rarely help. The wins came from the algorithm design — variable-length windows, baked-in windowing, fused smoothing — not from squeezing the inner loop.
 
-Ea didn't win by being a faster compiler. It won by making it easy to write the right algorithm. A kernel that skips zeros, fuses four operations, and makes one function call will beat a kernel that touches every element of a zero-padded matrix and makes four function calls — even when the latter is backed by BLAS.
+Eä didn't win by being a faster compiler. It won by making it easy to write the right algorithm. A kernel that skips zeros, fuses four operations, and makes one function call will beat a kernel that touches every element of a zero-padded matrix and makes four function calls — even when the latter is backed by BLAS.

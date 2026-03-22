@@ -1,6 +1,6 @@
 # ARM / NEON
 
-Ea supports AArch64 with NEON vector instructions. This page documents the differences from x86 and how to write portable kernels.
+Eä supports AArch64 with NEON vector instructions. This page documents the differences from x86 and how to write portable kernels.
 
 ## Vector Width
 
@@ -16,7 +16,7 @@ ARM NEON provides 128-bit vector registers. Only 128-bit vector types are availa
 | `u8x16` | `u8x32` |
 | `u16x8` | `u16x16` |
 
-Using a 256-bit or 512-bit vector type on an ARM target produces a compile error. This is intentional -- Ea does not silently fall back to scalar code.
+Using a 256-bit or 512-bit vector type on an ARM target produces a compile error. This is intentional -- Eä does not silently fall back to scalar code.
 
 ## Unavailable Intrinsics
 

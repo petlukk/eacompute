@@ -1,6 +1,6 @@
 # Python API
 
-The `ea` Python package (`pip install ea-compiler`) provides a high-level interface for compiling and loading Ea kernels.
+The `ea` Python package (`pip install ea-compiler`) provides a high-level interface for compiling and loading Eä kernels.
 
 ## Functions
 
@@ -105,7 +105,7 @@ The cache is invalidated by file modification time (mtime). If the source file i
 When a function parameter named `n`, `len`, `length`, `count`, `size`, or `num` appears immediately after a pointer parameter and has an integer type, the Python binding automatically fills it from the array's length. You do not need to pass it explicitly.
 
 ```
-// Ea source
+// Eä source
 export func scale(data: *mut f32, n: i32, factor: f32) { ... }
 ```
 
@@ -119,7 +119,7 @@ k.scale(data, factor=2.0)
 Parameters annotated with `out` and a `[cap: ...]` clause are automatically allocated by the Python binding and returned as the function's result.
 
 ```
-// Ea source
+// Eä source
 export func transform(input: *f32, n: i32, out result: *mut f32 [cap: n]) { ... }
 ```
 

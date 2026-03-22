@@ -1,6 +1,6 @@
 # Type System
 
-Ea is statically typed with no implicit conversions. Every variable, parameter, and expression has a concrete type known at compile time.
+Eä is statically typed with no implicit conversions. Every variable, parameter, and expression has a concrete type known at compile time.
 
 ## Scalar Types
 
@@ -62,7 +62,7 @@ Using these types without `--avx512` produces a compile error.
 
 ## Pointer Types
 
-Pointers represent caller-provided memory. Ea never allocates -- all memory comes from the host language.
+Pointers represent caller-provided memory. Eä never allocates -- all memory comes from the host language.
 
 | Syntax | Description |
 |--------|-------------|

@@ -1,8 +1,8 @@
-# Why Ea
+# Why Eä
 
-## What Ea is
+## What Eä is
 
-Ea is a compute kernel compiler. You write small, focused numerical routines in Ea's explicit syntax, compile them to native shared libraries (`.so` on Linux, `.dll` on Windows), and call them from Python, Rust, C++, or PyTorch via C ABI. Ea is not a general-purpose programming language. It has no standard library, no garbage collector, no runtime. It compiles kernels.
+Eä is a compute kernel compiler. You write small, focused numerical routines in Eä's explicit syntax, compile them to native shared libraries (`.so` on Linux, `.dll` on Windows), and call them from Python, Rust, C++, or PyTorch via C ABI. Eä is not a general-purpose programming language. It has no standard library, no garbage collector, no runtime. It compiles kernels.
 
 ## The problem
 
@@ -13,22 +13,22 @@ Python is slow for tight numerical loops. When you need to run a custom algorith
 - **Cython**: requires learning a hybrid language, managing build systems, and still gives you limited control over vectorization.
 - **Writing C extensions**: full control, but high friction. Manual Python/C bridging, header files, build scripts.
 
-Ea targets the gap: you want native-speed kernels with explicit SIMD, but you do not want to maintain a C build system.
+Eä targets the gap: you want native-speed kernels with explicit SIMD, but you do not want to maintain a C build system.
 
 ## The philosophy
 
-Ea is built on one principle: **explicit over implicit**.
+Eä is built on one principle: **explicit over implicit**.
 
 - If you write `f32x8`, you get 8-wide SIMD. The compiler will not silently fall back to scalar code.
 - If hardware does not support an operation (e.g., scatter without AVX-512), the compiler errors. It does not emit slow scalar code behind your back.
 - All types are explicit. No type inference. You see exactly what is happening.
-- All memory is caller-provided. Ea kernels never allocate. Pointers come from the host language.
+- All memory is caller-provided. Eä kernels never allocate. Pointers come from the host language.
 
 There are no hidden performance cliffs. The code you write is the code that runs.
 
-## When to use Ea
+## When to use Eä
 
-Ea excels at **compute-bound** workloads where you do significant work per element loaded from memory:
+Eä excels at **compute-bound** workloads where you do significant work per element loaded from memory:
 
 - **Stencil operations**: convolutions, blurs, edge detection -- each output element reads from multiple inputs.
 - **Fused multiply-add chains**: polynomial evaluation, IIR filters, dot products.
@@ -38,14 +38,14 @@ Ea excels at **compute-bound** workloads where you do significant work per eleme
 
 The common thread: you load data, do many arithmetic operations on it, then store results. The CPU spends most of its time computing, not waiting for memory.
 
-## When NOT to use Ea
+## When NOT to use Eä
 
-Ea is the wrong tool for:
+Eä is the wrong tool for:
 
-- **Bandwidth-bound workloads**: if you are just adding two arrays element-wise, NumPy already saturates memory bandwidth. Ea cannot make memory faster.
+- **Bandwidth-bound workloads**: if you are just adding two arrays element-wise, NumPy already saturates memory bandwidth. Eä cannot make memory faster.
 - **General programming**: no strings, no file I/O, no networking, no data structures beyond structs.
-- **Prototyping**: write your algorithm in Python first, profile it, then port the hot loop to Ea.
-- **GPU workloads**: Ea targets CPUs (x86-64 with AVX2/AVX-512, AArch64 with NEON).
+- **Prototyping**: write your algorithm in Python first, profile it, then port the hot loop to Eä.
+- **GPU workloads**: Eä targets CPUs (x86-64 with AVX2/AVX-512, AArch64 with NEON).
 
 A good rule of thumb: if your inner loop does fewer than 4 arithmetic operations per element loaded, NumPy is probably fast enough.
 
@@ -65,7 +65,7 @@ The generated `.ea.json` metadata file describes the function signatures. The `e
 
 ## Quick taste
 
-Here is a complete Ea kernel that scales an array of floats using 8-wide SIMD:
+Here is a complete Eä kernel that scales an array of floats using 8-wide SIMD:
 
 ```
 export kernel vscale(data: *f32, out: *mut f32, factor: f32)

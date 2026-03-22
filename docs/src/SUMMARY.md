@@ -2,7 +2,7 @@
 
 # Getting Started
 
-- [Make Python Fast in 60 Seconds](getting-started/index.md)
+- [Getting Started](getting-started/index.md)
 - [Installation](getting-started/install.md)
 - [Your First Kernel](getting-started/first-kernel.md)
 
@@ -33,7 +33,7 @@
 
 # Examples
 
-- [CQT Audio Visualizer: Beating BLAS with 80 Lines of Ea](examples/cqt-audio-visualizer.md)
+- [CQT Audio Visualizer: Beating BLAS with 80 Lines of Eä](examples/cqt-audio-visualizer.md)
 
 # Blog
 

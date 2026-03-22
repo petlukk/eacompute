@@ -1,6 +1,6 @@
 # Structs
 
-Structs in Ea are plain data containers with C-compatible memory layout. They have no methods, no constructors, no impl blocks. They exist so you can pass structured data between Ea kernels and host languages.
+Structs in Eä are plain data containers with C-compatible memory layout. They have no methods, no constructors, no impl blocks. They exist so you can pass structured data between Eä kernels and host languages.
 
 ## Defining a struct
 
@@ -12,7 +12,7 @@ struct Particle {
 }
 ```
 
-Fields can be any scalar type. The memory layout matches C struct layout, so a `Particle` in Ea is identical to:
+Fields can be any scalar type. The memory layout matches C struct layout, so a `Particle` in Eä is identical to:
 
 ```c
 typedef struct { float x; float y; float mass; } Particle;
@@ -20,7 +20,7 @@ typedef struct { float x; float y; float mass; } Particle;
 
 ## Creating and accessing
 
-Inside Ea functions, you create a struct with literal syntax and access fields with dot notation:
+Inside Eä functions, you create a struct with literal syntax and access fields with dot notation:
 
 ```
 func main() {
@@ -96,7 +96,7 @@ float result = sum_x(vecs, 3);  // 6.0
 
 ## Passing from Python
 
-Since Ea structs match C layout, you can use NumPy structured arrays or ctypes:
+Since Eä structs match C layout, you can use NumPy structured arrays or ctypes:
 
 ```python
 import numpy as np

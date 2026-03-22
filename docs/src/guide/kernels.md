@@ -1,6 +1,6 @@
 # Kernels
 
-The `kernel` construct is Ea's main abstraction for writing vectorized loops with automatic tail handling. It is syntactic sugar -- the compiler transforms it into a plain function with a while-loop before any further compilation.
+The `kernel` construct is Eä's main abstraction for writing vectorized loops with automatic tail handling. It is syntactic sugar -- the compiler transforms it into a plain function with a while-loop before any further compilation.
 
 ## Basic syntax
 

@@ -1,10 +1,10 @@
 # Image Processing
 
-Image processing is one of Ea's strongest use cases. Stencil operations (convolution, edge detection, blur) read multiple neighbors per output pixel, giving high arithmetic intensity that keeps the CPU compute-bound rather than memory-bound.
+Image processing is one of Eä's strongest use cases. Stencil operations (convolution, edge detection, blur) read multiple neighbors per output pixel, giving high arithmetic intensity that keeps the CPU compute-bound rather than memory-bound.
 
 ## Sobel edge detection
 
-The Sobel filter computes horizontal and vertical gradients using 3x3 stencils. Each output pixel reads 9 input values and performs 9 multiplications plus additions -- well above the threshold where Ea beats NumPy.
+The Sobel filter computes horizontal and vertical gradients using 3x3 stencils. Each output pixel reads 9 input values and performs 9 multiplications plus additions -- well above the threshold where Eä beats NumPy.
 
 The pattern: for each pixel, load the 3x3 neighborhood, multiply by Sobel coefficients, and sum:
 
@@ -94,11 +94,11 @@ A full pixel pipeline (load u8, process in f32, store u8) processes 4 pixels per
 
 ## Why image stencils are compute-bound
 
-A 3x3 convolution on a single-channel image performs 9 multiplications and 8 additions per output pixel, but only produces 1 output value. That is 17 arithmetic operations per output float -- far above the ~2 ops/element threshold where Ea's operation fusion matters.
+A 3x3 convolution on a single-channel image performs 9 multiplications and 8 additions per output pixel, but only produces 1 output value. That is 17 arithmetic operations per output float -- far above the ~2 ops/element threshold where Eä's operation fusion matters.
 
 For multi-channel images (RGB, RGBA), the arithmetic intensity is even higher because you process 3-4 channels per pixel position.
 
-Compare this to simple brightness adjustment (`pixel * 1.1`), which is 1 op per element -- bandwidth-bound, and NumPy handles it just as fast. See [Ea vs NumPy](numpy-comparison.md) for more on this distinction.
+Compare this to simple brightness adjustment (`pixel * 1.1`), which is 1 op per element -- bandwidth-bound, and NumPy handles it just as fast. See [Eä vs NumPy](numpy-comparison.md) for more on this distinction.
 
 ## Tips
 

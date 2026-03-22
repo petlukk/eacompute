@@ -1,6 +1,6 @@
 # Binding Annotations
 
-Ea generates language bindings from compiled kernel metadata. This page documents the annotation syntax, the `.ea.json` metadata format, and the available binding generators.
+Eä generates language bindings from compiled kernel metadata. This page documents the annotation syntax, the `.ea.json` metadata format, and the available binding generators.
 
 ## Output Annotations
 

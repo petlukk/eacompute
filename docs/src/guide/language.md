@@ -1,10 +1,10 @@
 # Language Basics
 
-This page covers Ea's scalar language features. For SIMD vector types and operations, see [SIMD](simd.md).
+This page covers Eä's scalar language features. For SIMD vector types and operations, see [SIMD](simd.md).
 
 ## Scalar types
 
-Ea has fixed-size numeric types. No type inference -- you always write the type explicitly.
+Eä has fixed-size numeric types. No type inference -- you always write the type explicitly.
 
 | Type | Description |
 |------|-------------|
@@ -72,7 +72,7 @@ let ne: bool = a != b
 
 ## Logical operators
 
-Ea uses words, not symbols, for logical operations:
+Eä uses words, not symbols, for logical operations:
 
 ```
 let both: bool = a > 0 and b > 0
@@ -232,7 +232,7 @@ It accepts integers, floats, bools, and string literals. It does not support for
 
 ## What does not exist
 
-Ea is deliberately minimal. The following features do not exist and are not planned:
+Eä is deliberately minimal. The following features do not exist and are not planned:
 
 - No generics or templates
 - No traits or interfaces

@@ -1,6 +1,6 @@
 # ML Preprocessing
 
-ML preprocessing pipelines often apply the same sequence of operations to every element in large arrays: normalize, scale, compute similarities. These are natural fits for Ea kernels because they fuse multiple operations into single-pass loops.
+ML preprocessing pipelines often apply the same sequence of operations to every element in large arrays: normalize, scale, compute similarities. These are natural fits for Eä kernels because they fuse multiple operations into single-pass loops.
 
 ## Normalize: zero-mean, unit-variance
 
@@ -10,7 +10,7 @@ The standard normalization `(x - mean) / std` requires two operations per elemen
 normalized = (data - mean) / std  # 2 passes, 2 temporaries
 ```
 
-Ea fuses this into one pass using FMA. Rewrite `(x - mean) / std` as `x * (1/std) + (-mean/std)`:
+Eä fuses this into one pass using FMA. Rewrite `(x - mean) / std` as `x * (1/std) + (-mean/std)`:
 
 ```
 export func normalize(
@@ -80,7 +80,7 @@ The CPU can execute `fma(a0, b0, acc0)` and `fma(a1, b1, acc1)` in parallel beca
 
 ## Cosine similarity
 
-Cosine similarity needs three reductions in one pass: `dot(a, b)`, `norm(a)`, and `norm(b)`. Computing these separately means three passes over the data. Ea fuses all three:
+Cosine similarity needs three reductions in one pass: `dot(a, b)`, `norm(a)`, and `norm(b)`. Computing these separately means three passes over the data. Eä fuses all three:
 
 ```
 export func cosine_similarity(a: *f32, b: *f32, out: *mut f32, n: i32) {
@@ -108,7 +108,7 @@ Three FMAs per loop iteration, all operating on the same loaded vectors. The dat
 
 ## Batch operations
 
-For ML workloads, you often apply the same operation to many rows. The Python side handles the loop over rows, calling the Ea kernel for each:
+For ML workloads, you often apply the same operation to many rows. The Python side handles the loop over rows, calling the Eä kernel for each:
 
 ```python
 import ea

@@ -1,6 +1,6 @@
 # All Intrinsics
 
-Complete reference for every built-in function in Ea.
+Complete reference for every built-in function in Eä.
 
 ## Memory
 

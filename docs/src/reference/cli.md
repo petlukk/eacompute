@@ -8,7 +8,7 @@ The `ea` binary provides three commands: compile (default), bind, and inspect.
 ea <file.ea> [flags]
 ```
 
-Compile an Ea source file to a native object file (`.o`) by default.
+Compile an Eä source file to a native object file (`.o`) by default.
 
 ### Flags
 

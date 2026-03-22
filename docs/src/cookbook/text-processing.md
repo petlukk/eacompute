@@ -50,7 +50,7 @@ The fast path processes 32 bytes in about 3 instructions. On typical text, 90-99
 
 ## Why not extract individual bit positions?
 
-Ea does not have shift operators (`<<`, `>>`), so you cannot extract individual bit positions from the movemask result. Instead, when a chunk contains matches, fall back to byte-by-byte scanning within that 32-byte window. This is still fast because:
+Eä has element-wise vector shift operators (`.<<`, `.>>`), but `movemask` returns a scalar `i32` bitmask. Extracting individual bit positions from a scalar requires scalar bitwise operations (`&`, `>>`) which work on `i32` values. When a chunk contains matches, fall back to byte-by-byte scanning within that 32-byte window. This is still fast because:
 
 - Hot chunks are rare (most text is not your target character)
 - The 32-byte scan is a tight loop that fits in L1 cache

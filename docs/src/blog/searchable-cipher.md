@@ -93,7 +93,7 @@ AMD EPYC 9354P, 2 vCPUs, 64 MB test data:
 
 | Implementation | GB/s |
 |---|---:|
-| **Ea fused decrypt+search** | **1.28** |
+| **Eä fused decrypt+search** | **1.28** |
 | Decrypt then C memmem (two passes) | 0.96 |
 | C memmem on plaintext (no decrypt) | 2.22 |
 
@@ -101,8 +101,8 @@ AMD EPYC 9354P, 2 vCPUs, 64 MB test data:
 
 | Implementation | GB/s |
 |---|---:|
-| **Ea v2 multi-needle (one pass)** | **0.52** |
-| Ea v1 called 3 times (three passes) | 0.41 |
+| **Eä v2 multi-needle (one pass)** | **0.52** |
+| Eä v1 called 3 times (three passes) | 0.41 |
 | C memmem x3 on plaintext | 0.78 |
 
 The fused approach is **1.34× faster** than decrypt-then-search for single needle, and **1.28× faster** than three separate searches for multi-needle. Not because our search is faster — it's because we only decrypt once.

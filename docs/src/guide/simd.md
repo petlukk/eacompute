@@ -1,6 +1,6 @@
 # SIMD
 
-SIMD (Single Instruction, Multiple Data) lets you process multiple values in a single CPU instruction. Ea gives you direct control over SIMD vectors -- what you write is what the CPU executes.
+SIMD (Single Instruction, Multiple Data) lets you process multiple values in a single CPU instruction. Eä gives you direct control over SIMD vectors -- what you write is what the CPU executes.
 
 ## Vector types
 
@@ -151,7 +151,7 @@ The SIMD version does 8 multiplications in a single instruction. On a workload t
 
 ## Hardware targeting
 
-By default, Ea targets AVX2 on x86-64 and NEON on AArch64. You can change this:
+By default, Eä targets AVX2 on x86-64 and NEON on AArch64. You can change this:
 
 ```bash
 # Default (AVX2 on x86)

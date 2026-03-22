@@ -1,10 +1,10 @@
-# Make Python Fast in 60 Seconds
+# Getting Started
 
-Eä is a compute kernel compiler. You write small, focused compute functions — Eä compiles them to native code and gives you Python functions that take NumPy arrays.
+Eä is a compute kernel compiler. You write small, focused compute functions, compile them to native code (`.so`/`.dll`), and call them from Python, Rust, C++, or PyTorch via C ABI.
 
-No C. No Cython. No Numba JIT warmup. Just fast code.
+No runtime, no GC, no standard library. Just kernels.
 
-## The pitch
+## Quick start
 
 ```bash
 pip install ea-compiler
@@ -34,16 +34,10 @@ dst = np.empty_like(src)
 kernel.scale(src, dst, factor=2.0)
 ```
 
-That's it. `ea.load()` compiles your kernel to a native shared library, caches it, and gives you a callable Python function. No Rust, no LLVM, no build step — just `pip install` and go.
-
-## What makes Eä different?
-
-- **Explicit SIMD.** You control the vector width. No auto-vectorization guessing.
-- **No runtime.** Compiles to plain `.so`/`.dll` files. Zero overhead beyond function call.
-- **No magic.** If your code looks like it processes 8 floats at a time, it does. No silent scalar fallback.
-- **Instant bindings.** Python, Rust, C++, PyTorch — generated from one source.
+`ea.load()` compiles your kernel to a native shared library, caches it, and gives you a callable Python function. No Rust, no LLVM, no build step.
 
 ## Next steps
 
-- [Install ea-compiler](install.md)
-- [Write your first SIMD kernel](first-kernel.md)
+- [Installation](install.md) — platform-specific setup
+- [Your First Kernel](first-kernel.md) — write a SIMD kernel step by step
+- [Why Eä?](../guide/why-ea.md) — design philosophy and when to use Eä
