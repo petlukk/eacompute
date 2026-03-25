@@ -192,7 +192,8 @@ pub fn compile_with_options(
 
             #[cfg(not(target_os = "windows"))]
             {
-                let status = std::process::Command::new("cc")
+                let cc = std::env::var("CC").unwrap_or_else(|_| "cc".to_string());
+                let status = std::process::Command::new(&cc)
                     .arg("-shared")
                     .arg(output_path)
                     .arg("-o")
