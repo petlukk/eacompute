@@ -127,6 +127,8 @@ pub enum TokenKind {
     F64,
     #[token("bool")]
     Bool,
+    #[token("i8x4")]
+    I8x4,
     #[token("i8x16")]
     I8x16,
     #[token("i8x32")]

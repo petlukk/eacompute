@@ -83,7 +83,7 @@ impl TypeChecker {
             Type::Vector { elem, width: 4 } if matches!(elem.as_ref(), Type::F32) => {
                 Ok(Type::Vector {
                     elem: Box::new(Type::I8),
-                    width: 16,
+                    width: 4,
                 })
             }
             _ => Err(CompileError::type_error(

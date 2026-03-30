@@ -340,7 +340,7 @@ mod tests {
             r#"
             func main() {
                 let v: f32x4 = [10.0, 20.0, -5.0, 127.0]f32x4
-                let n: i8x16 = narrow_f32x4_i8(v)
+                let n: i8x4 = narrow_f32x4_i8(v)
                 let a: i8 = n[0]
                 let b: i8 = n[1]
                 let c: i8 = n[2]
@@ -356,14 +356,12 @@ mod tests {
     }
 
     #[test]
-    fn test_narrow_f32x4_i8_store_zero_pad() {
+    fn test_narrow_f32x4_i8_store_writes_4_bytes() {
         let result = compile_and_link_with_c(
             r#"
             export func narrow_store(dst: *mut i8) {
-                let fill: i8x16 = splat(99)
-                store(dst, 0, fill)
                 let v: f32x4 = [1.0, 2.0, 3.0, 4.0]f32x4
-                let n: i8x16 = narrow_f32x4_i8(v)
+                let n: i8x4 = narrow_f32x4_i8(v)
                 store(dst, 0, n)
             }
             "#,
@@ -375,12 +373,15 @@ mod tests {
                 signed char buf[16];
                 memset(buf, 99, 16);
                 narrow_store(buf);
-                printf("%d\n%d\n%d\n", buf[4], buf[8], buf[15]);
+                // bytes 0-3: written by narrow_store
+                printf("%d %d %d %d\n", buf[0], buf[1], buf[2], buf[3]);
+                // bytes 4-7: must be untouched (99)
+                printf("%d %d %d %d\n", buf[4], buf[5], buf[6], buf[7]);
                 return 0;
             }
             "#,
         );
-        assert_eq!(result.stdout.trim(), "0\n0\n0");
+        assert_eq!(result.stdout.trim(), "1 2 3 4\n99 99 99 99");
     }
 
     #[test]

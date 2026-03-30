@@ -213,6 +213,7 @@ impl Parser {
 
         // Vector type tokens — single token like f32x4 gets one span
         let vec_types: &[(TokenKind, &str, usize)] = &[
+            (TokenKind::I8x4, "i8", 4),
             (TokenKind::I8x16, "i8", 16),
             (TokenKind::I8x32, "i8", 32),
             (TokenKind::U8x16, "u8", 16),
