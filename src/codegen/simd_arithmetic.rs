@@ -230,7 +230,7 @@ impl<'ctx> CodeGenerator<'ctx> {
         Ok(BasicValueEnum::VectorValue(i32xn))
     }
 
-    /// Narrow f32x4 to i8x16 (lower 4 elements are the narrowed values, rest undef).
+    /// Narrow f32x4 to i8x16 (lower 4 elements are the narrowed values, rest zero).
     pub(super) fn compile_narrow_f32x4_i8(
         &mut self,
         args: &[Expr],
@@ -252,8 +252,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             .build_int_truncate(i32x4, i8x4_type, "trunc_i32_i8")
             .map_err(|e| CompileError::codegen_error(e.to_string()))?;
 
-        // Expand to <16 x i8>: elements 0-3 from i8x4, elements 4-15 are undef
-        let undef4 = i8x4.get_type().get_undef();
+        // Expand to <16 x i8>: elements 0-3 from i8x4, elements 4-15 are zero
+        let zero4 = i8x4.get_type().const_zero();
         let mask_vals: Vec<_> = (0u64..16)
             .map(|i| {
                 let idx = if i < 4 { i } else { 4 }; // elements 4-15 come from undef4[0]
@@ -263,7 +263,7 @@ impl<'ctx> CodeGenerator<'ctx> {
         let mask = VectorType::const_vector(&mask_vals);
         let i8x16 = self
             .builder
-            .build_shuffle_vector(i8x4, undef4, mask, "narrow_expand")
+            .build_shuffle_vector(i8x4, zero4, mask, "narrow_expand")
             .map_err(|e| CompileError::codegen_error(e.to_string()))?;
 
         Ok(BasicValueEnum::VectorValue(i8x16))

@@ -356,6 +356,34 @@ mod tests {
     }
 
     #[test]
+    fn test_narrow_f32x4_i8_store_zero_pad() {
+        let result = compile_and_link_with_c(
+            r#"
+            export func narrow_store(dst: *mut i8) {
+                let fill: i8x16 = splat(99)
+                store(dst, 0, fill)
+                let v: f32x4 = [1.0, 2.0, 3.0, 4.0]f32x4
+                let n: i8x16 = narrow_f32x4_i8(v)
+                store(dst, 0, n)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            #include <string.h>
+            extern void narrow_store(signed char*);
+            int main() {
+                signed char buf[16];
+                memset(buf, 99, 16);
+                narrow_store(buf);
+                printf("%d\n%d\n%d\n", buf[4], buf[8], buf[15]);
+                return 0;
+            }
+            "#,
+        );
+        assert_eq!(result.stdout.trim(), "0\n0\n0");
+    }
+
+    #[test]
     fn test_roundtrip_u8_f32_u8() {
         assert_c_interop(
             r#"
