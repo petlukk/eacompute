@@ -50,6 +50,8 @@ impl TypeChecker {
             "maddubs_i32" => Some(self.check_maddubs_i32(args, locals, span)),
             "vdot_i32" => Some(self.check_vdot_i32(args, locals, span)),
             "smmla_i32" => Some(self.check_smmla_i32(args, locals, span)),
+            "ummla_i32" => Some(self.check_ummla_i32(args, locals, span)),
+            "usmmla_i32" => Some(self.check_usmmla_i32(args, locals, span)),
             "shuffle_bytes" => Some(self.check_shuffle_bytes(args, locals, span)),
             "prefetch" => Some(self.check_prefetch(args, locals, span)),
             "gather" => Some(self.check_gather(args, locals, span)),

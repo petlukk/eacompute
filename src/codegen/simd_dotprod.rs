@@ -260,6 +260,96 @@ impl<'ctx> CodeGenerator<'ctx> {
         Ok(result)
     }
 
+    /// ummla_i32(acc: i32x4, a: u8x16, b: u8x16) -> i32x4
+    /// ARM I8MM: unsigned x unsigned 2x8 x 8x2 matrix multiply-accumulate.
+    /// Maps to llvm.aarch64.neon.ummla.v4i32.v16i8
+    pub(super) fn compile_ummla_i32(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        if !self.is_arm {
+            return Err(CompileError::codegen_error(
+                "ummla_i32 is ARM-only (I8MM); no x86 equivalent",
+            ));
+        }
+        if !self.i8mm {
+            return Err(CompileError::codegen_error(
+                "ummla_i32 requires ARMv8.6-A I8MM extension; compile with --i8mm",
+            ));
+        }
+        let acc = self.compile_expr(&args[0], function)?.into_vector_value();
+        let a = self.compile_expr(&args[1], function)?.into_vector_value();
+        let b = self.compile_expr(&args[2], function)?.into_vector_value();
+
+        let i8x16_ty = self.context.i8_type().vec_type(16);
+        let i32x4_ty = self.context.i32_type().vec_type(4);
+
+        let fn_type = i32x4_ty.fn_type(&[i32x4_ty.into(), i8x16_ty.into(), i8x16_ty.into()], false);
+        let intrinsic = self
+            .module
+            .get_function("llvm.aarch64.neon.ummla.v4i32.v16i8")
+            .unwrap_or_else(|| {
+                self.module
+                    .add_function("llvm.aarch64.neon.ummla.v4i32.v16i8", fn_type, None)
+            });
+
+        let result = self
+            .builder
+            .build_call(intrinsic, &[acc.into(), a.into(), b.into()], "ummla_i32")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .try_as_basic_value()
+            .basic()
+            .ok_or_else(|| CompileError::codegen_error("ummla_i32 did not return a value"))?;
+
+        Ok(result)
+    }
+
+    /// usmmla_i32(acc: i32x4, a: u8x16, b: i8x16) -> i32x4
+    /// ARM I8MM: unsigned x signed 2x8 x 8x2 matrix multiply-accumulate.
+    /// Maps to llvm.aarch64.neon.usmmla.v4i32.v16i8
+    pub(super) fn compile_usmmla_i32(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        if !self.is_arm {
+            return Err(CompileError::codegen_error(
+                "usmmla_i32 is ARM-only (I8MM); no x86 equivalent",
+            ));
+        }
+        if !self.i8mm {
+            return Err(CompileError::codegen_error(
+                "usmmla_i32 requires ARMv8.6-A I8MM extension; compile with --i8mm",
+            ));
+        }
+        let acc = self.compile_expr(&args[0], function)?.into_vector_value();
+        let a = self.compile_expr(&args[1], function)?.into_vector_value();
+        let b = self.compile_expr(&args[2], function)?.into_vector_value();
+
+        let i8x16_ty = self.context.i8_type().vec_type(16);
+        let i32x4_ty = self.context.i32_type().vec_type(4);
+
+        let fn_type = i32x4_ty.fn_type(&[i32x4_ty.into(), i8x16_ty.into(), i8x16_ty.into()], false);
+        let intrinsic = self
+            .module
+            .get_function("llvm.aarch64.neon.usmmla.v4i32.v16i8")
+            .unwrap_or_else(|| {
+                self.module
+                    .add_function("llvm.aarch64.neon.usmmla.v4i32.v16i8", fn_type, None)
+            });
+
+        let result = self
+            .builder
+            .build_call(intrinsic, &[acc.into(), a.into(), b.into()], "usmmla_i32")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .try_as_basic_value()
+            .basic()
+            .ok_or_else(|| CompileError::codegen_error("usmmla_i32 did not return a value"))?;
+
+        Ok(result)
+    }
+
     /// shuffle_bytes(table: u8x16, indices: u8x16) -> u8x16
     /// Byte-level table lookup: output[i] = table[indices[i]].
     /// x86: SSSE3 pshufb. ARM: NEON tbl.

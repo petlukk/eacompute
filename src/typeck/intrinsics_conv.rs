@@ -260,6 +260,100 @@ impl TypeChecker {
         }
     }
 
+    /// ummla_i32(acc: i32x4, a: u8x16, b: u8x16) -> i32x4
+    /// ARM I8MM: unsigned x unsigned matrix multiply-accumulate.
+    pub(super) fn check_ummla_i32(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 3 {
+            return Err(CompileError::type_error(
+                "ummla_i32 expects 3 arguments: (i32x4, u8x16, u8x16)",
+                span.clone(),
+            ));
+        }
+        let acc = self.check_expr(&args[0], locals)?;
+        let a = self.check_expr(&args[1], locals)?;
+        let b = self.check_expr(&args[2], locals)?;
+        match (&acc, &a, &b) {
+            (
+                Type::Vector {
+                    elem: eacc,
+                    width: 4,
+                },
+                Type::Vector {
+                    elem: ea,
+                    width: 16,
+                },
+                Type::Vector {
+                    elem: eb,
+                    width: 16,
+                },
+            ) if matches!(eacc.as_ref(), Type::I32)
+                && matches!(ea.as_ref(), Type::U8)
+                && matches!(eb.as_ref(), Type::U8) =>
+            {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::I32),
+                    width: 4,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("ummla_i32 expects (i32x4, u8x16, u8x16), got ({acc}, {a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
+
+    /// usmmla_i32(acc: i32x4, a: u8x16, b: i8x16) -> i32x4
+    /// ARM I8MM: unsigned x signed matrix multiply-accumulate.
+    pub(super) fn check_usmmla_i32(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 3 {
+            return Err(CompileError::type_error(
+                "usmmla_i32 expects 3 arguments: (i32x4, u8x16, i8x16)",
+                span.clone(),
+            ));
+        }
+        let acc = self.check_expr(&args[0], locals)?;
+        let a = self.check_expr(&args[1], locals)?;
+        let b = self.check_expr(&args[2], locals)?;
+        match (&acc, &a, &b) {
+            (
+                Type::Vector {
+                    elem: eacc,
+                    width: 4,
+                },
+                Type::Vector {
+                    elem: ea,
+                    width: 16,
+                },
+                Type::Vector {
+                    elem: eb,
+                    width: 16,
+                },
+            ) if matches!(eacc.as_ref(), Type::I32)
+                && matches!(ea.as_ref(), Type::U8)
+                && matches!(eb.as_ref(), Type::I8) =>
+            {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::I32),
+                    width: 4,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("usmmla_i32 expects (i32x4, u8x16, i8x16), got ({acc}, {a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
+
     pub(super) fn check_shuffle_bytes(
         &self,
         args: &[Expr],
