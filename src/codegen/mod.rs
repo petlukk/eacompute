@@ -58,6 +58,7 @@ pub struct CodeGenerator<'ctx> {
     pub(crate) struct_fields: HashMap<String, Vec<(String, u32, Type)>>,
     pub(crate) avx512: bool,
     pub(crate) dotprod: bool,
+    pub(crate) i8mm: bool,
     pub(crate) is_arm: bool,
     pub(crate) constants: HashMap<String, (Type, Literal)>,
 }
@@ -96,6 +97,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             struct_fields: HashMap::new(),
             avx512: opts.extra_features.contains("avx512"),
             dotprod: opts.extra_features.contains("dotprod"),
+            i8mm: opts.extra_features.contains("i8mm"),
             is_arm: opts.is_arm(),
             constants: HashMap::new(),
         }

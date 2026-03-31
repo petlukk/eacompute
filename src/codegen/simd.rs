@@ -53,6 +53,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "maddubs_i16"
                 | "maddubs_i32"
                 | "vdot_i32"
+                | "smmla_i32"
                 | "shuffle_bytes"
                 | "to_f32"
                 | "to_f64"
@@ -116,6 +117,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "maddubs_i16" => self.compile_maddubs_i16(args, function),
             "maddubs_i32" => self.compile_maddubs_i32(args, function),
             "vdot_i32" => self.compile_vdot_i32(args, function),
+            "smmla_i32" => self.compile_smmla_i32(args, function),
             "shuffle_bytes" => self.compile_shuffle_bytes(args, function),
             "to_f32" | "to_f64" | "to_i32" | "to_i64" => {
                 self.compile_conversion(name, args, function)

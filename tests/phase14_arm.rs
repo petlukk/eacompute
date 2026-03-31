@@ -128,6 +128,14 @@ mod tests {
         }
     }
 
+    fn arm_i8mm_opts() -> CompileOptions {
+        CompileOptions {
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+            extra_features: "+i8mm".to_string(),
+            ..CompileOptions::default()
+        }
+    }
+
     #[test]
     fn test_arm_accepts_vdot_i32() {
         try_compile(
@@ -181,6 +189,87 @@ mod tests {
         assert!(
             ir.contains("aarch64.neon.sdot"),
             "expected aarch64.neon.sdot in IR, got:\n{ir}"
+        );
+    }
+
+    // === ARM: I8MM smmla_i32 ===
+
+    #[test]
+    fn test_arm_accepts_smmla_i32() {
+        let source = r#"
+            export func f(acc: i32x4, a: i8x16, b: i8x16) -> i32x4 {
+                return smmla_i32(acc, a, b)
+            }
+        "#;
+        try_compile(source, &arm_i8mm_opts()).expect("smmla_i32 should compile on ARM with --i8mm");
+    }
+
+    #[test]
+    fn test_arm_smmla_i32_ir_contains_smmla() {
+        let source = r#"
+            export func f(acc: i32x4, a: i8x16, b: i8x16) -> i32x4 {
+                return smmla_i32(acc, a, b)
+            }
+        "#;
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("smmla.ll");
+        let mut opts = arm_i8mm_opts();
+        opts.opt_level = 0;
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts)
+            .expect("smmla_i32 IR compilation failed");
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
+        assert!(
+            ir.contains("aarch64.neon.smmla"),
+            "expected aarch64.neon.smmla in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn test_arm_rejects_smmla_i32_without_i8mm() {
+        let err = try_compile(
+            r#"
+            export func f(acc: i32x4, a: i8x16, b: i8x16) -> i32x4 {
+                return smmla_i32(acc, a, b)
+            }
+            "#,
+            &arm_opts(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("--i8mm"), "expected --i8mm hint, got: {msg}");
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_x86_rejects_smmla_i32() {
+        let err = try_compile(
+            r#"
+            export func f(acc: i32x4, a: i8x16, b: i8x16) -> i32x4 {
+                return smmla_i32(acc, a, b)
+            }
+            "#,
+            &CompileOptions::default(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("ARM") || msg.contains("I8MM"),
+            "expected ARM/I8MM mention, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_smmla_i32_type_error_wrong_args() {
+        let source = r#"
+            export func f(acc: i32x4, a: u8x16, b: i8x16) -> i32x4 {
+                return smmla_i32(acc, a, b)
+            }
+        "#;
+        let err = try_compile(source, &arm_i8mm_opts()).unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("i8x16") || msg.contains("smmla_i32"),
+            "expected type error mentioning i8x16, got: {msg}"
         );
     }
 
