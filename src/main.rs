@@ -112,11 +112,7 @@ fn main() {
                 extra_features = "+avx512f,+avx512vl,+avx512bw".to_string();
             }
             "--dotprod" => {
-                if extra_features.is_empty() {
-                    extra_features = "+dotprod".to_string();
-                } else {
-                    extra_features = format!("{extra_features},+dotprod");
-                }
+                append_feature(&mut extra_features, "+dotprod");
             }
             other => {
                 eprintln!("error: unknown option '{other}'");
@@ -349,11 +345,7 @@ fn handle_inspect(args: &[String]) {
         } else if arg == "--avx512" {
             extra_features = "+avx512f,+avx512vl,+avx512bw".to_string();
         } else if arg == "--dotprod" {
-            if extra_features.is_empty() {
-                extra_features = "+dotprod".to_string();
-            } else {
-                extra_features = format!("{extra_features},+dotprod");
-            }
+            append_feature(&mut extra_features, "+dotprod");
         } else {
             eprintln!("error: unknown inspect option '{arg}'");
             process::exit(1);
@@ -495,4 +487,12 @@ fn write_or_exit(path: &str, content: &str) {
         process::exit(1);
     }
     eprintln!("wrote {path}");
+}
+
+fn append_feature(features: &mut String, feat: &str) {
+    if features.is_empty() {
+        *features = feat.to_string();
+    } else {
+        *features = format!("{features},{feat}");
+    }
 }
