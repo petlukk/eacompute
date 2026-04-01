@@ -253,6 +253,13 @@ impl<'ctx> CodeGenerator<'ctx> {
                         self.builder.build_int_unsigned_rem(*l, *r, "rem")
                     }
                     BinaryOp::Modulo => self.builder.build_int_signed_rem(*l, *r, "rem"),
+                    BinaryOp::BitAnd => self.builder.build_and(*l, *r, "and"),
+                    BinaryOp::BitOr => self.builder.build_or(*l, *r, "or"),
+                    BinaryOp::BitXor => self.builder.build_xor(*l, *r, "xor"),
+                    BinaryOp::ShiftLeft => self.builder.build_left_shift(*l, *r, "shl"),
+                    BinaryOp::ShiftRight => {
+                        self.builder.build_right_shift(*l, *r, !unsigned, "shr")
+                    }
                     _ => unreachable!(),
                 }
                 .map_err(|e| CompileError::codegen_error(e.to_string()))?;
