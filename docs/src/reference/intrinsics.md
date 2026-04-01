@@ -409,9 +409,12 @@ let result: u8x16 = shuffle_bytes(table, indices);
 
 | Intrinsic | Signature | Description | Platform |
 |---|---|---|---|
-| `round_f32x8_i32x8` | `(f32x8) -> i32x8` | Round-to-nearest-even float to integer. x86: `vcvtps2dq`. ARM: `fcvtns`. | cross-platform |
-| `pack_sat_i32x8` | `(i32x8, i32x8) -> i16x16` | Saturating narrow two i32x8 into i16x16. x86: `vpackssdw`. ARM: `sqxtn`. | cross-platform |
-| `pack_sat_i16x16` | `(i16x16, i16x16) -> i8x32` | Saturating narrow two i16x16 into i8x32. x86: `vpacksswb`. ARM: `sqxtn`. | cross-platform |
+| `round_f32x4_i32x4` | `(f32x4) -> i32x4` | Round-to-nearest-even. x86: `cvtps2dq`. ARM: `fcvtns`. | cross-platform |
+| `pack_sat_i32x4` | `(i32x4, i32x4) -> i16x8` | Saturating narrow. x86: `packssdw`. ARM: `sqxtn`. | cross-platform |
+| `pack_sat_i16x8` | `(i16x8, i16x8) -> i8x16` | Saturating narrow. x86: `packsswb`. ARM: `sqxtn`. | cross-platform |
+| `round_f32x8_i32x8` | `(f32x8) -> i32x8` | Round-to-nearest-even float to integer. x86: `vcvtps2dq` (AVX2). | x86-only |
+| `pack_sat_i32x8` | `(i32x8, i32x8) -> i16x16` | Saturating narrow two i32x8 into i16x16. x86: `vpackssdw` (AVX2). | x86-only |
+| `pack_sat_i16x16` | `(i16x16, i16x16) -> i8x32` | Saturating narrow two i16x16 into i8x32. x86: `vpacksswb` (AVX2). | x86-only |
 
 > **Lane order (x86):** `pack_sat_i32x8` and `pack_sat_i16x16` pack per 128-bit lane on x86, not sequentially. Output layout: `[a0-a3, b0-b3, a4-a7, b4-b7]`. This matches `maddubs_i32` lane layout -- no fixup shuffle needed in quant pipelines.
 

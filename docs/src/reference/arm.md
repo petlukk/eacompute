@@ -27,6 +27,9 @@ The following intrinsics are x86-only and produce a compile error on ARM:
 | `scatter(ptr, indices, values)` | AVX-512 only |
 | `maddubs_i16(a, b)` | x86 PMADDUBSW instruction, no NEON equivalent |
 | `maddubs_i32(a, b)` | x86 specific |
+| `round_f32x8_i32x8(a)` | AVX2 (256-bit); use `round_f32x4_i32x4` on ARM |
+| `pack_sat_i32x8(a, b)` | AVX2 (256-bit); use `pack_sat_i32x4` on ARM |
+| `pack_sat_i16x16(a, b)` | AVX2 (256-bit); use `pack_sat_i16x8` on ARM |
 
 All other intrinsics (loads, stores, math, reductions, splat, select, shuffle, conversions) work on ARM.
 
@@ -144,10 +147,12 @@ Both files export the same function signatures, so the calling code does not cha
 
 The `kernel` construct with `step(N)` lets you pick the vector width per file while keeping the loop logic identical. Write two `.ea` files with different step sizes and vector types, but the same exported function name and parameters.
 
-### 256-bit Operations on NEON
+### 128-bit Pack and Round on NEON
 
-NEON registers are 128-bit. Intrinsics that accept 256-bit vectors (`f32x8`, `i32x8`, `i16x16`, `i8x32`) automatically split inputs into 128-bit halves, operate on each half with NEON instructions, and concatenate the result. This applies to:
+For 128-bit NEON equivalents of the x86 AVX2 pack/round intrinsics, use the cross-platform 128-bit variants:
 
-- `round_f32x8_i32x8`: 2x `fcvtns.4s`
-- `pack_sat_i32x8`: 4x `sqxtn` (narrow each half of each argument)
-- `pack_sat_i16x16`: 4x `sqxtn` (narrow each half of each argument)
+- `round_f32x4_i32x4`: round-to-nearest-even `f32x4` to `i32x4`. x86: `cvtps2dq`. ARM: `fcvtns`.
+- `pack_sat_i32x4`: saturating narrow `(i32x4, i32x4) -> i16x8`. x86: `packssdw`. ARM: `sqxtn`.
+- `pack_sat_i16x8`: saturating narrow `(i16x8, i16x8) -> i8x16`. x86: `packsswb`. ARM: `sqxtn`.
+
+The 256-bit variants (`round_f32x8_i32x8`, `pack_sat_i32x8`, `pack_sat_i16x16`) are x86-only and produce a compile error on ARM.

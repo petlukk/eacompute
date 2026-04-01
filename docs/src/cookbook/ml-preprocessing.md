@@ -159,6 +159,35 @@ kernel quantize_dot(activations: *const f32, weights: *const u8, out: *mut i32, 
 
 Pipeline: 4x round + 2x pack_i32 + 1x pack_i16 = 7 instructions for 32 floats to 32 int8. Then 1x maddubs_i32 = 8 total.
 
+## Fused Quantization Pipeline (ARM)
+
+The 256-bit intrinsics above are x86-only. On ARM, use the 128-bit cross-platform variants to process 16 floats at a time:
+
+```
+kernel quantize_dot_arm(activations: *const f32, weights: *const i8, out: *mut i32, inv_scale: f32, n: i32) {
+    let f0: f32x4 = load(activations, i * 16);
+    let f1: f32x4 = load(activations, i * 16 + 4);
+    let f2: f32x4 = load(activations, i * 16 + 8);
+    let f3: f32x4 = load(activations, i * 16 + 12);
+
+    let scale: f32x4 = splat(inv_scale);
+    let i0: i32x4 = round_f32x4_i32x4(f0 .* scale);
+    let i1: i32x4 = round_f32x4_i32x4(f1 .* scale);
+    let i2: i32x4 = round_f32x4_i32x4(f2 .* scale);
+    let i3: i32x4 = round_f32x4_i32x4(f3 .* scale);
+
+    let s01: i16x8 = pack_sat_i32x4(i0, i1);
+    let s23: i16x8 = pack_sat_i32x4(i2, i3);
+    let quant: i8x16 = pack_sat_i16x8(s01, s23);
+
+    let w: i8x16 = load(weights, i * 16);
+    let dot: i32x4 = vdot_i32(splat(0), quant, w);
+    store(out, i * 4, dot);
+}
+```
+
+Compile with `--dotprod` for `vdot_i32`. The `round_f32x4_i32x4`, `pack_sat_i32x4`, and `pack_sat_i16x8` intrinsics are cross-platform and require no extra flags.
+
 ## Batch operations
 
 For ML workloads, you often apply the same operation to many rows. The Python side handles the loop over rows, calling the Eä kernel for each:
