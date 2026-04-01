@@ -58,6 +58,84 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
+    /// abs(x) — cross-platform absolute value.
+    /// Float: llvm.fabs.{type}. Signed integer vector: llvm.abs.{type}.
+    pub(super) fn compile_abs(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let val = self.compile_expr(&args[0], function)?;
+        match val {
+            BasicValueEnum::FloatValue(fv) => {
+                let float_ty = fv.get_type();
+                let intrinsic_name = if float_ty == self.context.f32_type() {
+                    "llvm.fabs.f32"
+                } else {
+                    "llvm.fabs.f64"
+                };
+                let fn_type = float_ty.fn_type(&[float_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function(intrinsic_name)
+                    .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
+                let result = self
+                    .builder
+                    .build_call(intrinsic, &[fv.into()], "abs")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| CompileError::codegen_error("abs did not return a value"))?;
+                Ok(result)
+            }
+            BasicValueEnum::VectorValue(vv) => {
+                let vec_ty = vv.get_type();
+                let elem = vec_ty.get_element_type();
+                if elem.is_float_type() {
+                    let intrinsic_name = self.llvm_vector_intrinsic_name("llvm.fabs", vec_ty);
+                    let fn_type = vec_ty.fn_type(&[vec_ty.into()], false);
+                    let intrinsic =
+                        self.module
+                            .get_function(&intrinsic_name)
+                            .unwrap_or_else(|| {
+                                self.module.add_function(&intrinsic_name, fn_type, None)
+                            });
+                    let result = self
+                        .builder
+                        .build_call(intrinsic, &[vv.into()], "vfabs")
+                        .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                        .try_as_basic_value()
+                        .basic()
+                        .ok_or_else(|| CompileError::codegen_error("abs did not return a value"))?;
+                    Ok(result)
+                } else {
+                    // Signed integer vector: llvm.abs.v{N}i{bits}
+                    let intrinsic_name = self.llvm_vector_intrinsic_name("llvm.abs", vec_ty);
+                    let i1_false = self.context.bool_type().const_int(0, false);
+                    let fn_type =
+                        vec_ty.fn_type(&[vec_ty.into(), self.context.bool_type().into()], false);
+                    let intrinsic =
+                        self.module
+                            .get_function(&intrinsic_name)
+                            .unwrap_or_else(|| {
+                                self.module.add_function(&intrinsic_name, fn_type, None)
+                            });
+                    let result = self
+                        .builder
+                        .build_call(intrinsic, &[vv.into(), i1_false.into()], "vabs")
+                        .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                        .try_as_basic_value()
+                        .basic()
+                        .ok_or_else(|| CompileError::codegen_error("abs did not return a value"))?;
+                    Ok(result)
+                }
+            }
+            _ => Err(CompileError::codegen_error(
+                "abs expects float or signed integer vector",
+            )),
+        }
+    }
+
     /// exp(x) for scalar f32/f64 and float vectors.
     pub(super) fn compile_exp(
         &mut self,

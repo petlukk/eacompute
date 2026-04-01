@@ -31,6 +31,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "load_masked"
                 | "store_masked"
                 | "fma"
+                | "abs"
                 | "sqrt"
                 | "rsqrt"
                 | "exp"
@@ -114,6 +115,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "load_masked" => self.compile_load_masked(args, type_hint, function),
             "store_masked" => self.compile_store_masked(args, function),
             "fma" => self.compile_fma(args, function),
+            "abs" => self.compile_abs(args, function),
             "sqrt" => self.compile_sqrt(args, function),
             "rsqrt" => self.compile_rsqrt(args, function),
             "exp" => self.compile_exp(args, function),

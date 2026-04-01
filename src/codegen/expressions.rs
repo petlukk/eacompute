@@ -164,7 +164,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 if name == "println" {
                     return self.compile_println(&args[0], function);
                 }
-                if Self::is_simd_intrinsic(name) {
+                if Self::is_simd_intrinsic(name) && !self.functions.contains_key(name) {
                     return self.compile_simd_call(name, args, type_hint, function);
                 }
 

@@ -23,6 +23,9 @@ impl TypeChecker {
             "load" => Some(self.check_load(args, locals, type_hint, span)),
             "store" => Some(self.check_store(args, locals, span)),
             "fma" => Some(self.check_fma(args, locals, span)),
+            "abs" if !self.functions.contains_key("abs") => {
+                Some(self.check_abs(args, locals, span))
+            }
             "sqrt" | "rsqrt" | "exp" => Some(self.check_sqrt(name, args, locals, span)),
             "to_f32" | "to_f64" | "to_i32" | "to_i64" => {
                 Some(self.check_conversion(name, args, locals, span))
@@ -257,6 +260,34 @@ impl TypeChecker {
             ));
         }
         Ok(Type::Void)
+    }
+
+    fn check_abs(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                "abs expects 1 argument",
+                span.clone(),
+            ));
+        }
+        let arg_type = self.check_expr(&args[0], locals)?;
+        match &arg_type {
+            Type::F32 | Type::F64 | Type::FloatLiteral => Ok(arg_type),
+            Type::Vector { elem, .. } if elem.is_float() => Ok(arg_type),
+            Type::Vector { elem, .. }
+                if matches!(elem.as_ref(), Type::I8 | Type::I16 | Type::I32) =>
+            {
+                Ok(arg_type)
+            }
+            _ => Err(CompileError::type_error(
+                format!("abs expects float or signed integer/vector argument, got {arg_type}"),
+                args[0].span().clone(),
+            )),
+        }
     }
 
     fn check_conversion(
