@@ -376,6 +376,38 @@ mod tests {
             .expect("i16x8 should compile on ARM");
     }
 
+    // === ARM: 64-bit vector types ===
+
+    #[test]
+    fn test_arm_accepts_i8x8() {
+        try_compile("export func f(v: i8x8) -> i8x8 { return v }", &arm_opts())
+            .expect("i8x8 should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_accepts_u8x8() {
+        try_compile("export func f(v: u8x8) -> u8x8 { return v }", &arm_opts())
+            .expect("u8x8 should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_accepts_i16x4() {
+        try_compile("export func f(v: i16x4) -> i16x4 { return v }", &arm_opts())
+            .expect("i16x4 should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_accepts_u16x4() {
+        try_compile("export func f(v: u16x4) -> u16x4 { return v }", &arm_opts())
+            .expect("u16x4 should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_accepts_i32x2() {
+        try_compile("export func f(v: i32x2) -> i32x2 { return v }", &arm_opts())
+            .expect("i32x2 should compile on ARM");
+    }
+
     // === x86: no regression — wider vectors still work ===
 
     #[test]
