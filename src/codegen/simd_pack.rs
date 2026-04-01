@@ -1,5 +1,5 @@
 use inkwell::types::VectorType;
-use inkwell::values::{BasicValueEnum, FunctionValue};
+use inkwell::values::{BasicValueEnum, FunctionValue, VectorValue};
 
 use crate::ast::Expr;
 use crate::error::CompileError;
@@ -7,6 +7,40 @@ use crate::error::CompileError;
 use super::CodeGenerator;
 
 impl<'ctx> CodeGenerator<'ctx> {
+    /// vpermq 0xD8 fixup: reorder 64-bit quadwords [0,2,1,3] to get sequential
+    /// lane order after AVX2 pack instructions (vpackssdw/vpacksswb).
+    fn permq_fixup(&self, vec: VectorValue<'ctx>) -> crate::error::Result<VectorValue<'ctx>> {
+        let i64x4_ty = self.context.i64_type().vec_type(4);
+        let orig_ty = vec.get_type();
+
+        // Bitcast to <4 x i64> for quadword-level shuffle
+        let as_i64 = self
+            .builder
+            .build_bit_cast(vec, i64x4_ty, "to_i64x4")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .into_vector_value();
+
+        // Shuffle [0, 2, 1, 3] = 0xD8
+        let indices: Vec<_> = [0u64, 2, 1, 3]
+            .iter()
+            .map(|&i| self.context.i32_type().const_int(i, false))
+            .collect();
+        let mask = VectorType::const_vector(&indices);
+        let permuted = self
+            .builder
+            .build_shuffle_vector(as_i64, as_i64, mask, "vpermq")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+        // Bitcast back to original type
+        let result = self
+            .builder
+            .build_bit_cast(permuted, orig_ty, "from_i64x4")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .into_vector_value();
+
+        Ok(result)
+    }
+
     /// round_f32x8_i32x8(a: f32x8) -> i32x8.
     /// Round-to-nearest (banker's rounding) converting float to int.
     /// x86-only: vcvtps2dq (llvm.x86.avx.cvt.ps2dq.256).
@@ -42,8 +76,8 @@ impl<'ctx> CodeGenerator<'ctx> {
     }
 
     /// pack_sat_i32x8(a: i32x8, b: i32x8) -> i16x16
-    /// Saturating narrow. Per-128-bit-lane packing on x86 (no fixup shuffle).
-    /// x86-only: vpackssdw (llvm.x86.avx2.packssdw).
+    /// Saturating narrow with lane fixup.
+    /// x86-only: vpackssdw + vpermq 0xD8 to fix cross-lane order.
     pub(super) fn compile_pack_sat_i32x8(
         &mut self,
         args: &[Expr],
@@ -65,7 +99,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             .get_function(intrinsic_name)
             .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
 
-        let result = self
+        let packed = self
             .builder
             .build_call(intrinsic, &[a.into(), b.into()], "pack_sat")
             .map_err(|e| CompileError::codegen_error(e.to_string()))?
@@ -73,12 +107,14 @@ impl<'ctx> CodeGenerator<'ctx> {
             .basic()
             .ok_or_else(|| CompileError::codegen_error("packssdw failed"))?;
 
-        Ok(result)
+        // vpermq 0xD8: fix cross-lane order [0,2,1,3] on 64-bit quadwords
+        let result = self.permq_fixup(packed.into_vector_value())?;
+        Ok(BasicValueEnum::VectorValue(result))
     }
 
     /// pack_sat_i16x16(a: i16x16, b: i16x16) -> i8x32
-    /// Saturating narrow. Per-128-bit-lane packing on x86 (no fixup shuffle).
-    /// x86-only: vpacksswb (llvm.x86.avx2.packsswb).
+    /// Saturating narrow with lane fixup.
+    /// x86-only: vpacksswb + vpermq 0xD8 to fix cross-lane order.
     pub(super) fn compile_pack_sat_i16x16(
         &mut self,
         args: &[Expr],
@@ -100,7 +136,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             .get_function(intrinsic_name)
             .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
 
-        let result = self
+        let packed = self
             .builder
             .build_call(intrinsic, &[a.into(), b.into()], "pack_sat")
             .map_err(|e| CompileError::codegen_error(e.to_string()))?
@@ -108,7 +144,9 @@ impl<'ctx> CodeGenerator<'ctx> {
             .basic()
             .ok_or_else(|| CompileError::codegen_error("packsswb failed"))?;
 
-        Ok(result)
+        // vpermq 0xD8: fix cross-lane order [0,2,1,3] on 64-bit quadwords
+        let result = self.permq_fixup(packed.into_vector_value())?;
+        Ok(BasicValueEnum::VectorValue(result))
     }
 
     /// round_f32x4_i32x4(a: f32x4) -> i32x4.

@@ -416,7 +416,7 @@ let result: u8x16 = shuffle_bytes(table, indices);
 | `pack_sat_i32x8` | `(i32x8, i32x8) -> i16x16` | Saturating narrow two i32x8 into i16x16. x86: `vpackssdw` (AVX2). | x86-only |
 | `pack_sat_i16x16` | `(i16x16, i16x16) -> i8x32` | Saturating narrow two i16x16 into i8x32. x86: `vpacksswb` (AVX2). | x86-only |
 
-> **Lane order (x86):** `pack_sat_i32x8` and `pack_sat_i16x16` pack per 128-bit lane on x86, not sequentially. Output layout: `[a0-a3, b0-b3, a4-a7, b4-b7]`. This matches `maddubs_i32` lane layout -- no fixup shuffle needed in quant pipelines.
+> `pack_sat_i32x8` and `pack_sat_i16x16` emit a `vpermq` fixup after the AVX2 pack to produce sequential output `[a0..a7, b0..b7]`, matching what the 128-bit variants produce.
 
 ## Debug
 
