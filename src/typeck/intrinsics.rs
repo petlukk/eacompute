@@ -68,6 +68,7 @@ impl TypeChecker {
             "sat_add" => Some(self.check_sat_add(args, locals, span)),
             "sat_sub" => Some(self.check_sat_sub(args, locals, span)),
             "abs_diff" => Some(self.check_abs_diff(args, locals, span)),
+            "round_f32x8_i32x8" => Some(self.check_round_f32x8_i32x8(args, locals, span)),
             "wmul_i16" => Some(self.check_wmul_i16(args, locals, span)),
             "wmul_u16" => Some(self.check_wmul_u16(args, locals, span)),
             "wmul_i32" => Some(self.check_wmul_i32(args, locals, span)),

@@ -5,6 +5,7 @@ mod intrinsics;
 mod intrinsics_conv;
 mod intrinsics_memory;
 mod intrinsics_neon;
+mod intrinsics_pack;
 mod intrinsics_simd;
 pub mod types;
 
