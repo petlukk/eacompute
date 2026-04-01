@@ -21,6 +21,8 @@ mod simd_pack;
 #[cfg(feature = "llvm")]
 mod simd_saturating;
 #[cfg(feature = "llvm")]
+mod simd_util;
+#[cfg(feature = "llvm")]
 mod simd_wmul;
 #[cfg(feature = "llvm")]
 mod statements;
