@@ -88,37 +88,29 @@ impl Parser {
         }
     }
 
+    fn additive_op(kind: &TokenKind) -> Option<BinaryOp> {
+        match kind {
+            TokenKind::Plus => Some(BinaryOp::Add),
+            TokenKind::Minus => Some(BinaryOp::Subtract),
+            TokenKind::PlusDot => Some(BinaryOp::AddDot),
+            TokenKind::MinusDot => Some(BinaryOp::SubDot),
+            TokenKind::AmpDot => Some(BinaryOp::AndDot),
+            TokenKind::PipeDot => Some(BinaryOp::OrDot),
+            TokenKind::CaretDot => Some(BinaryOp::XorDot),
+            TokenKind::ShiftLeftDot => Some(BinaryOp::ShiftLeftDot),
+            TokenKind::ShiftRightDot => Some(BinaryOp::ShiftRightDot),
+            TokenKind::Amp => Some(BinaryOp::BitAnd),
+            TokenKind::Pipe => Some(BinaryOp::BitOr),
+            TokenKind::Caret => Some(BinaryOp::BitXor),
+            TokenKind::ShiftLeft => Some(BinaryOp::ShiftLeft),
+            TokenKind::ShiftRight => Some(BinaryOp::ShiftRight),
+            _ => None,
+        }
+    }
+
     fn additive(&mut self) -> crate::error::Result<Expr> {
         let mut left = self.multiplicative()?;
-        while self.check(TokenKind::Plus)
-            || self.check(TokenKind::Minus)
-            || self.check(TokenKind::PlusDot)
-            || self.check(TokenKind::MinusDot)
-            || self.check(TokenKind::AmpDot)
-            || self.check(TokenKind::PipeDot)
-            || self.check(TokenKind::CaretDot)
-            || self.check(TokenKind::ShiftLeftDot)
-            || self.check(TokenKind::ShiftRightDot)
-        {
-            let op = if self.check(TokenKind::Plus) {
-                BinaryOp::Add
-            } else if self.check(TokenKind::Minus) {
-                BinaryOp::Subtract
-            } else if self.check(TokenKind::PlusDot) {
-                BinaryOp::AddDot
-            } else if self.check(TokenKind::MinusDot) {
-                BinaryOp::SubDot
-            } else if self.check(TokenKind::AmpDot) {
-                BinaryOp::AndDot
-            } else if self.check(TokenKind::PipeDot) {
-                BinaryOp::OrDot
-            } else if self.check(TokenKind::CaretDot) {
-                BinaryOp::XorDot
-            } else if self.check(TokenKind::ShiftLeftDot) {
-                BinaryOp::ShiftLeftDot
-            } else {
-                BinaryOp::ShiftRightDot
-            };
+        while let Some(op) = self.peek_kind().and_then(Self::additive_op) {
             let start = left.span().start.clone();
             self.advance();
             let right = self.multiplicative()?;

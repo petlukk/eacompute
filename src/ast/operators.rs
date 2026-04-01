@@ -30,6 +30,11 @@ pub enum BinaryOp {
     XorDot,
     ShiftLeftDot,
     ShiftRightDot,
+    BitAnd,
+    BitOr,
+    BitXor,
+    ShiftLeft,
+    ShiftRight,
 }
 
 impl fmt::Display for BinaryOp {
@@ -63,6 +68,11 @@ impl fmt::Display for BinaryOp {
             BinaryOp::XorDot => write!(f, ".^"),
             BinaryOp::ShiftLeftDot => write!(f, ".<<"),
             BinaryOp::ShiftRightDot => write!(f, ".>>"),
+            BinaryOp::BitAnd => write!(f, "&"),
+            BinaryOp::BitOr => write!(f, "|"),
+            BinaryOp::BitXor => write!(f, "^"),
+            BinaryOp::ShiftLeft => write!(f, "<<"),
+            BinaryOp::ShiftRight => write!(f, ">>"),
         }
     }
 }

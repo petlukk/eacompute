@@ -132,6 +132,22 @@ impl TypeChecker {
                             Ok(Type::Bool)
                         }
                     }
+                    BinaryOp::BitAnd
+                    | BinaryOp::BitOr
+                    | BinaryOp::BitXor
+                    | BinaryOp::ShiftLeft
+                    | BinaryOp::ShiftRight => {
+                        let result = types::unify_numeric(&lt, &rt, span.clone())?;
+                        if result.is_float() {
+                            return Err(CompileError::type_error(
+                                format!(
+                                    "bitwise operators require integer operands, got {lt} and {rt}"
+                                ),
+                                span.clone(),
+                            ));
+                        }
+                        Ok(result)
+                    }
                     BinaryOp::And | BinaryOp::Or => {
                         if !lt.is_bool() || !rt.is_bool() {
                             return Err(CompileError::type_error(

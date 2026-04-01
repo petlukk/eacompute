@@ -259,6 +259,16 @@ pub enum TokenKind {
     DotDot,
     #[token(".")]
     Dot,
+    #[token("<<")]
+    ShiftLeft,
+    #[token(">>")]
+    ShiftRight,
+    #[token("&")]
+    Amp,
+    #[token("|")]
+    Pipe,
+    #[token("^")]
+    Caret,
     #[token("&&")]
     AmpAmp,
     #[token("||")]
