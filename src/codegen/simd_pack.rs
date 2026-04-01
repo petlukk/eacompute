@@ -234,7 +234,7 @@ impl<'ctx> CodeGenerator<'ctx> {
     /// pack_sat_i16x16(a: i16x16, b: i16x16) -> i8x32
     /// Saturating narrow. Per-128-bit-lane packing on x86 (no fixup shuffle).
     /// x86: vpacksswb (llvm.x86.avx2.packsswb).
-    /// ARM: not supported (i16x16 is AVX2-only; rejected at type-check time).
+    /// ARM: split -> sqxtn -> concat.
     pub(super) fn compile_pack_sat_i16x16(
         &mut self,
         args: &[Expr],
@@ -244,28 +244,118 @@ impl<'ctx> CodeGenerator<'ctx> {
         let b = self.compile_expr(&args[1], function)?.into_vector_value();
 
         if self.is_arm {
-            return Err(CompileError::codegen_error(
-                "pack_sat_i16x16 requires AVX2; use i16x8 on ARM",
-            ));
+            let i16x8_ty = self.context.i16_type().vec_type(8);
+            let i8x8_ty = self.context.i8_type().vec_type(8);
+
+            let lo8: Vec<_> = (0u64..8)
+                .map(|i| self.context.i32_type().const_int(i, false))
+                .collect();
+            let hi8: Vec<_> = (8u64..16)
+                .map(|i| self.context.i32_type().const_int(i, false))
+                .collect();
+            let lo_mask = VectorType::const_vector(&lo8);
+            let hi_mask = VectorType::const_vector(&hi8);
+
+            let i16x16_undef = self.context.i16_type().vec_type(16).get_undef();
+            let a_lo = self
+                .builder
+                .build_shuffle_vector(a, i16x16_undef, lo_mask, "a_lo")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let a_hi = self
+                .builder
+                .build_shuffle_vector(a, i16x16_undef, hi_mask, "a_hi")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let b_lo = self
+                .builder
+                .build_shuffle_vector(b, i16x16_undef, lo_mask, "b_lo")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let b_hi = self
+                .builder
+                .build_shuffle_vector(b, i16x16_undef, hi_mask, "b_hi")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+            let sqxtn_name = "llvm.aarch64.neon.sqxtn.v8i8";
+            let sqxtn_ty = i8x8_ty.fn_type(&[i16x8_ty.into()], false);
+            let sqxtn = self
+                .module
+                .get_function(sqxtn_name)
+                .unwrap_or_else(|| self.module.add_function(sqxtn_name, sqxtn_ty, None));
+
+            let na_lo = self
+                .builder
+                .build_call(sqxtn, &[a_lo.into()], "na_lo")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("sqxtn failed"))?
+                .into_vector_value();
+            let na_hi = self
+                .builder
+                .build_call(sqxtn, &[a_hi.into()], "na_hi")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("sqxtn failed"))?
+                .into_vector_value();
+            let nb_lo = self
+                .builder
+                .build_call(sqxtn, &[b_lo.into()], "nb_lo")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("sqxtn failed"))?
+                .into_vector_value();
+            let nb_hi = self
+                .builder
+                .build_call(sqxtn, &[b_hi.into()], "nb_hi")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("sqxtn failed"))?
+                .into_vector_value();
+
+            let cat16: Vec<_> = (0u64..16)
+                .map(|i| self.context.i32_type().const_int(i, false))
+                .collect();
+            let cat16_mask = VectorType::const_vector(&cat16);
+            let a_i8x16 = self
+                .builder
+                .build_shuffle_vector(na_lo, na_hi, cat16_mask, "a_i8x16")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let b_i8x16 = self
+                .builder
+                .build_shuffle_vector(nb_lo, nb_hi, cat16_mask, "b_i8x16")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+            let cat32: Vec<_> = (0u64..32)
+                .map(|i| self.context.i32_type().const_int(i, false))
+                .collect();
+            let cat32_mask = VectorType::const_vector(&cat32);
+            let result = self
+                .builder
+                .build_shuffle_vector(a_i8x16, b_i8x16, cat32_mask, "pack_sat")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+            Ok(BasicValueEnum::VectorValue(result))
+        } else {
+            let i16x16_ty = self.context.i16_type().vec_type(16);
+            let i8x32_ty = self.context.i8_type().vec_type(32);
+            let intrinsic_name = "llvm.x86.avx2.packsswb";
+            let fn_type = i8x32_ty.fn_type(&[i16x16_ty.into(), i16x16_ty.into()], false);
+            let intrinsic = self
+                .module
+                .get_function(intrinsic_name)
+                .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
+
+            let result = self
+                .builder
+                .build_call(intrinsic, &[a.into(), b.into()], "pack_sat")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("packsswb failed"))?;
+
+            Ok(result)
         }
-
-        let i16x16_ty = self.context.i16_type().vec_type(16);
-        let i8x32_ty = self.context.i8_type().vec_type(32);
-        let intrinsic_name = "llvm.x86.avx2.packsswb";
-        let fn_type = i8x32_ty.fn_type(&[i16x16_ty.into(), i16x16_ty.into()], false);
-        let intrinsic = self
-            .module
-            .get_function(intrinsic_name)
-            .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
-
-        let result = self
-            .builder
-            .build_call(intrinsic, &[a.into(), b.into()], "pack_sat")
-            .map_err(|e| CompileError::codegen_error(e.to_string()))?
-            .try_as_basic_value()
-            .basic()
-            .ok_or_else(|| CompileError::codegen_error("packsswb failed"))?;
-
-        Ok(result)
     }
 }
