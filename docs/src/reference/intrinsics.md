@@ -260,8 +260,11 @@ Widen narrow integer lanes to wider float or integer lanes. Only the first N lan
 | `widen_u8_f32x4(v)` | `u8x16` | `f32x4` |
 | `widen_i8_f32x8(v)` | `i8x16` | `f32x8` |
 | `widen_u8_f32x8(v)` | `u8x16` | `f32x8` |
+| `widen_i8_f32x16(v)` | `i8x16` | `f32x16` |
+| `widen_u8_f32x16(v)` | `u8x16` | `f32x16` |
 | `widen_u8_i32x4(v)` | `u8x16` | `i32x4` |
 | `widen_u8_i32x8(v)` | `u8x16` | `i32x8` |
+| `widen_u8_i32x16(v)` | `u8x16` | `i32x16` |
 
 ```
 let pixels: f32x8 = widen_u8_f32x8(raw_bytes);
@@ -303,6 +306,68 @@ acc = acc .+ vdot_i32(a, b);  // accumulate explicitly
 
 | Signature | `(i8x16, i8x16) -> i32x4` |
 |-----------|---------------------------|
+
+### I8MM Matrix Multiply
+
+Matrix multiply-accumulate on int8 data. **ARM only** -- requires `--i8mm` flag (ARMv8.6-A I8MM extension). Available on Cortex-A78+, Apple M1+.
+
+| Intrinsic | Signature | Description |
+|-----------|-----------|-------------|
+| `smmla_i32(acc, a, b)` | `(i32x4, i8x16, i8x16) -> i32x4` | Signed x signed |
+| `ummla_i32(acc, a, b)` | `(i32x4, u8x16, u8x16) -> i32x4` | Unsigned x unsigned |
+| `usmmla_i32(acc, a, b)` | `(i32x4, u8x16, i8x16) -> i32x4` | Unsigned x signed |
+
+The accumulator is the first argument. Each instruction performs a 2x8 x 8x2 matrix multiply and adds the result to the accumulator. Use `splat(0)` as accumulator for the first iteration.
+
+```
+let zero: i32x4 = splat(0);
+let result: i32x4 = smmla_i32(zero, activations, weights);
+// accumulate over multiple chunks:
+acc = smmla_i32(acc, next_a, next_b);
+```
+
+### Widening Multiply
+
+Multiply narrow integer lanes and produce wider output. **ARM only** (base NEON). Input types are 64-bit NEON vectors.
+
+| Intrinsic | Signature | Description |
+|-----------|-----------|-------------|
+| `wmul_i16(a, b)` | `(i8x8, i8x8) -> i16x8` | Signed 8-bit to 16-bit |
+| `wmul_u16(a, b)` | `(u8x8, u8x8) -> u16x8` | Unsigned 8-bit to 16-bit |
+| `wmul_i32(a, b)` | `(i16x4, i16x4) -> i32x4` | Signed 16-bit to 32-bit |
+| `wmul_u32(a, b)` | `(u16x4, u16x4) -> u32x4` | Unsigned 16-bit to 32-bit |
+
+```
+let wide: i16x8 = wmul_i16(bytes_a, bytes_b);
+```
+
+### Absolute Difference
+
+Element-wise `|a - b|`. **ARM only** (base NEON). Maps to a single instruction (`sabd`/`uabd`).
+
+| Intrinsic | Supported Types |
+|-----------|----------------|
+| `abs_diff(a, b)` | `i8x16`, `u8x16`, `i16x8`, `u16x8`, `i32x4`, `u32x4` |
+
+```
+let diff: u8x16 = abs_diff(frame_a, frame_b);
+```
+
+### Saturating Arithmetic
+
+Addition and subtraction that clamp to the type's min/max instead of wrapping on overflow. **Cross-platform** (ARM NEON + x86 SSE2).
+
+| Intrinsic | Supported Types |
+|-----------|----------------|
+| `sat_add(a, b)` | `i8x16`, `u8x16`, `i16x8`, `u16x8` |
+| `sat_sub(a, b)` | `i8x16`, `u8x16`, `i16x8`, `u16x8` |
+
+Signed vs unsigned saturation is determined by the element type. Both arguments must have the same type.
+
+```
+let bright: u8x16 = sat_add(pixels, boost);    // clamps at 255, never wraps
+let dark: u8x16 = sat_sub(pixels, reduce);     // clamps at 0, never wraps
+```
 
 ### shuffle_bytes
 

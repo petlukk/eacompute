@@ -106,6 +106,30 @@ export func cosine_similarity(a: *f32, b: *f32, out: *mut f32, n: i32) {
 
 Three FMAs per loop iteration, all operating on the same loaded vectors. The data passes through cache once. NumPy would need `np.dot(a, b)`, `np.linalg.norm(a)`, and `np.linalg.norm(b)` -- three separate passes.
 
+## Int8 quantized inference (ARM)
+
+For quantized ML models using int8 weights, ARM provides dedicated matrix multiply instructions. On ARM with `--i8mm` (ARMv8.6-A, Cortex-A78+, Apple M1+):
+
+```
+export func matmul_i8_block(
+    acc: *mut i32, activations: *i8, weights: *i8, n: i32
+) {
+    let mut a: i32x4 = splat(0)
+    let mut i: i32 = 0
+    while i < n {
+        let act: i8x16 = load(activations, i)
+        let wgt: i8x16 = load(weights, i)
+        a = smmla_i32(a, act, wgt)
+        i = i + 16
+    }
+    store(acc, 0, a)
+}
+```
+
+`smmla_i32` performs a 2x8 x 8x2 signed matrix multiply-accumulate in one instruction. Also available: `ummla_i32` (unsigned x unsigned) and `usmmla_i32` (unsigned activations x signed weights, the most common ML pattern).
+
+For older ARM chips without I8MM, use `vdot_i32` (requires `--dotprod`, ARMv8.2-A) for 4-way dot products, or `wmul_i16`/`wmul_i32` for widening multiplies.
+
 ## Batch operations
 
 For ML workloads, you often apply the same operation to many rows. The Python side handles the loop over rows, calling the Eä kernel for each:

@@ -88,6 +88,25 @@ export func f32_to_u8(src: *f32, dst: *mut u8, n: i32) {
 
 `narrow_f32x4_i8(ptr, offset, vec)` converts 4 floats to integers, saturates to 0-255, and stores 4 bytes. Always clamp before narrowing to avoid overflow.
 
+### Saturating arithmetic on u8 pixels
+
+For operations that stay in u8 (brightness adjustment, blending), use `sat_add` and `sat_sub` instead of widening to f32. These clamp to 0-255 in a single instruction on both ARM (NEON) and x86 (SSE2):
+
+```
+export func brighten(src: *u8, dst: *mut u8, boost: u8, n: i32) {
+    let b: u8x16 = splat(boost)
+    let mut i: i32 = 0
+    while i < n {
+        let pixels: u8x16 = load_u8x16(src, i)
+        let bright: u8x16 = sat_add(pixels, b)
+        store(dst, i, bright)
+        i = i + 16
+    }
+}
+```
+
+No widening, no clamping, no f32 intermediates. One load, one saturating add, one store. This also works with `i8x16` (signed), `i16x8`, and `u16x8`.
+
 ### Putting it together
 
 A full pixel pipeline (load u8, process in f32, store u8) processes 4 pixels per iteration on both x86 and ARM. Use `f32x4` for the pipeline to keep it portable -- `f32x8` works only on x86 with AVX2.
@@ -99,6 +118,25 @@ A 3x3 convolution on a single-channel image performs 9 multiplications and 8 add
 For multi-channel images (RGB, RGBA), the arithmetic intensity is even higher because you process 3-4 channels per pixel position.
 
 Compare this to simple brightness adjustment (`pixel * 1.1`), which is 1 op per element -- bandwidth-bound, and NumPy handles it just as fast. See [Eä vs NumPy](numpy-comparison.md) for more on this distinction.
+
+## Frame differencing with abs_diff (ARM)
+
+On ARM, `abs_diff` computes per-pixel absolute difference in a single NEON instruction. Useful for motion detection and video anomaly:
+
+```
+export func frame_diff(a: *u8, b: *u8, dst: *mut u8, n: i32) {
+    let mut i: i32 = 0
+    while i < n {
+        let fa: u8x16 = load_u8x16(a, i)
+        let fb: u8x16 = load_u8x16(b, i)
+        let diff: u8x16 = abs_diff(fa, fb)
+        store(dst, i, diff)
+        i = i + 16
+    }
+}
+```
+
+`abs_diff` supports `i8x16`, `u8x16`, `i16x8`, `u16x8`, `i32x4`, `u32x4`. ARM-only -- on x86, use `max(a .- b, b .- a)` explicitly.
 
 ## Tips
 
