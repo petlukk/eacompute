@@ -210,14 +210,19 @@ impl<'ctx> CodeGenerator<'ctx> {
         &mut self,
         args: &[Expr],
         output_width: u32,
+        byte_offset: u32,
         function: FunctionValue<'ctx>,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         let vec16 = self.compile_expr(&args[0], function)?.into_vector_value();
 
-        // Extract lower N bytes via shufflevector: <16 x i8> → <N x i8>
+        // Extract N bytes starting at byte_offset via shufflevector: <16 x i8> → <N x i8>
         let undef16 = vec16.get_type().get_undef();
         let mask_vals: Vec<_> = (0u64..output_width as u64)
-            .map(|i| self.context.i32_type().const_int(i, false))
+            .map(|i| {
+                self.context
+                    .i32_type()
+                    .const_int(byte_offset as u64 + i, false)
+            })
             .collect();
         let mask = VectorType::const_vector(&mask_vals);
         let lower_n = self
