@@ -270,6 +270,31 @@ Widen narrow integer lanes to wider float or integer lanes. Only the first N lan
 let pixels: f32x8 = widen_u8_f32x8(raw_bytes);
 ```
 
+#### Lane-offset variants
+
+The `_4`, `_8`, `_12` suffixes select which 4 bytes of the input to widen, eliminating the need for a shuffle before widening:
+
+| Intrinsic | Input | Output | Bytes used |
+|-----------|-------|--------|------------|
+| `widen_u8_f32x4_4(v)` | `u8x16` | `f32x4` | 4-7 |
+| `widen_u8_f32x4_8(v)` | `u8x16` | `f32x4` | 8-11 |
+| `widen_u8_f32x4_12(v)` | `u8x16` | `f32x4` | 12-15 |
+| `widen_i8_f32x4_4(v)` | `i8x16` | `f32x4` | 4-7 |
+| `widen_i8_f32x4_8(v)` | `i8x16` | `f32x4` | 8-11 |
+| `widen_i8_f32x4_12(v)` | `i8x16` | `f32x4` | 12-15 |
+| `widen_u8_i32x4_4(v)` | `u8x16` | `i32x4` | 4-7 |
+| `widen_u8_i32x4_8(v)` | `u8x16` | `i32x4` | 8-11 |
+| `widen_u8_i32x4_12(v)` | `u8x16` | `i32x4` | 12-15 |
+
+Process all 16 bytes of a u8x16 as 4 groups of f32x4 without any shuffles:
+
+```
+let f0: f32x4 = widen_u8_f32x4(v)      // bytes 0-3
+let f1: f32x4 = widen_u8_f32x4_4(v)    // bytes 4-7
+let f2: f32x4 = widen_u8_f32x4_8(v)    // bytes 8-11
+let f3: f32x4 = widen_u8_f32x4_12(v)   // bytes 12-15
+```
+
 ### Narrowing Conversions
 
 Convert wider lanes to narrower lanes, with clamping and rounding.
