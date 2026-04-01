@@ -135,4 +135,63 @@ mod tests {
             "expected ARM rejection of i16x16, got: {msg}"
         );
     }
+
+    // --- 128-bit round/pack tests (cross-platform) ---
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_round_f32x4_i32x4_x86() {
+        try_compile(
+            r#"export func f(a: f32x4) -> i32x4 { return round_f32x4_i32x4(a) }"#,
+            &CompileOptions::default(),
+        )
+        .expect("round_f32x4_i32x4 should compile on x86");
+    }
+
+    #[test]
+    fn test_round_f32x4_i32x4_arm() {
+        try_compile(
+            r#"export func f(a: f32x4) -> i32x4 { return round_f32x4_i32x4(a) }"#,
+            &arm_opts(),
+        )
+        .expect("round_f32x4_i32x4 should compile on ARM");
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_pack_sat_i32x4_x86() {
+        try_compile(
+            r#"export func f(a: i32x4, b: i32x4) -> i16x8 { return pack_sat_i32x4(a, b) }"#,
+            &CompileOptions::default(),
+        )
+        .expect("pack_sat_i32x4 should compile on x86");
+    }
+
+    #[test]
+    fn test_pack_sat_i32x4_arm() {
+        try_compile(
+            r#"export func f(a: i32x4, b: i32x4) -> i16x8 { return pack_sat_i32x4(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("pack_sat_i32x4 should compile on ARM");
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_pack_sat_i16x8_x86() {
+        try_compile(
+            r#"export func f(a: i16x8, b: i16x8) -> i8x16 { return pack_sat_i16x8(a, b) }"#,
+            &CompileOptions::default(),
+        )
+        .expect("pack_sat_i16x8 should compile on x86");
+    }
+
+    #[test]
+    fn test_pack_sat_i16x8_arm() {
+        try_compile(
+            r#"export func f(a: i16x8, b: i16x8) -> i8x16 { return pack_sat_i16x8(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("pack_sat_i16x8 should compile on ARM");
+    }
 }
