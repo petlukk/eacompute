@@ -111,4 +111,28 @@ mod tests {
             "expected ARM rejection of i32x8, got: {msg}"
         );
     }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_pack_sat_i16x16_x86() {
+        try_compile(
+            r#"export func f(a: i16x16, b: i16x16) -> i8x32 { return pack_sat_i16x16(a, b) }"#,
+            &CompileOptions::default(),
+        )
+        .expect("pack_sat_i16x16 should compile on x86");
+    }
+
+    #[test]
+    fn test_pack_sat_i16x16_arm_rejects_wide_vector() {
+        let err = try_compile(
+            r#"export func f(a: i16x16, b: i16x16) -> i8x32 { return pack_sat_i16x16(a, b) }"#,
+            &arm_opts(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("AVX2") || msg.contains("i16x8"),
+            "expected ARM rejection of i16x16, got: {msg}"
+        );
+    }
 }

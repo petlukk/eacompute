@@ -230,4 +230,42 @@ impl<'ctx> CodeGenerator<'ctx> {
             Ok(result)
         }
     }
+
+    /// pack_sat_i16x16(a: i16x16, b: i16x16) -> i8x32
+    /// Saturating narrow. Per-128-bit-lane packing on x86 (no fixup shuffle).
+    /// x86: vpacksswb (llvm.x86.avx2.packsswb).
+    /// ARM: not supported (i16x16 is AVX2-only; rejected at type-check time).
+    pub(super) fn compile_pack_sat_i16x16(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let a = self.compile_expr(&args[0], function)?.into_vector_value();
+        let b = self.compile_expr(&args[1], function)?.into_vector_value();
+
+        if self.is_arm {
+            return Err(CompileError::codegen_error(
+                "pack_sat_i16x16 requires AVX2; use i16x8 on ARM",
+            ));
+        }
+
+        let i16x16_ty = self.context.i16_type().vec_type(16);
+        let i8x32_ty = self.context.i8_type().vec_type(32);
+        let intrinsic_name = "llvm.x86.avx2.packsswb";
+        let fn_type = i8x32_ty.fn_type(&[i16x16_ty.into(), i16x16_ty.into()], false);
+        let intrinsic = self
+            .module
+            .get_function(intrinsic_name)
+            .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
+
+        let result = self
+            .builder
+            .build_call(intrinsic, &[a.into(), b.into()], "pack_sat")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .try_as_basic_value()
+            .basic()
+            .ok_or_else(|| CompileError::codegen_error("packsswb failed"))?;
+
+        Ok(result)
+    }
 }
