@@ -354,6 +354,78 @@ impl TypeChecker {
         }
     }
 
+    pub(super) fn check_sat_add(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "sat_add expects 2 arguments",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        if a != b {
+            return Err(CompileError::type_error(
+                format!("sat_add arguments must have the same type, got ({a}, {b})"),
+                span.clone(),
+            ));
+        }
+        match &a {
+            Type::Vector { elem, width }
+                if matches!(
+                    (elem.as_ref(), *width),
+                    (Type::I8, 16) | (Type::U8, 16) | (Type::I16, 8) | (Type::U16, 8)
+                ) =>
+            {
+                Ok(a)
+            }
+            _ => Err(CompileError::type_error(
+                format!("sat_add supports i8x16, u8x16, i16x8, u16x8; got {a}"),
+                span.clone(),
+            )),
+        }
+    }
+
+    pub(super) fn check_sat_sub(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "sat_sub expects 2 arguments",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        if a != b {
+            return Err(CompileError::type_error(
+                format!("sat_sub arguments must have the same type, got ({a}, {b})"),
+                span.clone(),
+            ));
+        }
+        match &a {
+            Type::Vector { elem, width }
+                if matches!(
+                    (elem.as_ref(), *width),
+                    (Type::I8, 16) | (Type::U8, 16) | (Type::I16, 8) | (Type::U16, 8)
+                ) =>
+            {
+                Ok(a)
+            }
+            _ => Err(CompileError::type_error(
+                format!("sat_sub supports i8x16, u8x16, i16x8, u16x8; got {a}"),
+                span.clone(),
+            )),
+        }
+    }
+
     pub(super) fn check_shuffle_bytes(
         &self,
         args: &[Expr],

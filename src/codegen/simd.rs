@@ -65,6 +65,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "movemask"
                 | "min"
                 | "max"
+                | "sat_add"
+                | "sat_sub"
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
@@ -129,6 +131,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             "prefetch" => self.compile_prefetch(args, function),
             "movemask" => self.compile_movemask(args, function),
             "min" | "max" => self.compile_min_max(args, name, function),
+            "sat_add" => self.compile_sat_add(args, function),
+            "sat_sub" => self.compile_sat_sub(args, function),
             _ if typeck_types::parse_typed_load(name).is_some() => {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)

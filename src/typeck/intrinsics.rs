@@ -53,6 +53,8 @@ impl TypeChecker {
             "ummla_i32" => Some(self.check_ummla_i32(args, locals, span)),
             "usmmla_i32" => Some(self.check_usmmla_i32(args, locals, span)),
             "shuffle_bytes" => Some(self.check_shuffle_bytes(args, locals, span)),
+            "sat_add" => Some(self.check_sat_add(args, locals, span)),
+            "sat_sub" => Some(self.check_sat_sub(args, locals, span)),
             "prefetch" => Some(self.check_prefetch(args, locals, span)),
             "gather" => Some(self.check_gather(args, locals, span)),
             "scatter" => Some(self.check_scatter(args, locals, span)),
