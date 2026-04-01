@@ -82,6 +82,9 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "wmul_u16"
                 | "wmul_i32"
                 | "wmul_u32"
+                | "round_f32x8_i32x8"
+                | "pack_sat_i32x8"
+                | "pack_sat_i16x16"
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
@@ -163,6 +166,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "wmul_u16" => self.compile_wmul_u16(args, function),
             "wmul_i32" => self.compile_wmul_i32(args, function),
             "wmul_u32" => self.compile_wmul_u32(args, function),
+            "round_f32x8_i32x8" => self.compile_round_f32x8_i32x8(args, function),
             _ if typeck_types::parse_typed_load(name).is_some() => {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)

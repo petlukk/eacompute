@@ -17,6 +17,8 @@ mod simd_math;
 #[cfg(feature = "llvm")]
 mod simd_memory;
 #[cfg(feature = "llvm")]
+mod simd_pack;
+#[cfg(feature = "llvm")]
 mod simd_saturating;
 #[cfg(feature = "llvm")]
 mod simd_wmul;
