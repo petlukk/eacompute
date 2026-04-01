@@ -408,6 +408,38 @@ mod tests {
             .expect("i32x2 should compile on ARM");
     }
 
+    // === x86: 64-bit vectors rejected ===
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_x86_rejects_i8x8() {
+        let err = try_compile(
+            "export func f(v: i8x8) -> i8x8 { return v }",
+            &CompileOptions::default(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("NEON") || msg.contains("ARM") || msg.contains("64-bit"),
+            "expected NEON/ARM/64-bit mention, got: {msg}"
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_x86_rejects_u16x4() {
+        let err = try_compile(
+            "export func f(v: u16x4) -> u16x4 { return v }",
+            &CompileOptions::default(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("NEON") || msg.contains("ARM") || msg.contains("64-bit"),
+            "expected NEON/ARM/64-bit mention, got: {msg}"
+        );
+    }
+
     // === x86: no regression — wider vectors still work ===
 
     #[test]

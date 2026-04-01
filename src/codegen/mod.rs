@@ -333,9 +333,6 @@ impl<'ctx> CodeGenerator<'ctx> {
     }
 
     pub(crate) fn validate_type_for_target(&self, ty: &Type) -> crate::error::Result<()> {
-        if !self.is_arm {
-            return Ok(());
-        }
         if let Type::Vector { elem, width } = ty {
             let elem_bits = match elem.as_ref() {
                 Type::F32 | Type::I32 | Type::U32 => 32,
@@ -345,7 +342,21 @@ impl<'ctx> CodeGenerator<'ctx> {
                 _ => return Ok(()),
             };
             let total_bits = elem_bits * width;
-            if total_bits > 128 {
+            if !self.is_arm && total_bits == 64 {
+                let type_name = format!("{ty}");
+                return Err(CompileError::codegen_error(format!(
+                    "{type_name} is a 64-bit NEON type; not available on x86 — use {} or wider",
+                    match elem.as_ref() {
+                        Type::I8 => "i8x16",
+                        Type::U8 => "u8x16",
+                        Type::I16 => "i16x8",
+                        Type::U16 => "u16x8",
+                        Type::I32 => "i32x4",
+                        _ => "a 128-bit vector",
+                    }
+                )));
+            }
+            if self.is_arm && total_bits > 128 {
                 let type_name = format!("{ty}");
                 let hint = match (elem.as_ref(), total_bits) {
                     (Type::F32, 256) => "f32x8 requires AVX2; use f32x4 on ARM",
