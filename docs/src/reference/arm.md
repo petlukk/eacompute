@@ -143,3 +143,11 @@ Both files export the same function signatures, so the calling code does not cha
 ### Strategy 3: Use the kernel construct
 
 The `kernel` construct with `step(N)` lets you pick the vector width per file while keeping the loop logic identical. Write two `.ea` files with different step sizes and vector types, but the same exported function name and parameters.
+
+### 256-bit Operations on NEON
+
+NEON registers are 128-bit. Intrinsics that accept 256-bit vectors (`f32x8`, `i32x8`, `i16x16`, `i8x32`) automatically split inputs into 128-bit halves, operate on each half with NEON instructions, and concatenate the result. This applies to:
+
+- `round_f32x8_i32x8`: 2x `fcvtns.4s`
+- `pack_sat_i32x8`: 4x `sqxtn` (narrow each half of each argument)
+- `pack_sat_i16x16`: 4x `sqxtn` (narrow each half of each argument)
