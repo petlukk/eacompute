@@ -167,6 +167,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "wmul_i32" => self.compile_wmul_i32(args, function),
             "wmul_u32" => self.compile_wmul_u32(args, function),
             "round_f32x8_i32x8" => self.compile_round_f32x8_i32x8(args, function),
+            "pack_sat_i32x8" => self.compile_pack_sat_i32x8(args, function),
             _ if typeck_types::parse_typed_load(name).is_some() => {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)

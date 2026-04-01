@@ -102,4 +102,132 @@ impl<'ctx> CodeGenerator<'ctx> {
             Ok(result)
         }
     }
+
+    /// pack_sat_i32x8(a: i32x8, b: i32x8) -> i16x16
+    /// Saturating narrow. Per-128-bit-lane packing on x86 (no fixup shuffle).
+    /// x86: vpackssdw (llvm.x86.avx2.packssdw).
+    /// ARM: split -> sqxtn -> concat.
+    pub(super) fn compile_pack_sat_i32x8(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let a = self.compile_expr(&args[0], function)?.into_vector_value();
+        let b = self.compile_expr(&args[1], function)?.into_vector_value();
+
+        if self.is_arm {
+            let i32x4_ty = self.context.i32_type().vec_type(4);
+            let i16x4_ty = self.context.i16_type().vec_type(4);
+
+            let lo4: Vec<_> = (0u64..4)
+                .map(|i| self.context.i32_type().const_int(i, false))
+                .collect();
+            let hi4: Vec<_> = (4u64..8)
+                .map(|i| self.context.i32_type().const_int(i, false))
+                .collect();
+            let lo_mask = VectorType::const_vector(&lo4);
+            let hi_mask = VectorType::const_vector(&hi4);
+
+            let i32x8_undef = self.context.i32_type().vec_type(8).get_undef();
+            let a_lo = self
+                .builder
+                .build_shuffle_vector(a, i32x8_undef, lo_mask, "a_lo")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let a_hi = self
+                .builder
+                .build_shuffle_vector(a, i32x8_undef, hi_mask, "a_hi")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let b_lo = self
+                .builder
+                .build_shuffle_vector(b, i32x8_undef, lo_mask, "b_lo")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let b_hi = self
+                .builder
+                .build_shuffle_vector(b, i32x8_undef, hi_mask, "b_hi")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+            let sqxtn_name = "llvm.aarch64.neon.sqxtn.v4i16";
+            let sqxtn_ty = i16x4_ty.fn_type(&[i32x4_ty.into()], false);
+            let sqxtn = self
+                .module
+                .get_function(sqxtn_name)
+                .unwrap_or_else(|| self.module.add_function(sqxtn_name, sqxtn_ty, None));
+
+            let na_lo = self
+                .builder
+                .build_call(sqxtn, &[a_lo.into()], "na_lo")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("sqxtn failed"))?
+                .into_vector_value();
+            let na_hi = self
+                .builder
+                .build_call(sqxtn, &[a_hi.into()], "na_hi")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("sqxtn failed"))?
+                .into_vector_value();
+            let nb_lo = self
+                .builder
+                .build_call(sqxtn, &[b_lo.into()], "nb_lo")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("sqxtn failed"))?
+                .into_vector_value();
+            let nb_hi = self
+                .builder
+                .build_call(sqxtn, &[b_hi.into()], "nb_hi")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("sqxtn failed"))?
+                .into_vector_value();
+
+            let cat8: Vec<_> = (0u64..8)
+                .map(|i| self.context.i32_type().const_int(i, false))
+                .collect();
+            let cat8_mask = VectorType::const_vector(&cat8);
+            let a_i16x8 = self
+                .builder
+                .build_shuffle_vector(na_lo, na_hi, cat8_mask, "a_i16x8")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let b_i16x8 = self
+                .builder
+                .build_shuffle_vector(nb_lo, nb_hi, cat8_mask, "b_i16x8")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+            let cat16: Vec<_> = (0u64..16)
+                .map(|i| self.context.i32_type().const_int(i, false))
+                .collect();
+            let cat16_mask = VectorType::const_vector(&cat16);
+            let result = self
+                .builder
+                .build_shuffle_vector(a_i16x8, b_i16x8, cat16_mask, "pack_sat")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+            Ok(BasicValueEnum::VectorValue(result))
+        } else {
+            let i32x8_ty = self.context.i32_type().vec_type(8);
+            let i16x16_ty = self.context.i16_type().vec_type(16);
+            let intrinsic_name = "llvm.x86.avx2.packssdw";
+            let fn_type = i16x16_ty.fn_type(&[i32x8_ty.into(), i32x8_ty.into()], false);
+            let intrinsic = self
+                .module
+                .get_function(intrinsic_name)
+                .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
+
+            let result = self
+                .builder
+                .build_call(intrinsic, &[a.into(), b.into()], "pack_sat")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("packssdw failed"))?;
+
+            Ok(result)
+        }
+    }
 }
