@@ -109,4 +109,94 @@ impl TypeChecker {
             )),
         }
     }
+
+    /// round_f32x4_i32x4(f32x4) -> i32x4
+    pub(super) fn check_round_f32x4_i32x4(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                "round_f32x4_i32x4 expects 1 argument (f32x4 vector)",
+                span.clone(),
+            ));
+        }
+        let arg_type = self.check_expr(&args[0], locals)?;
+        match &arg_type {
+            Type::Vector { elem, width: 4 } if matches!(elem.as_ref(), Type::F32) => {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::I32),
+                    width: 4,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("round_f32x4_i32x4 expects f32x4, got {arg_type}"),
+                args[0].span().clone(),
+            )),
+        }
+    }
+
+    /// pack_sat_i32x4(i32x4, i32x4) -> i16x8
+    pub(super) fn check_pack_sat_i32x4(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "pack_sat_i32x4 expects 2 arguments (i32x4, i32x4)",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (Type::Vector { elem: ea, width: 4 }, Type::Vector { elem: eb, width: 4 })
+                if matches!(ea.as_ref(), Type::I32) && matches!(eb.as_ref(), Type::I32) =>
+            {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::I16),
+                    width: 8,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("pack_sat_i32x4 expects (i32x4, i32x4), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
+
+    /// pack_sat_i16x8(i16x8, i16x8) -> i8x16
+    pub(super) fn check_pack_sat_i16x8(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "pack_sat_i16x8 expects 2 arguments (i16x8, i16x8)",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (Type::Vector { elem: ea, width: 8 }, Type::Vector { elem: eb, width: 8 })
+                if matches!(ea.as_ref(), Type::I16) && matches!(eb.as_ref(), Type::I16) =>
+            {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::I8),
+                    width: 16,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("pack_sat_i16x8 expects (i16x8, i16x8), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
 }
