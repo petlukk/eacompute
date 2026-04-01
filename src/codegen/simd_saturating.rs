@@ -99,4 +99,55 @@ impl<'ctx> CodeGenerator<'ctx> {
 
         Ok(result)
     }
+
+    /// abs_diff(a, b) -> same type. ARM NEON absolute difference.
+    /// Lowers to llvm.aarch64.neon.sabd / uabd.
+    pub(super) fn compile_abs_diff(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        if !self.is_arm {
+            return Err(CompileError::codegen_error(
+                "abs_diff is ARM-only (NEON); no x86 equivalent — use max(a .- b, b .- a) explicitly",
+            ));
+        }
+        let is_unsigned = self.infer_unsigned_from_arg_full(&args[0]);
+        let a = self.compile_expr(&args[0], function)?.into_vector_value();
+        let b = self.compile_expr(&args[1], function)?.into_vector_value();
+        let vec_ty = a.get_type();
+        let (width, elem_name) = self.vector_type_parts(vec_ty);
+
+        let sign = if is_unsigned { "u" } else { "s" };
+        let intrinsic_name = format!("llvm.aarch64.neon.{sign}abd.v{width}{elem_name}");
+
+        let fn_type = vec_ty.fn_type(&[vec_ty.into(), vec_ty.into()], false);
+        let intrinsic = self
+            .module
+            .get_function(&intrinsic_name)
+            .unwrap_or_else(|| self.module.add_function(&intrinsic_name, fn_type, None));
+
+        let result = self
+            .builder
+            .build_call(intrinsic, &[a.into(), b.into()], "abs_diff")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .try_as_basic_value()
+            .basic()
+            .ok_or_else(|| CompileError::codegen_error("abs_diff did not return a value"))?;
+
+        Ok(result)
+    }
+
+    /// Returns true if the first argument is a vector with an unsigned element type.
+    /// Broader than infer_unsigned_elem_from_arg (covers U8, U16, U32, U64).
+    fn infer_unsigned_from_arg_full(&self, arg: &Expr) -> bool {
+        use crate::ast::Expr;
+        use crate::typeck::Type;
+        if let Expr::Variable(name, _) = arg
+            && let Some((_, Type::Vector { elem, .. })) = self.variables.get(name)
+        {
+            return matches!(elem.as_ref(), Type::U8 | Type::U16 | Type::U32 | Type::U64);
+        }
+        false
+    }
 }

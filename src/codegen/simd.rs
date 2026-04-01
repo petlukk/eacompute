@@ -67,6 +67,11 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "max"
                 | "sat_add"
                 | "sat_sub"
+                | "abs_diff"
+                | "wmul_i16"
+                | "wmul_u16"
+                | "wmul_i32"
+                | "wmul_u32"
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
@@ -133,6 +138,11 @@ impl<'ctx> CodeGenerator<'ctx> {
             "min" | "max" => self.compile_min_max(args, name, function),
             "sat_add" => self.compile_sat_add(args, function),
             "sat_sub" => self.compile_sat_sub(args, function),
+            "abs_diff" => self.compile_abs_diff(args, function),
+            "wmul_i16" => self.compile_wmul_i16(args, function),
+            "wmul_u16" => self.compile_wmul_u16(args, function),
+            "wmul_i32" => self.compile_wmul_i32(args, function),
+            "wmul_u32" => self.compile_wmul_u32(args, function),
             _ if typeck_types::parse_typed_load(name).is_some() => {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)

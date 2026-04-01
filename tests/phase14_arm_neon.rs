@@ -1,0 +1,223 @@
+#[cfg(feature = "llvm")]
+mod tests {
+    use ea_compiler::{CompileOptions, OutputMode};
+    use tempfile::TempDir;
+
+    fn arm_opts() -> CompileOptions {
+        CompileOptions {
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+            ..CompileOptions::default()
+        }
+    }
+
+    fn try_compile(
+        source: &str,
+        opts: &CompileOptions,
+    ) -> Result<(), ea_compiler::error::CompileError> {
+        let dir = TempDir::new().unwrap();
+        let obj_path = dir.path().join("test.o");
+        ea_compiler::compile_with_options(source, &obj_path, OutputMode::ObjectFile, opts)
+    }
+
+    // --- abs_diff tests ---
+
+    #[test]
+    fn test_arm_abs_diff_i8x16() {
+        try_compile(
+            r#"export func f(a: i8x16, b: i8x16) -> i8x16 { return abs_diff(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("abs_diff(i8x16) should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_abs_diff_u8x16() {
+        try_compile(
+            r#"export func f(a: u8x16, b: u8x16) -> u8x16 { return abs_diff(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("abs_diff(u8x16) should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_abs_diff_i32x4() {
+        try_compile(
+            r#"export func f(a: i32x4, b: i32x4) -> i32x4 { return abs_diff(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("abs_diff(i32x4) should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_abs_diff_u32x4() {
+        try_compile(
+            r#"export func f(a: u32x4, b: u32x4) -> u32x4 { return abs_diff(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("abs_diff(u32x4) should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_abs_diff_ir_sabd() {
+        let source = r#"export func f(a: i8x16, b: i8x16) -> i8x16 { return abs_diff(a, b) }"#;
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("abd.ll");
+        let mut opts = arm_opts();
+        opts.opt_level = 0;
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts).unwrap();
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
+        assert!(
+            ir.contains("aarch64.neon.sabd"),
+            "expected sabd in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn test_arm_abs_diff_ir_uabd() {
+        let source = r#"export func f(a: u8x16, b: u8x16) -> u8x16 { return abs_diff(a, b) }"#;
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("abd.ll");
+        let mut opts = arm_opts();
+        opts.opt_level = 0;
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts).unwrap();
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
+        assert!(
+            ir.contains("aarch64.neon.uabd"),
+            "expected uabd in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_x86_rejects_abs_diff() {
+        let err = try_compile(
+            r#"export func f(a: i8x16, b: i8x16) -> i8x16 { return abs_diff(a, b) }"#,
+            &CompileOptions::default(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("ARM") || msg.contains("NEON"),
+            "expected ARM/NEON, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_abs_diff_rejects_f32x4() {
+        let err = try_compile(
+            r#"export func f(a: f32x4, b: f32x4) -> f32x4 { return abs_diff(a, b) }"#,
+            &arm_opts(),
+        )
+        .unwrap_err();
+        assert!(format!("{err}").contains("abs_diff"));
+    }
+
+    // --- wmul_i16 / wmul_u16 tests ---
+
+    #[test]
+    fn test_arm_wmul_i16() {
+        try_compile(
+            r#"export func f(a: i8x8, b: i8x8) -> i16x8 { return wmul_i16(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("wmul_i16 should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_wmul_u16() {
+        try_compile(
+            r#"export func f(a: u8x8, b: u8x8) -> u16x8 { return wmul_u16(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("wmul_u16 should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_wmul_i16_ir() {
+        let source = r#"export func f(a: i8x8, b: i8x8) -> i16x8 { return wmul_i16(a, b) }"#;
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("wmul.ll");
+        let mut opts = arm_opts();
+        opts.opt_level = 0;
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts).unwrap();
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
+        assert!(
+            ir.contains("aarch64.neon.smull"),
+            "expected smull in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn test_wmul_i16_rejects_i8x16() {
+        let err = try_compile(
+            r#"export func f(a: i8x16, b: i8x16) -> i16x8 { return wmul_i16(a, b) }"#,
+            &arm_opts(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("i8x8") || msg.contains("wmul_i16"),
+            "unexpected error: {msg}"
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_x86_rejects_wmul_i16() {
+        // On x86, i8x8 itself is rejected (64-bit NEON type), so this errors at type level
+        let err = try_compile(
+            r#"export func f(a: i8x8, b: i8x8) -> i16x8 { return wmul_i16(a, b) }"#,
+            &CompileOptions::default(),
+        );
+        assert!(err.is_err());
+    }
+
+    // --- wmul_i32 / wmul_u32 tests ---
+
+    #[test]
+    fn test_arm_wmul_i32() {
+        try_compile(
+            r#"export func f(a: i16x4, b: i16x4) -> i32x4 { return wmul_i32(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("wmul_i32 should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_wmul_u32() {
+        try_compile(
+            r#"export func f(a: u16x4, b: u16x4) -> u32x4 { return wmul_u32(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("wmul_u32 should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_wmul_i32_ir() {
+        let source = r#"export func f(a: i16x4, b: i16x4) -> i32x4 { return wmul_i32(a, b) }"#;
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("wmul32.ll");
+        let mut opts = arm_opts();
+        opts.opt_level = 0;
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts).unwrap();
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
+        assert!(
+            ir.contains("aarch64.neon.smull"),
+            "expected smull in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn test_wmul_i32_rejects_i16x8() {
+        let err = try_compile(
+            r#"export func f(a: i16x8, b: i16x8) -> i32x4 { return wmul_i32(a, b) }"#,
+            &arm_opts(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("i16x4") || msg.contains("wmul_i32"),
+            "unexpected error: {msg}"
+        );
+    }
+}
