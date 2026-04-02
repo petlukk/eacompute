@@ -30,6 +30,10 @@ impl TypeChecker {
             "to_f32" | "to_f64" | "to_i32" | "to_i64" => {
                 Some(self.check_conversion(name, args, locals, span))
             }
+            "ptr_as_i8" | "ptr_as_u8" | "ptr_as_i16" | "ptr_as_u16" | "ptr_as_i32"
+            | "ptr_as_u32" | "ptr_as_i64" | "ptr_as_u64" | "ptr_as_f32" | "ptr_as_f64" => {
+                Some(self.check_ptr_as(name, args, locals, span))
+            }
             "reduce_add" | "reduce_max" | "reduce_min" => {
                 Some(self.check_reduction(name, args, locals, span))
             }
@@ -326,5 +330,50 @@ impl TypeChecker {
             _ => unreachable!(),
         };
         Ok(target)
+    }
+
+    fn check_ptr_as(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 1 argument"),
+                span.clone(),
+            ));
+        }
+        let arg_type = self.check_expr(&args[0], locals)?;
+        let (mutable, restrict) = match &arg_type {
+            Type::Pointer {
+                mutable, restrict, ..
+            } => (*mutable, *restrict),
+            _ => {
+                return Err(CompileError::type_error(
+                    format!("{name} expects a pointer argument, got {arg_type}"),
+                    args[0].span().clone(),
+                ));
+            }
+        };
+        let inner = match name {
+            "ptr_as_i8" => Type::I8,
+            "ptr_as_u8" => Type::U8,
+            "ptr_as_i16" => Type::I16,
+            "ptr_as_u16" => Type::U16,
+            "ptr_as_i32" => Type::I32,
+            "ptr_as_u32" => Type::U32,
+            "ptr_as_i64" => Type::I64,
+            "ptr_as_u64" => Type::U64,
+            "ptr_as_f32" => Type::F32,
+            "ptr_as_f64" => Type::F64,
+            _ => unreachable!(),
+        };
+        Ok(Type::Pointer {
+            inner: Box::new(inner),
+            mutable,
+            restrict,
+        })
     }
 }
