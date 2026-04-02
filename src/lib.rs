@@ -214,6 +214,10 @@ pub fn compile_with_options(
             }
         }
         OutputMode::LlvmIr => {
+            if opts.opt_level > 0 {
+                let machine = target::create_target_machine(opts)?;
+                target::optimize_module(cg.module(), &machine, opts.opt_level)?;
+            }
             let ir = cg.print_ir();
             std::fs::write(output_path, ir).map_err(|e| {
                 error::CompileError::codegen_error(format!("failed to write IR: {e}"))
