@@ -74,6 +74,8 @@ impl TypeChecker {
             "round_f32x4_i32x4" => Some(self.check_round_f32x4_i32x4(args, locals, span)),
             "pack_sat_i32x4" => Some(self.check_pack_sat_i32x4(args, locals, span)),
             "pack_sat_i16x8" => Some(self.check_pack_sat_i16x8(args, locals, span)),
+            "addp_i32" => Some(self.check_addp_i32(args, locals, span)),
+            "addp_i16" => Some(self.check_addp_i16(args, locals, span)),
             "wmul_i16" => Some(self.check_wmul_i16(args, locals, span)),
             "wmul_u16" => Some(self.check_wmul_u16(args, locals, span)),
             "wmul_i32" => Some(self.check_wmul_i32(args, locals, span)),

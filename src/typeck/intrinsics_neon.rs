@@ -51,6 +51,69 @@ impl TypeChecker {
         }
     }
 
+    /// addp_i32(a: i32x4, b: i32x4) -> i32x4. ARM-only pairwise add.
+    /// Result: [a[0]+a[1], a[2]+a[3], b[0]+b[1], b[2]+b[3]].
+    pub(super) fn check_addp_i32(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "addp_i32 expects 2 arguments: (i32x4, i32x4)",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (Type::Vector { elem: ea, width: 4 }, Type::Vector { elem: eb, width: 4 })
+                if matches!(ea.as_ref(), Type::I32) && matches!(eb.as_ref(), Type::I32) =>
+            {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::I32),
+                    width: 4,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("addp_i32 expects (i32x4, i32x4), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
+
+    /// addp_i16(a: i16x8, b: i16x8) -> i16x8. ARM-only pairwise add.
+    pub(super) fn check_addp_i16(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "addp_i16 expects 2 arguments: (i16x8, i16x8)",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (Type::Vector { elem: ea, width: 8 }, Type::Vector { elem: eb, width: 8 })
+                if matches!(ea.as_ref(), Type::I16) && matches!(eb.as_ref(), Type::I16) =>
+            {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::I16),
+                    width: 8,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("addp_i16 expects (i16x8, i16x8), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
+
     /// wmul_i16(a: i8x8, b: i8x8) -> i16x8. ARM-only widening multiply.
     pub(super) fn check_wmul_i16(
         &self,

@@ -77,6 +77,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "sat_add"
                 | "sat_sub"
                 | "abs_diff"
+                | "addp_i32"
+                | "addp_i16"
                 | "wmul_i16"
                 | "wmul_u16"
                 | "wmul_i32"
@@ -164,6 +166,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             "sat_add" => self.compile_sat_add(args, function),
             "sat_sub" => self.compile_sat_sub(args, function),
             "abs_diff" => self.compile_abs_diff(args, function),
+            "addp_i32" => self.compile_addp_i32(args, function),
+            "addp_i16" => self.compile_addp_i16(args, function),
             "wmul_i16" => self.compile_wmul_i16(args, function),
             "wmul_u16" => self.compile_wmul_u16(args, function),
             "wmul_i32" => self.compile_wmul_i32(args, function),

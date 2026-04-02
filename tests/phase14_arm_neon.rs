@@ -220,4 +220,67 @@ mod tests {
             "unexpected error: {msg}"
         );
     }
+
+    // --- addp (pairwise add) tests ---
+
+    #[test]
+    fn test_arm_addp_i32() {
+        try_compile(
+            r#"export func f(a: i32x4, b: i32x4) -> i32x4 { return addp_i32(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("addp_i32 should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_addp_i16() {
+        try_compile(
+            r#"export func f(a: i16x8, b: i16x8) -> i16x8 { return addp_i16(a, b) }"#,
+            &arm_opts(),
+        )
+        .expect("addp_i16 should compile on ARM");
+    }
+
+    #[test]
+    fn test_arm_addp_i32_ir() {
+        let source = r#"export func f(a: i32x4, b: i32x4) -> i32x4 { return addp_i32(a, b) }"#;
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("addp.ll");
+        let mut opts = arm_opts();
+        opts.opt_level = 0;
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts).unwrap();
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
+        assert!(
+            ir.contains("aarch64.neon.addp"),
+            "expected addp in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn test_arm_addp_i32_rejected_on_x86() {
+        let err = try_compile(
+            r#"export func f(a: i32x4, b: i32x4) -> i32x4 { return addp_i32(a, b) }"#,
+            &CompileOptions::default(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("ARM-only"),
+            "expected ARM-only error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_arm_addp_i32_wrong_type() {
+        let err = try_compile(
+            r#"export func f(a: f32x4, b: f32x4) -> f32x4 { return addp_i32(a, b) }"#,
+            &arm_opts(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("i32x4"),
+            "expected type error mentioning i32x4, got: {msg}"
+        );
+    }
 }
