@@ -8,6 +8,21 @@ use crate::typeck::types::is_unsigned;
 use super::CodeGenerator;
 
 impl<'ctx> CodeGenerator<'ctx> {
+    fn set_load_alignment(val: BasicValueEnum<'ctx>, align: u32) {
+        let inst = match val {
+            BasicValueEnum::IntValue(v) => v.as_instruction(),
+            BasicValueEnum::FloatValue(v) => v.as_instruction(),
+            BasicValueEnum::PointerValue(v) => v.as_instruction(),
+            BasicValueEnum::VectorValue(v) => v.as_instruction(),
+            BasicValueEnum::StructValue(v) => v.as_instruction(),
+            BasicValueEnum::ArrayValue(v) => v.as_instruction(),
+            _ => None,
+        };
+        if let Some(inst) = inst {
+            let _ = inst.set_alignment(align);
+        }
+    }
+
     pub(crate) fn compile_expr(
         &mut self,
         expr: &Expr,
@@ -127,6 +142,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .builder
                     .build_load(pointee_ty, *ptr, name)
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+                Self::set_load_alignment(val, Self::type_alignment(ty));
                 Ok(val)
             }
             Expr::Index { object, index, .. } => {
@@ -156,6 +172,11 @@ impl<'ctx> CodeGenerator<'ctx> {
                         .builder
                         .build_load(inner_type, elem_ptr, "elem")
                         .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+                    if let Expr::Variable(name, _) = object.as_ref()
+                        && let Some((_, Type::Pointer { inner, .. })) = self.variables.get(name)
+                    {
+                        Self::set_load_alignment(val, Self::type_alignment(inner));
+                    }
                     Ok(val)
                 }
             }
@@ -242,9 +263,16 @@ impl<'ctx> CodeGenerator<'ctx> {
         match (&left, &right) {
             (BasicValueEnum::IntValue(l), BasicValueEnum::IntValue(r)) => {
                 let result = match op {
-                    BinaryOp::Add => self.builder.build_int_add(*l, *r, "add"),
-                    BinaryOp::Subtract => self.builder.build_int_sub(*l, *r, "sub"),
-                    BinaryOp::Multiply => self.builder.build_int_mul(*l, *r, "mul"),
+                    BinaryOp::Add if !unsigned => self.builder.build_int_nsw_add(*l, *r, "add"),
+                    BinaryOp::Add => self.builder.build_int_nuw_add(*l, *r, "add"),
+                    BinaryOp::Subtract if !unsigned => {
+                        self.builder.build_int_nsw_sub(*l, *r, "sub")
+                    }
+                    BinaryOp::Subtract => self.builder.build_int_nuw_sub(*l, *r, "sub"),
+                    BinaryOp::Multiply if !unsigned => {
+                        self.builder.build_int_nsw_mul(*l, *r, "mul")
+                    }
+                    BinaryOp::Multiply => self.builder.build_int_nuw_mul(*l, *r, "mul"),
                     BinaryOp::Divide if unsigned => {
                         self.builder.build_int_unsigned_div(*l, *r, "div")
                     }

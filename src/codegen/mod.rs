@@ -233,6 +233,16 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
+    pub(crate) fn type_alignment(ty: &Type) -> u32 {
+        match ty {
+            Type::Bool | Type::I8 | Type::U8 => 1,
+            Type::I16 | Type::U16 => 2,
+            Type::I32 | Type::U32 | Type::F32 | Type::IntLiteral => 4,
+            Type::I64 | Type::U64 | Type::F64 | Type::FloatLiteral | Type::Pointer { .. } => 8,
+            _ => 4,
+        }
+    }
+
     pub(crate) fn resolve_annotation(ann: &TypeAnnotation) -> Type {
         match ann {
             TypeAnnotation::Named(name, _) => match name.as_str() {
@@ -317,6 +327,19 @@ impl<'ctx> CodeGenerator<'ctx> {
             function
                 .as_global_value()
                 .set_dll_storage_class(DLLStorageClass::Export);
+        }
+
+        // Eä functions never throw exceptions or unwind the stack.
+        let nounwind_id = inkwell::attributes::Attribute::get_named_enum_kind_id("nounwind");
+        let nounwind = self.context.create_enum_attribute(nounwind_id, 0);
+        function.add_attribute(inkwell::attributes::AttributeLoc::Function, nounwind);
+
+        // Non-exported helpers must always be inlined — Eä has no recursion
+        // and private functions exist solely as helpers within one compilation unit.
+        if !export && name != "main" {
+            let inline_id = inkwell::attributes::Attribute::get_named_enum_kind_id("alwaysinline");
+            let inline_attr = self.context.create_enum_attribute(inline_id, 0);
+            function.add_attribute(inkwell::attributes::AttributeLoc::Function, inline_attr);
         }
 
         for (i, param) in params.iter().enumerate() {
