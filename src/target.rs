@@ -25,6 +25,8 @@ fn opt_level_to_inkwell(level: u8) -> inkwell::OptimizationLevel {
 
 #[cfg(feature = "llvm")]
 pub fn create_target_machine(opts: &CompileOptions) -> crate::error::Result<TargetMachine> {
+    set_llvm_global_flags();
+
     let triple = if let Some(ref t) = opts.target_triple {
         TargetTriple::create(t)
     } else {
@@ -109,8 +111,6 @@ pub fn optimize_module(
     machine: &TargetMachine,
     opt_level: u8,
 ) -> crate::error::Result<()> {
-    disable_loop_idiom_libcalls();
-
     let passes = format!("default<O{}>", opt_level.min(3));
     let opts = PassBuilderOptions::create();
     module
@@ -130,7 +130,7 @@ pub fn optimize_module(
 ///    calls in hot loops destroy performance for compute kernels (register
 ///    spills, branch overhead, broken scheduling).
 #[cfg(feature = "llvm")]
-fn disable_loop_idiom_libcalls() {
+fn set_llvm_global_flags() {
     use std::ffi::CString;
     use std::sync::Once;
 
