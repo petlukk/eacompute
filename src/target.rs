@@ -119,12 +119,16 @@ pub fn optimize_module(
     Ok(())
 }
 
-/// Tell LLVM's LoopIdiomRecognize pass not to synthesize memset/memcpy calls.
+/// Set LLVM-internal flags that apply globally to the process:
 ///
-/// Eä produces freestanding kernel code with no C runtime.  LLVM's optimizer
-/// can replace store-loops with memset/memcpy, which then fail to link on
-/// Windows (/NODEFAULTLIB) and hide what the programmer actually wrote.
-/// This sets the LLVM-internal flags once per process.
+/// 1. Disable LoopIdiomRecognize memset/memcpy synthesis — Eä produces
+///    freestanding kernel code with no C runtime, so synthesized libcalls
+///    fail to link on Windows and hide what the programmer wrote.
+///
+/// 2. Disable Machine Outliner — LLVM's outliner extracts repeated code
+///    sequences into subroutines to save code size, but the resulting `bl`
+///    calls in hot loops destroy performance for compute kernels (register
+///    spills, branch overhead, broken scheduling).
 #[cfg(feature = "llvm")]
 fn disable_loop_idiom_libcalls() {
     use std::ffi::CString;
@@ -136,6 +140,7 @@ fn disable_loop_idiom_libcalls() {
             "ea",
             "-disable-loop-idiom-memset",
             "-disable-loop-idiom-memcpy",
+            "-enable-machine-outliner=never",
         ]
         .iter()
         .map(|s| CString::new(*s).unwrap())
