@@ -244,6 +244,22 @@ mod tests {
 
     #[test]
     #[cfg(target_arch = "x86_64")]
+    fn test_cvt_f16_f32_emits_fpext() {
+        let ir = compile_to_ir(
+            r#"
+            export func convert(inp: *i16, out: *mut f32) {
+                let v: i16x8 = load(inp, 0)
+                let f: f32x8 = cvt_f16_f32(v)
+                store(out, 0, f)
+            }
+            "#,
+        );
+        assert!(ir.contains("fpext"), "expected fpext in IR:\n{ir}");
+        assert!(ir.contains("half"), "expected half type in IR:\n{ir}");
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
     fn test_cvt_f16_f32_zero() {
         assert_c_interop(
             r#"
