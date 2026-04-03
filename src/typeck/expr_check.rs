@@ -371,6 +371,7 @@ impl TypeChecker {
                         "narrow_f32x4_i8",
                         "cvt_f16_f32",
                         "cvt_f32_f16",
+                        "widen_u8_u16",
                     ];
                     let candidates = self
                         .functions

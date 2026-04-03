@@ -61,6 +61,7 @@ impl TypeChecker {
             "widen_u8_i32x4_4" | "widen_u8_i32x4_8" | "widen_u8_i32x4_12" => {
                 Some(self.check_widen_u8_i32(name, args, locals, span, 4))
             }
+            "widen_u8_u16" => Some(self.check_widen_u8_u16(args, locals, span)),
             "narrow_f32x4_i8" => Some(self.check_narrow_f32x4_i8(args, locals, span)),
             "maddubs_i16" => Some(self.check_maddubs_i16(args, locals, span)),
             "maddubs_i32" => Some(self.check_maddubs_i32(args, locals, span)),

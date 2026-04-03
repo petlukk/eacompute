@@ -283,4 +283,55 @@ mod tests {
             "0.0",
         );
     }
+
+    // === widen_u8_u16: u8x16 lower 8 → u16x8 zero-extend ===
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_widen_u8_u16_basic() {
+        assert_c_interop(
+            r#"
+            export func test(out: *mut u16) {
+                let v: u8x16 = splat(200)
+                let w: u16x8 = widen_u8_u16(v)
+                store(out, 0, w)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            #include <stdint.h>
+            extern void test(uint16_t*);
+            int main() {
+                uint16_t out[8];
+                test(out);
+                printf("%u %u\n", out[0], out[7]);
+                return 0;
+            }
+            "#,
+            "200 200",
+        );
+    }
+
+    #[test]
+    fn test_widen_u8_u16_arm_compiles() {
+        let opts = ea_compiler::CompileOptions {
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+            ..ea_compiler::CompileOptions::default()
+        };
+        let dir = tempfile::TempDir::new().unwrap();
+        let obj = dir.path().join("test.o");
+        let result = ea_compiler::compile_with_options(
+            r#"
+            export func convert(inp: *u8, out: *mut u16) {
+                let v: u8x16 = load(inp, 0)
+                let w: u16x8 = widen_u8_u16(v)
+                store(out, 0, w)
+            }
+            "#,
+            &obj,
+            ea_compiler::OutputMode::ObjectFile,
+            &opts,
+        );
+        assert!(result.is_ok(), "ARM compile failed: {result:?}");
+    }
 }
