@@ -110,7 +110,9 @@ impl Parser {
         )?;
         let ty = self.parse_type()?;
         self.expect_kind(TokenKind::Equals, "expected '=' after type annotation")?;
+        self.let_type_hint = Some(ty.clone());
         let value = self.expression()?;
+        self.let_type_hint = None;
         let end = value.span().end.clone();
         Ok(Stmt::Let {
             name,

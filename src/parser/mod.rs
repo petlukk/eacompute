@@ -9,11 +9,16 @@ use crate::lexer::{Position, Span, Token, TokenKind};
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    let_type_hint: Option<TypeAnnotation>,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+        Self {
+            tokens,
+            current: 0,
+            let_type_hint: None,
+        }
     }
 
     pub fn parse_program(&mut self) -> crate::error::Result<Vec<Stmt>> {
@@ -279,8 +284,10 @@ impl Parser {
     }
 
     pub(super) fn parse_args(&mut self) -> crate::error::Result<Vec<crate::ast::Expr>> {
+        let saved_hint = self.let_type_hint.take();
         let mut args = Vec::new();
         if self.check(TokenKind::RightParen) {
+            self.let_type_hint = saved_hint;
             return Ok(args);
         }
         loop {
@@ -290,6 +297,7 @@ impl Parser {
             }
             self.advance();
         }
+        self.let_type_hint = saved_hint;
         Ok(args)
     }
 

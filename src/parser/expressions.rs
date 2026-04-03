@@ -461,8 +461,17 @@ impl Parser {
                     });
                 }
             }
-            // No type suffix — it's an array literal (used for shuffle masks etc.)
+            // No type suffix — check if let-binding declares a vector type
             let end = self.previous_position();
+            if let Some(ref hint) = self.let_type_hint
+                && matches!(hint, crate::ast::TypeAnnotation::Vector { .. })
+            {
+                return Ok(Expr::Vector {
+                    elements,
+                    ty: hint.clone(),
+                    span: Span::new(start, end),
+                });
+            }
             return Ok(Expr::ArrayLiteral(elements, Span::new(start, end)));
         }
 
