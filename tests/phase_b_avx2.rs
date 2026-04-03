@@ -131,6 +131,94 @@ mod tests {
         );
     }
 
+    // === maddubs_i16 AVX2: u8x32 × i8x32 → i16x16 ===
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_maddubs_i16_avx2_basic() {
+        // splat(2) × splat(3): each pair = 2*3+2*3 = 12 per i16 lane (16 lanes).
+        // reduce_add not available for i16x16, so extract lane[0].
+        assert_output(
+            r#"
+            func main() {
+                let a: u8x32 = splat(2)
+                let b: i8x32 = splat(3)
+                let c: i16x16 = maddubs_i16(a, b)
+                let x: i16 = c[0]
+                println(x)
+                let y: i16 = c[15]
+                println(y)
+            }
+            "#,
+            "12\n12",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_maddubs_i16_avx2_with_madd_chain() {
+        // Full AVX2 chain: maddubs_i16(u8x32, i8x32) → i16x16, madd_i16(i16x16, ones) → i32x8.
+        // act=splat(1), wt=splat(2): maddubs → each i16 = 1*2+1*2 = 4, madd(ones) → 4+4 = 8.
+        // reduce_add(i32x8 of 8s) = 64. Two iters of 32 = 128.
+        assert_c_interop(
+            r#"
+            export func dot_avx2(act: *u8, wt: *i8, n: i32) -> i32 {
+                let mut acc: i32x8 = splat(0)
+                let ones: i16x16 = splat(1)
+                let mut i: i32 = 0
+                while i < n {
+                    let a: u8x32 = load(act, i)
+                    let b: i8x32 = load(wt, i)
+                    let t: i16x16 = maddubs_i16(a, b)
+                    acc = acc .+ madd_i16(t, ones)
+                    i = i + 32
+                }
+                return reduce_add(acc)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            #include <stdint.h>
+            extern int32_t dot_avx2(const uint8_t *act, const int8_t *wt, int n);
+            int main() {
+                uint8_t act[64];
+                int8_t  wt[64];
+                for (int i = 0; i < 64; i++) { act[i] = 1; wt[i] = 2; }
+                printf("%d\n", dot_avx2(act, wt, 64));
+                return 0;
+            }
+            "#,
+            "128",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_maddubs_i16_avx2_ir_check() {
+        use ea_compiler::{CompileOptions, OutputMode};
+
+        let source = r#"
+            export func f(a: u8x32, b: i8x32) -> i16x16 {
+                return maddubs_i16(a, b)
+            }
+        "#;
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let ir_path = dir.path().join("maddubs_avx2.ll");
+        let opts = CompileOptions {
+            opt_level: 0,
+            ..CompileOptions::default()
+        };
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts)
+            .expect("maddubs_i16 AVX2 IR compilation failed");
+
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
+        assert!(
+            ir.contains("avx2.pmadd.ub.sw"),
+            "expected avx2.pmadd.ub.sw in IR:\n{ir}"
+        );
+    }
+
     // === cvt_f16_f32 / cvt_f32_f16 ===
 
     #[test]

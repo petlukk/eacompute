@@ -6,9 +6,8 @@ use crate::error::CompileError;
 use super::CodeGenerator;
 
 impl<'ctx> CodeGenerator<'ctx> {
-    /// maddubs_i16(u8x16, i8x16) -> i16x8
-    /// Multiplies unsigned 8-bit × signed 8-bit pairs, adds adjacent products → signed 16-bit.
-    /// Maps to SSSE3 pmaddubsw (_mm_maddubs_epi16). Fast but accumulator overflows at i16.
+    /// maddubs_i16(u8x16, i8x16) -> i16x8   (SSSE3 pmaddubsw)
+    /// maddubs_i16(u8x32, i8x32) -> i16x16  (AVX2 vpmaddubsw)
     pub(super) fn compile_maddubs_i16(
         &mut self,
         args: &[Expr],
@@ -16,33 +15,58 @@ impl<'ctx> CodeGenerator<'ctx> {
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         if self.is_arm {
             return Err(CompileError::codegen_error(
-                "maddubs_i16 is x86-only (SSSE3); no NEON equivalent",
+                "maddubs_i16 is x86-only (SSSE3/AVX2 pmaddubsw); no NEON equivalent",
             ));
         }
-        let a = self.compile_expr(&args[0], function)?.into_vector_value(); // u8x16
-        let b = self.compile_expr(&args[1], function)?.into_vector_value(); // i8x16
+        let a = self.compile_expr(&args[0], function)?.into_vector_value();
+        let b = self.compile_expr(&args[1], function)?.into_vector_value();
 
-        let i8x16_ty = self.context.i8_type().vec_type(16);
-        let i16x8_ty = self.context.i16_type().vec_type(8);
-
-        let fn_type = i16x8_ty.fn_type(&[i8x16_ty.into(), i8x16_ty.into()], false);
-        let intrinsic = self
-            .module
-            .get_function("llvm.x86.ssse3.pmadd.ub.sw.128")
-            .unwrap_or_else(|| {
-                self.module
-                    .add_function("llvm.x86.ssse3.pmadd.ub.sw.128", fn_type, None)
-            });
-
-        let result = self
-            .builder
-            .build_call(intrinsic, &[a.into(), b.into()], "maddubs_i16")
-            .map_err(|e| CompileError::codegen_error(e.to_string()))?
-            .try_as_basic_value()
-            .basic()
-            .ok_or_else(|| CompileError::codegen_error("maddubs_i16 did not return a value"))?;
-
-        Ok(result)
+        let width = a.get_type().get_size();
+        match width {
+            16 => {
+                let i8x16_ty = self.context.i8_type().vec_type(16);
+                let i16x8_ty = self.context.i16_type().vec_type(8);
+                let fn_type = i16x8_ty.fn_type(&[i8x16_ty.into(), i8x16_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function("llvm.x86.ssse3.pmadd.ub.sw.128")
+                    .unwrap_or_else(|| {
+                        self.module
+                            .add_function("llvm.x86.ssse3.pmadd.ub.sw.128", fn_type, None)
+                    });
+                self.builder
+                    .build_call(intrinsic, &[a.into(), b.into()], "maddubs_i16")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| {
+                        CompileError::codegen_error("maddubs_i16 did not return a value")
+                    })
+            }
+            32 => {
+                let i8x32_ty = self.context.i8_type().vec_type(32);
+                let i16x16_ty = self.context.i16_type().vec_type(16);
+                let fn_type = i16x16_ty.fn_type(&[i8x32_ty.into(), i8x32_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function("llvm.x86.avx2.pmadd.ub.sw")
+                    .unwrap_or_else(|| {
+                        self.module
+                            .add_function("llvm.x86.avx2.pmadd.ub.sw", fn_type, None)
+                    });
+                self.builder
+                    .build_call(intrinsic, &[a.into(), b.into()], "maddubs_i16_avx2")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| {
+                        CompileError::codegen_error("maddubs_i16 AVX2 did not return a value")
+                    })
+            }
+            _ => Err(CompileError::codegen_error(format!(
+                "maddubs_i16: unsupported width {width}"
+            ))),
+        }
     }
 
     /// madd_i16(i16x8, i16x8) -> i32x4   (SSE2 pmaddwd)
