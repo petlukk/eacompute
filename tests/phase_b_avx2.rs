@@ -113,6 +113,36 @@ mod tests {
     }
 
     #[test]
+    fn test_cvt_f16_f32_wrong_type() {
+        let source = r#"
+            func main() {
+                let a: f32x4 = splat(1.0)
+                let b: f32x4 = cvt_f16_f32(a)
+            }
+        "#;
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let err = ea_compiler::check_types(&stmts).unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("i16x4") || msg.contains("i16x8"), "got: {msg}");
+    }
+
+    #[test]
+    fn test_cvt_f32_f16_wrong_type() {
+        let source = r#"
+            func main() {
+                let a: i32x4 = splat(1)
+                let b: i16x4 = cvt_f32_f16(a)
+            }
+        "#;
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let err = ea_compiler::check_types(&stmts).unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("f32x4") || msg.contains("f32x8"), "got: {msg}");
+    }
+
+    #[test]
     #[cfg(target_arch = "x86_64")]
     fn test_maddubs_i32_avx2_ir_check() {
         use ea_compiler::{CompileOptions, OutputMode};
@@ -139,13 +169,10 @@ mod tests {
             opt_level: 0,
             ..CompileOptions::default()
         };
-        ea_compiler::compile_with_options(
-            source, &ir_path, OutputMode::LlvmIr, &opts,
-        )
-        .expect("maddubs_i32 AVX2 IR compilation failed");
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts)
+            .expect("maddubs_i32 AVX2 IR compilation failed");
 
-        let ir = std::fs::read_to_string(&ir_path)
-            .unwrap_or_default();
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
         assert!(
             ir.contains("avx2.pmadd.ub.sw"),
             "expected avx2.pmadd.ub.sw in IR:\n{ir}"

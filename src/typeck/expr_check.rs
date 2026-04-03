@@ -369,6 +369,8 @@ impl TypeChecker {
                         "maddubs_i16",
                         "maddubs_i32",
                         "narrow_f32x4_i8",
+                        "cvt_f16_f32",
+                        "cvt_f32_f16",
                     ];
                     let candidates = self
                         .functions

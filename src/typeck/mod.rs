@@ -3,6 +3,7 @@ pub mod const_eval;
 mod expr_check;
 mod intrinsics;
 mod intrinsics_conv;
+mod intrinsics_f16;
 mod intrinsics_memory;
 mod intrinsics_neon;
 mod intrinsics_pack;
