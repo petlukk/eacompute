@@ -373,10 +373,11 @@ impl<'ctx> CodeGenerator<'ctx> {
         Ok(result)
     }
 
-    /// shuffle_bytes(table: u8x16, indices: u8x16) -> u8x16
+    /// shuffle_bytes(u8x16, u8x16) -> u8x16  (SSSE3 pshufb / NEON tbl)
+    /// shuffle_bytes(u8x32, u8x32) -> u8x32  (AVX2 vpshufb, x86-only)
     /// Byte-level table lookup: output[i] = table[indices[i]].
-    /// x86: SSSE3 pshufb. ARM: NEON tbl.
-    /// Indices should be 0-15; out-of-range zeroes the lane on both platforms.
+    /// Indices should be 0-15 (128-bit) or 0-15 per lane (256-bit).
+    /// Out-of-range (high bit set) zeroes the lane.
     pub(super) fn compile_shuffle_bytes(
         &mut self,
         args: &[Expr],
@@ -385,39 +386,66 @@ impl<'ctx> CodeGenerator<'ctx> {
         let table = self.compile_expr(&args[0], function)?.into_vector_value();
         let indices = self.compile_expr(&args[1], function)?.into_vector_value();
 
-        let i8x16_ty = self.context.i8_type().vec_type(16);
-
-        let (intrinsic_name, fn_type, call_args): (
-            _,
-            _,
-            Vec<inkwell::values::BasicMetadataValueEnum>,
-        ) = if self.is_arm {
-            (
-                "llvm.aarch64.neon.tbl1.v16i8",
-                i8x16_ty.fn_type(&[i8x16_ty.into(), i8x16_ty.into()], false),
-                vec![table.into(), indices.into()],
-            )
-        } else {
-            (
-                "llvm.x86.ssse3.pshuf.b.128",
-                i8x16_ty.fn_type(&[i8x16_ty.into(), i8x16_ty.into()], false),
-                vec![table.into(), indices.into()],
-            )
-        };
-
-        let intrinsic = self
-            .module
-            .get_function(intrinsic_name)
-            .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
-
-        let result = self
-            .builder
-            .build_call(intrinsic, &call_args, "shuffle_bytes")
-            .map_err(|e| CompileError::codegen_error(e.to_string()))?
-            .try_as_basic_value()
-            .basic()
-            .ok_or_else(|| CompileError::codegen_error("shuffle_bytes did not return a value"))?;
-
-        Ok(result)
+        let width = table.get_type().get_size();
+        match width {
+            16 => {
+                let i8x16_ty = self.context.i8_type().vec_type(16);
+                let (intrinsic_name, fn_type): (&str, _) = if self.is_arm {
+                    (
+                        "llvm.aarch64.neon.tbl1.v16i8",
+                        i8x16_ty.fn_type(&[i8x16_ty.into(), i8x16_ty.into()], false),
+                    )
+                } else {
+                    (
+                        "llvm.x86.ssse3.pshuf.b.128",
+                        i8x16_ty.fn_type(&[i8x16_ty.into(), i8x16_ty.into()], false),
+                    )
+                };
+                let intrinsic = self
+                    .module
+                    .get_function(intrinsic_name)
+                    .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
+                self.builder
+                    .build_call(intrinsic, &[table.into(), indices.into()], "shuffle_bytes")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| {
+                        CompileError::codegen_error("shuffle_bytes did not return a value")
+                    })
+            }
+            32 => {
+                if self.is_arm {
+                    return Err(CompileError::codegen_error(
+                        "shuffle_bytes(u8x32) is x86-only (AVX2 vpshufb); \
+                         use u8x16 on ARM",
+                    ));
+                }
+                let i8x32_ty = self.context.i8_type().vec_type(32);
+                let fn_type = i8x32_ty.fn_type(&[i8x32_ty.into(), i8x32_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function("llvm.x86.avx2.pshuf.b")
+                    .unwrap_or_else(|| {
+                        self.module
+                            .add_function("llvm.x86.avx2.pshuf.b", fn_type, None)
+                    });
+                self.builder
+                    .build_call(
+                        intrinsic,
+                        &[table.into(), indices.into()],
+                        "shuffle_bytes_avx2",
+                    )
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| {
+                        CompileError::codegen_error("shuffle_bytes AVX2 did not return a value")
+                    })
+            }
+            _ => Err(CompileError::codegen_error(format!(
+                "shuffle_bytes: unsupported width {width}"
+            ))),
+        }
     }
 }

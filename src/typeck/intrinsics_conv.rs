@@ -192,6 +192,8 @@ impl TypeChecker {
         }
     }
 
+    /// shuffle_bytes(u8x16, u8x16) -> u8x16  (SSSE3 pshufb / NEON tbl)
+    /// shuffle_bytes(u8x32, u8x32) -> u8x32  (AVX2 vpshufb, x86-only)
     pub(super) fn check_shuffle_bytes(
         &self,
         args: &[Expr],
@@ -200,7 +202,7 @@ impl TypeChecker {
     ) -> crate::error::Result<Type> {
         if args.len() != 2 {
             return Err(CompileError::type_error(
-                "shuffle_bytes expects 2 arguments: (u8x16, u8x16)",
+                "shuffle_bytes expects 2 arguments: (u8xN, u8xN) where N=16 or 32",
                 span.clone(),
             ));
         }
@@ -210,20 +212,24 @@ impl TypeChecker {
             (
                 Type::Vector {
                     elem: ea,
-                    width: 16,
+                    width: wa,
                 },
                 Type::Vector {
                     elem: eb,
-                    width: 16,
+                    width: wb,
                 },
-            ) if matches!(ea.as_ref(), Type::U8) && matches!(eb.as_ref(), Type::U8) => {
+            ) if matches!(ea.as_ref(), Type::U8)
+                && matches!(eb.as_ref(), Type::U8)
+                && wa == wb
+                && (*wa == 16 || *wa == 32) =>
+            {
                 Ok(Type::Vector {
                     elem: Box::new(Type::U8),
-                    width: 16,
+                    width: *wa,
                 })
             }
             _ => Err(CompileError::type_error(
-                format!("shuffle_bytes expects (u8x16, u8x16), got ({a}, {b})"),
+                format!("shuffle_bytes expects (u8x16, u8x16) or (u8x32, u8x32), got ({a}, {b})"),
                 span.clone(),
             )),
         }

@@ -370,4 +370,61 @@ mod tests {
         );
         assert!(result.is_ok(), "ARM compile failed: {result:?}");
     }
+
+    // === shuffle_bytes AVX2: u8x32 × u8x32 → u8x32 (vpshufb) ===
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_shuffle_bytes_avx2_basic() {
+        // vpshufb operates as two independent 128-bit lane shuffles.
+        // Low lane: table=[0,1,2,...,15], indices=[3,2,1,0, ...] → [3,2,1,0,...]
+        // High lane: table=[16,17,...,31], indices=[1,0,3,2, ...] → [17,16,19,18,...]
+        assert_output(
+            r#"
+            func main() {
+                let table: u8x32 = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
+                                     16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]u8x32
+                let idx: u8x32 = [3,2,1,0, 7,6,5,4, 11,10,9,8, 15,14,13,12,
+                                   1,0,3,2, 5,4,7,6, 9,8,11,10, 13,12,15,14]u8x32
+                let r: u8x32 = shuffle_bytes(table, idx)
+                let a: u8 = r[0]
+                let b: u8 = r[3]
+                let c: u8 = r[16]
+                let d: u8 = r[17]
+                println(a)
+                println(b)
+                println(c)
+                println(d)
+            }
+            "#,
+            "3\n0\n17\n16",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_shuffle_bytes_avx2_ir_check() {
+        use ea_compiler::{CompileOptions, OutputMode};
+
+        let source = r#"
+            export func f(a: u8x32, b: u8x32) -> u8x32 {
+                return shuffle_bytes(a, b)
+            }
+        "#;
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let ir_path = dir.path().join("shuffle_avx2.ll");
+        let opts = CompileOptions {
+            opt_level: 0,
+            ..CompileOptions::default()
+        };
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts)
+            .expect("shuffle_bytes AVX2 IR compilation failed");
+
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
+        assert!(
+            ir.contains("avx2.pshuf.b"),
+            "expected avx2.pshuf.b in IR:\n{ir}"
+        );
+    }
 }
