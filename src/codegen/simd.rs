@@ -89,6 +89,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "round_f32x4_i32x4"
                 | "pack_sat_i32x4"
                 | "pack_sat_i16x8"
+                | "cvt_f16_f32"
+                | "cvt_f32_f16"
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
@@ -178,6 +180,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             "round_f32x4_i32x4" => self.compile_round_f32x4_i32x4(args, function),
             "pack_sat_i32x4" => self.compile_pack_sat_i32x4(args, function),
             "pack_sat_i16x8" => self.compile_pack_sat_i16x8(args, function),
+            "cvt_f16_f32" => self.compile_cvt_f16_f32(args, function),
+            "cvt_f32_f16" => self.compile_cvt_f32_f16(args, function),
             _ if typeck_types::parse_typed_load(name).is_some() => {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)

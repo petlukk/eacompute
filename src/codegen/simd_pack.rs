@@ -337,4 +337,71 @@ impl<'ctx> CodeGenerator<'ctx> {
             Ok(result)
         }
     }
+
+    /// cvt_f16_f32: i16xN (f16 bits) -> f32xN
+    /// Bitcasts to <N x half>, then fpext to <N x float>.
+    /// x86: emits vcvtph2ps (F16C). ARM: emits fcvtl (NEON).
+    pub(super) fn compile_cvt_f16_f32(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let v = self.compile_expr(&args[0], function)?.into_vector_value();
+        let width = v.get_type().get_size();
+
+        if self.is_arm && width == 8 {
+            return Err(CompileError::codegen_error(
+                "cvt_f16_f32 with i16x8 is x86-only (256-bit); use i16x4 on ARM",
+            ));
+        }
+
+        let half_vec_ty = self.context.f16_type().vec_type(width);
+        let f32_vec_ty = self.context.f32_type().vec_type(width);
+
+        let as_half = self
+            .builder
+            .build_bit_cast(v, half_vec_ty, "f16_bits")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .into_vector_value();
+
+        let result = self
+            .builder
+            .build_float_ext(as_half, f32_vec_ty, "cvt_f16_f32")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+        Ok(BasicValueEnum::VectorValue(result))
+    }
+
+    /// cvt_f32_f16: f32xN -> i16xN (f16 bits)
+    /// fptrunc to <N x half>, then bitcast to i16xN.
+    /// x86: emits vcvtps2ph (F16C). ARM: emits fcvtn (NEON).
+    pub(super) fn compile_cvt_f32_f16(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let v = self.compile_expr(&args[0], function)?.into_vector_value();
+        let width = v.get_type().get_size();
+
+        if self.is_arm && width == 8 {
+            return Err(CompileError::codegen_error(
+                "cvt_f32_f16 with f32x8 is x86-only (256-bit); use f32x4 on ARM",
+            ));
+        }
+
+        let half_vec_ty = self.context.f16_type().vec_type(width);
+        let i16_vec_ty = self.context.i16_type().vec_type(width);
+
+        let as_half = self
+            .builder
+            .build_float_trunc(v, half_vec_ty, "cvt_f32_f16")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+        let result = self
+            .builder
+            .build_bit_cast(as_half, i16_vec_ty, "f16_bits")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+        Ok(result)
+    }
 }

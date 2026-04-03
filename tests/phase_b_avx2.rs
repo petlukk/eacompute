@@ -182,4 +182,89 @@ mod tests {
             "expected avx2.pmadd.wd in IR:\n{ir}"
         );
     }
+
+    // === cvt_f16_f32 / cvt_f32_f16 ===
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_cvt_f16_f32_roundtrip() {
+        assert_c_interop(
+            r#"
+            export func test(out: *mut f32, out16: *mut i16) {
+                let one_f16: i16 = 15360
+                let v: i16x8 = splat(one_f16)
+                let f: f32x8 = cvt_f16_f32(v)
+                store(out, 0, f)
+                let back: i16x8 = cvt_f32_f16(f)
+                store(out16, 0, back)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            #include <stdint.h>
+            extern void test(float*, int16_t*);
+            int main() {
+                float f[8];
+                int16_t h[8];
+                test(f, h);
+                printf("%.1f\n%d\n", f[0], h[0]);
+                return 0;
+            }
+            "#,
+            "1.0\n15360",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_cvt_f16_f32_i16x8() {
+        assert_c_interop(
+            r#"
+            export func test(out: *mut f32) {
+                let one_f16: i16 = 15360
+                let v: i16x8 = splat(one_f16)
+                let f: f32x8 = cvt_f16_f32(v)
+                store(out, 0, f)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            #include <stdint.h>
+            extern void test(float*);
+            int main() {
+                float f[8];
+                test(f);
+                printf("%.1f %.1f %.1f %.1f\n", f[0], f[1], f[6], f[7]);
+                return 0;
+            }
+            "#,
+            "1.0 1.0 1.0 1.0",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_cvt_f16_f32_zero() {
+        assert_c_interop(
+            r#"
+            export func test(out: *mut f32) {
+                let zero: i16 = 0
+                let v: i16x8 = splat(zero)
+                let f: f32x8 = cvt_f16_f32(v)
+                store(out, 0, f)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            extern void test(float*);
+            int main() {
+                float f[8];
+                test(f);
+                printf("%.1f\n", f[0]);
+                return 0;
+            }
+            "#,
+            "0.0",
+        );
+    }
 }
