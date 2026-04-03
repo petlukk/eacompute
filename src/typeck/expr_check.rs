@@ -367,7 +367,7 @@ impl TypeChecker {
                         "min",
                         "max",
                         "maddubs_i16",
-                        "maddubs_i32",
+                        "madd_i16",
                         "narrow_f32x4_i8",
                         "cvt_f16_f32",
                         "cvt_f32_f16",

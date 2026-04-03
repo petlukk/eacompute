@@ -60,7 +60,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "widen_u8_i32x4_12"
                 | "narrow_f32x4_i8"
                 | "maddubs_i16"
-                | "maddubs_i32"
+                | "madd_i16"
                 | "vdot_i32"
                 | "smmla_i32"
                 | "ummla_i32"
@@ -154,7 +154,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "widen_u8_i32x4_12" => self.compile_widen_u8_i32(args, 4, 12, function),
             "narrow_f32x4_i8" => self.compile_narrow_f32x4_i8(args, function),
             "maddubs_i16" => self.compile_maddubs_i16(args, function),
-            "maddubs_i32" => self.compile_maddubs_i32(args, function),
+            "madd_i16" => self.compile_madd_i16(args, function),
             "vdot_i32" => self.compile_vdot_i32(args, function),
             "smmla_i32" => self.compile_smmla_i32(args, function),
             "ummla_i32" => self.compile_ummla_i32(args, function),

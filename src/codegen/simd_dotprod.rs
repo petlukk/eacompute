@@ -1,4 +1,3 @@
-use inkwell::types::VectorType;
 use inkwell::values::{BasicValueEnum, FunctionValue};
 
 use crate::ast::Expr;
@@ -46,18 +45,17 @@ impl<'ctx> CodeGenerator<'ctx> {
         Ok(result)
     }
 
-    /// maddubs_i32(u8xN, i8xN) -> i32x(N/4)
-    /// Two-intrinsic chain: pmaddubsw → pmaddwd(ones).
-    /// N=16: SSE path (SSSE3 + SSE2) → i32x4.
-    /// N=32: AVX2 path (vpmaddubsw + vpmaddwd) → i32x8.
-    pub(super) fn compile_maddubs_i32(
+    /// madd_i16(i16x8, i16x8) -> i32x4   (SSE2 pmaddwd)
+    /// madd_i16(i16x16, i16x16) -> i32x8  (AVX2 vpmaddwd)
+    /// Multiply i16 pairs, add adjacent products -> i32.
+    pub(super) fn compile_madd_i16(
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         if self.is_arm {
             return Err(CompileError::codegen_error(
-                "maddubs_i32 is x86-only (SSSE3+SSE2); no NEON equivalent",
+                "madd_i16 is x86-only (SSE2/AVX2 pmaddwd); no NEON equivalent",
             ));
         }
         let a = self.compile_expr(&args[0], function)?.into_vector_value();
@@ -65,106 +63,48 @@ impl<'ctx> CodeGenerator<'ctx> {
 
         let width = a.get_type().get_size();
         match width {
-            16 => self.compile_maddubs_i32_128(a, b),
-            32 => self.compile_maddubs_i32_256(a, b),
+            8 => {
+                let i16x8_ty = self.context.i16_type().vec_type(8);
+                let i32x4_ty = self.context.i32_type().vec_type(4);
+                let fn_type = i32x4_ty.fn_type(&[i16x8_ty.into(), i16x8_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function("llvm.x86.sse2.pmadd.wd")
+                    .unwrap_or_else(|| {
+                        self.module
+                            .add_function("llvm.x86.sse2.pmadd.wd", fn_type, None)
+                    });
+                self.builder
+                    .build_call(intrinsic, &[a.into(), b.into()], "madd_i16")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| CompileError::codegen_error("madd_i16 did not return a value"))
+            }
+            16 => {
+                let i16x16_ty = self.context.i16_type().vec_type(16);
+                let i32x8_ty = self.context.i32_type().vec_type(8);
+                let fn_type = i32x8_ty.fn_type(&[i16x16_ty.into(), i16x16_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function("llvm.x86.avx2.pmadd.wd")
+                    .unwrap_or_else(|| {
+                        self.module
+                            .add_function("llvm.x86.avx2.pmadd.wd", fn_type, None)
+                    });
+                self.builder
+                    .build_call(intrinsic, &[a.into(), b.into()], "madd_i16_avx2")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| {
+                        CompileError::codegen_error("madd_i16 AVX2 did not return a value")
+                    })
+            }
             _ => Err(CompileError::codegen_error(format!(
-                "maddubs_i32: unsupported width {width}"
+                "madd_i16: unsupported width {width}"
             ))),
         }
-    }
-
-    /// SSE path: u8x16 × i8x16 → i32x4 (SSSE3 + SSE2).
-    fn compile_maddubs_i32_128(
-        &mut self,
-        a: inkwell::values::VectorValue<'ctx>,
-        b: inkwell::values::VectorValue<'ctx>,
-    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
-        let i8x16_ty = self.context.i8_type().vec_type(16);
-        let i16x8_ty = self.context.i16_type().vec_type(8);
-        let i32x4_ty = self.context.i32_type().vec_type(4);
-
-        // Step 1: pmaddubsw
-        let ubsw_ty = i16x8_ty.fn_type(&[i8x16_ty.into(), i8x16_ty.into()], false);
-        let ubsw = self
-            .module
-            .get_function("llvm.x86.ssse3.pmadd.ub.sw.128")
-            .unwrap_or_else(|| {
-                self.module
-                    .add_function("llvm.x86.ssse3.pmadd.ub.sw.128", ubsw_ty, None)
-            });
-        let t = self
-            .builder
-            .build_call(ubsw, &[a.into(), b.into()], "maddubs_i32_step1")
-            .map_err(|e| CompileError::codegen_error(e.to_string()))?
-            .try_as_basic_value()
-            .basic()
-            .ok_or_else(|| CompileError::codegen_error("pmaddubsw128 did not return a value"))?
-            .into_vector_value();
-
-        // Step 2: pmaddwd with ones
-        let one = self.context.i16_type().const_int(1, false);
-        let ones = VectorType::const_vector(&[one; 8]);
-        let wd_ty = i32x4_ty.fn_type(&[i16x8_ty.into(), i16x8_ty.into()], false);
-        let wd = self
-            .module
-            .get_function("llvm.x86.sse2.pmadd.wd")
-            .unwrap_or_else(|| {
-                self.module
-                    .add_function("llvm.x86.sse2.pmadd.wd", wd_ty, None)
-            });
-        self.builder
-            .build_call(wd, &[t.into(), ones.into()], "maddubs_i32_step2")
-            .map_err(|e| CompileError::codegen_error(e.to_string()))?
-            .try_as_basic_value()
-            .basic()
-            .ok_or_else(|| CompileError::codegen_error("pmaddwd128 did not return a value"))
-    }
-
-    /// AVX2 path: u8x32 × i8x32 → i32x8 (vpmaddubsw + vpmaddwd).
-    fn compile_maddubs_i32_256(
-        &mut self,
-        a: inkwell::values::VectorValue<'ctx>,
-        b: inkwell::values::VectorValue<'ctx>,
-    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
-        let i8x32_ty = self.context.i8_type().vec_type(32);
-        let i16x16_ty = self.context.i16_type().vec_type(16);
-        let i32x8_ty = self.context.i32_type().vec_type(8);
-
-        // Step 1: vpmaddubsw (AVX2)
-        let ubsw_ty = i16x16_ty.fn_type(&[i8x32_ty.into(), i8x32_ty.into()], false);
-        let ubsw = self
-            .module
-            .get_function("llvm.x86.avx2.pmadd.ub.sw")
-            .unwrap_or_else(|| {
-                self.module
-                    .add_function("llvm.x86.avx2.pmadd.ub.sw", ubsw_ty, None)
-            });
-        let t = self
-            .builder
-            .build_call(ubsw, &[a.into(), b.into()], "maddubs_i32_avx2_step1")
-            .map_err(|e| CompileError::codegen_error(e.to_string()))?
-            .try_as_basic_value()
-            .basic()
-            .ok_or_else(|| CompileError::codegen_error("vpmaddubsw did not return a value"))?
-            .into_vector_value();
-
-        // Step 2: vpmaddwd with ones (AVX2)
-        let one = self.context.i16_type().const_int(1, false);
-        let ones = VectorType::const_vector(&[one; 16]);
-        let wd_ty = i32x8_ty.fn_type(&[i16x16_ty.into(), i16x16_ty.into()], false);
-        let wd = self
-            .module
-            .get_function("llvm.x86.avx2.pmadd.wd")
-            .unwrap_or_else(|| {
-                self.module
-                    .add_function("llvm.x86.avx2.pmadd.wd", wd_ty, None)
-            });
-        self.builder
-            .build_call(wd, &[t.into(), ones.into()], "maddubs_i32_avx2_step2")
-            .map_err(|e| CompileError::codegen_error(e.to_string()))?
-            .try_as_basic_value()
-            .basic()
-            .ok_or_else(|| CompileError::codegen_error("vpmaddwd did not return a value"))
     }
 
     /// vdot_i32(i8x16, i8x16) -> i32x4

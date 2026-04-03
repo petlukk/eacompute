@@ -130,7 +130,10 @@ impl TypeChecker {
         }
     }
 
-    pub(super) fn check_maddubs_i32(
+    /// madd_i16(i16x8, i16x8) -> i32x4  (SSE2 pmaddwd)
+    /// madd_i16(i16x16, i16x16) -> i32x8  (AVX2 vpmaddwd)
+    /// Multiply i16 pairs, add adjacent products -> i32.
+    pub(super) fn check_madd_i16(
         &self,
         args: &[Expr],
         locals: &HashMap<String, (Type, bool)>,
@@ -138,7 +141,7 @@ impl TypeChecker {
     ) -> crate::error::Result<Type> {
         if args.len() != 2 {
             return Err(CompileError::type_error(
-                "maddubs_i32 expects 2 arguments: (u8xN, i8xN) where N=16 or 32",
+                "madd_i16 expects 2 arguments: (i16xN, i16xN) where N=8 or 16",
                 span.clone(),
             ));
         }
@@ -154,21 +157,21 @@ impl TypeChecker {
                     elem: eb,
                     width: wb,
                 },
-            ) if matches!(ea.as_ref(), Type::U8)
-                && matches!(eb.as_ref(), Type::I8)
+            ) if matches!(ea.as_ref(), Type::I16)
+                && matches!(eb.as_ref(), Type::I16)
                 && wa == wb
-                && (*wa == 16 || *wa == 32) =>
+                && (*wa == 8 || *wa == 16) =>
             {
-                // u8x16,i8x16 → i32x4 (SSE)
-                // u8x32,i8x32 → i32x8 (AVX2)
+                // i16x8,i16x8 → i32x4 (SSE2)
+                // i16x16,i16x16 → i32x8 (AVX2)
                 Ok(Type::Vector {
                     elem: Box::new(Type::I32),
-                    width: wa / 4,
+                    width: wa / 2,
                 })
             }
             _ => Err(CompileError::type_error(
                 format!(
-                    "maddubs_i32 expects (u8x16, i8x16) or (u8x32, i8x32), \
+                    "madd_i16 expects (i16x8, i16x8) or (i16x16, i16x16), \
                      got ({a}, {b})"
                 ),
                 span.clone(),

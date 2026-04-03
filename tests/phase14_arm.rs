@@ -104,11 +104,11 @@ mod tests {
     }
 
     #[test]
-    fn test_arm_rejects_maddubs_i32() {
+    fn test_arm_rejects_madd_i16() {
         let err = try_compile(
             r#"
-            export func f(a: u8x16, b: i8x16) -> i32x4 {
-                return maddubs_i32(a, b)
+            export func f(a: i16x8, b: i16x8) -> i32x4 {
+                return madd_i16(a, b)
             }
             "#,
             &arm_opts(),
