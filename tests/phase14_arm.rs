@@ -440,6 +440,40 @@ mod tests {
         );
     }
 
+    // === ARM: cvt_f16_f32 / cvt_f32_f16 ===
+
+    #[test]
+    fn test_cvt_f16_f32_arm_compiles() {
+        try_compile(
+            "export func convert(v: i16x4) -> f32x4 { return cvt_f16_f32(v) }",
+            &arm_opts(),
+        )
+        .expect("cvt_f16_f32 with i16x4 should compile on ARM");
+    }
+
+    #[test]
+    fn test_cvt_f32_f16_arm_compiles() {
+        try_compile(
+            "export func convert(v: f32x4) -> i16x4 { return cvt_f32_f16(v) }",
+            &arm_opts(),
+        )
+        .expect("cvt_f32_f16 with f32x4 should compile on ARM");
+    }
+
+    #[test]
+    fn test_cvt_f16_f32_arm_rejects_i16x8() {
+        let err = try_compile(
+            "export func convert(v: i16x8) -> f32x8 { return cvt_f16_f32(v) }",
+            &arm_opts(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("x86-only") || msg.contains("256-bit"),
+            "got: {msg}"
+        );
+    }
+
     // === x86: no regression — wider vectors still work ===
 
     #[test]
