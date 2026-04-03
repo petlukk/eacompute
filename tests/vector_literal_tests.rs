@@ -82,4 +82,55 @@ export func main() {
             "1",
         );
     }
+
+    #[test]
+    fn test_vector_literal_wrong_count() {
+        let source = r#"
+export func main() {
+    let v: i32x4 = [1, 2, 3]
+}
+"#;
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let stmts = ea_compiler::desugar(stmts).unwrap();
+        let err = ea_compiler::check_types(&stmts).unwrap_err();
+        assert!(
+            format!("{err:?}").contains("4 elements") || format!("{err:?}").contains("expects"),
+            "should report element count mismatch, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_vector_literal_wrong_elem_type() {
+        let source = r#"
+export func main() {
+    let v: i32x4 = [1.0, 2.0, 3.0, 4.0]
+}
+"#;
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let stmts = ea_compiler::desugar(stmts).unwrap();
+        let err = ea_compiler::check_types(&stmts).unwrap_err();
+        assert!(
+            format!("{err:?}").contains("expected i32") || format!("{err:?}").contains("element"),
+            "should report type mismatch, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_bare_array_literal_still_errors() {
+        let source = r#"
+export func f(v: i32x4) -> i32x4 {
+    return [1, 2, 3, 4]
+}
+"#;
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let stmts = ea_compiler::desugar(stmts).unwrap();
+        let err = ea_compiler::check_types(&stmts).unwrap_err();
+        assert!(
+            format!("{err:?}").contains("shuffle"),
+            "bare array literal in return should still error, got: {err:?}"
+        );
+    }
 }
