@@ -379,6 +379,41 @@ impl<'ctx> CodeGenerator<'ctx> {
                     )),
                 }
             }
+            "to_i16" => {
+                let target = self.context.i16_type();
+                match val {
+                    BasicValueEnum::FloatValue(fv) => {
+                        let result = self
+                            .builder
+                            .build_float_to_signed_int(fv, target, "fptosi")
+                            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+                        Ok(BasicValueEnum::IntValue(result))
+                    }
+                    BasicValueEnum::IntValue(iv) => {
+                        let src_width = iv.get_type().get_bit_width();
+                        if src_width > 16 {
+                            let result = self
+                                .builder
+                                .build_int_truncate(iv, target, "trunc")
+                                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+                            Ok(BasicValueEnum::IntValue(result))
+                        } else if src_width < 16 {
+                            let result = if is_unsigned_src {
+                                self.builder.build_int_z_extend(iv, target, "zext")
+                            } else {
+                                self.builder.build_int_s_extend(iv, target, "sext")
+                            }
+                            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+                            Ok(BasicValueEnum::IntValue(result))
+                        } else {
+                            Ok(val)
+                        }
+                    }
+                    _ => Err(CompileError::codegen_error(
+                        "to_i16: unsupported source type",
+                    )),
+                }
+            }
             "to_i32" => {
                 let target = self.context.i32_type();
                 match val {

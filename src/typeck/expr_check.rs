@@ -349,6 +349,7 @@ impl TypeChecker {
                         "exp",
                         "to_f32",
                         "to_f64",
+                        "to_i16",
                         "to_i32",
                         "to_i64",
                         "reduce_add",

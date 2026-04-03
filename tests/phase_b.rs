@@ -376,4 +376,84 @@ mod tests {
             "101 108 109 116",
         );
     }
+
+    // === to_i16: scalar narrowing cast ===
+
+    #[test]
+    fn test_to_i16_from_i32() {
+        assert_output(
+            r#"
+            func main() {
+                let x: i32 = 42
+                let y: i16 = to_i16(x)
+                println(y)
+            }
+            "#,
+            "42",
+        );
+    }
+
+    #[test]
+    fn test_to_i16_from_i32_negative() {
+        assert_output(
+            r#"
+            func main() {
+                let x: i32 = -100
+                let y: i16 = to_i16(x)
+                println(y)
+            }
+            "#,
+            "-100",
+        );
+    }
+
+    #[test]
+    fn test_to_i16_from_f32() {
+        assert_output(
+            r#"
+            func main() {
+                let x: f32 = 3.7
+                let y: i16 = to_i16(x)
+                println(y)
+            }
+            "#,
+            "3",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_to_i16_splat_for_madd() {
+        // The motivating use case: narrow an i32 scale to i16 for splat into madd_i16.
+        assert_c_interop(
+            r#"
+            export func scaled_dot(src: *i16, n: i32, scale: i32) -> i32 {
+                let mut acc: i32x4 = splat(0)
+                let s: i16 = to_i16(scale)
+                let sv: i16x8 = splat(s)
+                let mut i: i32 = 0
+                while i < n {
+                    let a: i16x8 = load(src, i)
+                    acc = acc .+ madd_i16(a, sv)
+                    i = i + 8
+                }
+                return reduce_add(acc)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            #include <stdint.h>
+            extern int32_t scaled_dot(const int16_t *src, int n, int scale);
+            int main() {
+                int16_t src[16];
+                for (int i = 0; i < 16; i++) src[i] = 1;
+                // scale=3: madd_i16([1,1,...], [3,3,...]) = (1*3+1*3)=6 per lane
+                // 4 lanes × 6 × 2 iters = 48
+                printf("%d\n", scaled_dot(src, 16, 3));
+                return 0;
+            }
+            "#,
+            "48",
+        );
+    }
 }
