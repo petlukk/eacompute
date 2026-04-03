@@ -131,6 +131,65 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
+    /// hadd_i16(i16x8, i16x8) -> i16x8   (SSSE3 phaddw)
+    /// hadd_i16(i16x16, i16x16) -> i16x16  (AVX2 vphaddw)
+    pub(super) fn compile_hadd_i16(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        if self.is_arm {
+            return Err(CompileError::codegen_error(
+                "hadd_i16 is x86-only (SSSE3/AVX2 phaddw); no NEON equivalent",
+            ));
+        }
+        let a = self.compile_expr(&args[0], function)?.into_vector_value();
+        let b = self.compile_expr(&args[1], function)?.into_vector_value();
+
+        let width = a.get_type().get_size();
+        match width {
+            8 => {
+                let i16x8_ty = self.context.i16_type().vec_type(8);
+                let fn_type = i16x8_ty.fn_type(&[i16x8_ty.into(), i16x8_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function("llvm.x86.ssse3.phadd.w.128")
+                    .unwrap_or_else(|| {
+                        self.module
+                            .add_function("llvm.x86.ssse3.phadd.w.128", fn_type, None)
+                    });
+                self.builder
+                    .build_call(intrinsic, &[a.into(), b.into()], "hadd_i16")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| CompileError::codegen_error("hadd_i16 did not return a value"))
+            }
+            16 => {
+                let i16x16_ty = self.context.i16_type().vec_type(16);
+                let fn_type = i16x16_ty.fn_type(&[i16x16_ty.into(), i16x16_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function("llvm.x86.avx2.phadd.w")
+                    .unwrap_or_else(|| {
+                        self.module
+                            .add_function("llvm.x86.avx2.phadd.w", fn_type, None)
+                    });
+                self.builder
+                    .build_call(intrinsic, &[a.into(), b.into()], "hadd_i16_avx2")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| {
+                        CompileError::codegen_error("hadd_i16 AVX2 did not return a value")
+                    })
+            }
+            _ => Err(CompileError::codegen_error(format!(
+                "hadd_i16: unsupported width {width}"
+            ))),
+        }
+    }
+
     /// vdot_i32(i8x16, i8x16) -> i32x4
     /// ARM NEON dot product: signed × signed, groups of 4 products per i32 lane.
     /// Maps to llvm.aarch64.neon.sdot.v4i32.v16i8 with a zero accumulator.

@@ -61,6 +61,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "narrow_f32x4_i8"
                 | "maddubs_i16"
                 | "madd_i16"
+                | "hadd_i16"
                 | "vdot_i32"
                 | "smmla_i32"
                 | "ummla_i32"
@@ -156,6 +157,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "narrow_f32x4_i8" => self.compile_narrow_f32x4_i8(args, function),
             "maddubs_i16" => self.compile_maddubs_i16(args, function),
             "madd_i16" => self.compile_madd_i16(args, function),
+            "hadd_i16" => self.compile_hadd_i16(args, function),
             "vdot_i32" => self.compile_vdot_i32(args, function),
             "smmla_i32" => self.compile_smmla_i32(args, function),
             "ummla_i32" => self.compile_ummla_i32(args, function),
