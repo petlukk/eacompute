@@ -375,6 +375,13 @@ impl<'ctx> CodeGenerator<'ctx> {
                 return ty.is_unsigned_integer();
             }
         }
+        if let Expr::Index { object, .. } = expr
+            && let Expr::Variable(name, _) = object.as_ref()
+            && let Some((_, ty)) = self.variables.get(name)
+            && let crate::typeck::Type::Vector { elem, .. } = ty
+        {
+            return elem.is_unsigned_integer();
+        }
         false
     }
 
