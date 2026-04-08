@@ -114,6 +114,10 @@ impl TypeChecker {
             "hi256_i32x16" => Some(self.check_hi_extract(name, args, locals, span, Type::I32, 16)),
             "lo256_f32x16" => Some(self.check_lo_extract(name, args, locals, span, Type::F32, 16)),
             "hi256_f32x16" => Some(self.check_hi_extract(name, args, locals, span, Type::F32, 16)),
+            "bcast_even_pairs_i32x8" => Some(self.check_bcast_pairs(name, args, locals, span, 8)),
+            "bcast_odd_pairs_i32x8" => Some(self.check_bcast_pairs(name, args, locals, span, 8)),
+            "bcast_even_pairs_i32x16" => Some(self.check_bcast_pairs(name, args, locals, span, 16)),
+            "bcast_odd_pairs_i32x16" => Some(self.check_bcast_pairs(name, args, locals, span, 16)),
             _ if types::parse_typed_load(name).is_some() => {
                 let vec_type = types::parse_typed_load(name).unwrap();
                 Some(self.check_load(args, locals, Some(&vec_type), span))

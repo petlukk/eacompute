@@ -79,4 +79,44 @@ impl<'ctx> CodeGenerator<'ctx> {
             .map_err(|e| CompileError::codegen_error(e.to_string()))?;
         Ok(BasicValueEnum::VectorValue(result))
     }
+
+    /// Emit a per-sublane 32-bit broadcast shufflevector.
+    /// `odd = false` produces [l0, l0, l2, l2] per 4-lane sublane (lowers to vpshufd imm=0xA0).
+    /// `odd = true`  produces [l1, l1, l3, l3] per 4-lane sublane (lowers to vpshufd imm=0xF5).
+    pub(super) fn emit_bcast_pairs(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+        odd: bool,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let a = self.compile_expr(&args[0], function)?.into_vector_value();
+        let n = a.get_type().get_size() as usize;
+        assert!(
+            n.is_multiple_of(4),
+            "bcast_pairs requires width divisible by 4"
+        );
+        let offset = if odd { 1 } else { 0 };
+        let mask_vals: Vec<_> = (0..n)
+            .map(|i| {
+                let sublane = i / 4;
+                let within = i % 4;
+                // within in [0,1] -> sublane*4 + offset + 0
+                // within in [2,3] -> sublane*4 + offset + 2
+                let src_lane = sublane * 4 + offset + if within >= 2 { 2 } else { 0 };
+                self.context.i32_type().const_int(src_lane as u64, false)
+            })
+            .collect();
+        let mask = VectorType::const_vector(&mask_vals);
+        let undef = a.get_type().get_undef();
+        let name = if odd {
+            "bcast_odd_pairs"
+        } else {
+            "bcast_even_pairs"
+        };
+        let result = self
+            .builder
+            .build_shuffle_vector(a, undef, mask, name)
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+        Ok(BasicValueEnum::VectorValue(result))
+    }
 }

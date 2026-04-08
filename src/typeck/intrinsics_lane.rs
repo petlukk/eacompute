@@ -97,4 +97,33 @@ impl TypeChecker {
     ) -> crate::error::Result<Type> {
         self.check_lo_extract(name, args, locals, span, expected_elem, input_width)
     }
+
+    /// Per-sublane 32-bit broadcast: {bcast_even_pairs,bcast_odd_pairs}_i32x{8,16}.
+    /// Accepts an i32 vector of width 8 or 16, returns the same type.
+    /// The even/odd distinction is handled at codegen time; type-check is identical.
+    pub(super) fn check_bcast_pairs(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+        expected_width: usize,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 1 argument: i32x{expected_width}"),
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        if !matches!(&a, Type::Vector { elem, width }
+            if matches!(**elem, Type::I32) && *width == expected_width)
+        {
+            return Err(CompileError::type_error(
+                format!("{name} expects i32x{expected_width}, got {a}"),
+                span.clone(),
+            ));
+        }
+        Ok(a)
+    }
 }
