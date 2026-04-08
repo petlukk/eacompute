@@ -116,4 +116,93 @@ export func f(a: i16x16) -> f32x16 {
         );
         assert!(ir.contains("fpext"), "expected fpext in IR, got:\n{ir}");
     }
+
+    #[test]
+    fn u8x64_bitwise_and_shift() {
+        let source = r#"
+export func lo_nibbles(a: u8x64) -> u8x64 {
+    let mask: u8x64 = splat(15)
+    return a .& mask
+}
+export func hi_nibbles(a: u8x64) -> u8x64 {
+    let shift: u8x64 = splat(4)
+    return a .>> shift
+}
+"#;
+        let ir = compile_to_ir(source, "u8x64_bitwise");
+        assert!(
+            ir.contains("<64 x i8>"),
+            "expected <64 x i8> type in IR, got:\n{ir}"
+        );
+        assert!(
+            ir.contains(" and ") || ir.contains("and <64"),
+            "expected bitwise AND in IR, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("lshr") || ir.contains("ashr"),
+            "expected right shift in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn i16x32_add() {
+        let source = r#"
+export func f(a: i16x32, b: i16x32) -> i16x32 {
+    return a .+ b
+}
+"#;
+        let ir = compile_to_ir(source, "i16x32_add");
+        assert!(
+            ir.contains("<32 x i16>"),
+            "expected <32 x i16> type in IR, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("add <32 x i16>") || ir.contains("add nsw <32 x i16>"),
+            "expected vector add in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn i32x16_add() {
+        let source = r#"
+export func f(a: i32x16, b: i32x16) -> i32x16 {
+    return a .+ b
+}
+"#;
+        let ir = compile_to_ir(source, "i32x16_add");
+        assert!(
+            ir.contains("<16 x i32>"),
+            "expected <16 x i32> type in IR, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("add <16 x i32>") || ir.contains("add nsw <16 x i32>"),
+            "expected vector add in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn f32x16_arith_unfused() {
+        let source = r#"
+export func f(a: f32x16, b: f32x16, c: f32x16) -> f32x16 {
+    return a .* b .+ c
+}
+"#;
+        let ir = compile_to_ir(source, "f32x16_arith");
+        assert!(
+            ir.contains("<16 x float>"),
+            "expected <16 x float> type in IR, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("fmul"),
+            "expected separate fmul in IR (no auto-fusion), got:\n{ir}"
+        );
+        assert!(
+            ir.contains("fadd"),
+            "expected separate fadd in IR, got:\n{ir}"
+        );
+        assert!(
+            !ir.contains("llvm.fma"),
+            "unexpected llvm.fma intrinsic (auto-fusion violates explicit-cost rule), got:\n{ir}"
+        );
+    }
 }
