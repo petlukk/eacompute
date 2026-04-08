@@ -37,4 +37,46 @@ impl<'ctx> CodeGenerator<'ctx> {
             .map_err(|e| CompileError::codegen_error(e.to_string()))?;
         Ok(BasicValueEnum::VectorValue(result))
     }
+
+    /// Emit a low-half extract: result[i] = input[i] for i in 0..N/2.
+    pub(super) fn emit_lo_extract(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let a = self.compile_expr(&args[0], function)?.into_vector_value();
+        let n = a.get_type().get_size();
+        let half = n / 2;
+        let mask_vals: Vec<_> = (0..half)
+            .map(|i| self.context.i32_type().const_int(i as u64, false))
+            .collect();
+        let mask = VectorType::const_vector(&mask_vals);
+        let undef = a.get_type().get_undef();
+        let result = self
+            .builder
+            .build_shuffle_vector(a, undef, mask, "lo_extract")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+        Ok(BasicValueEnum::VectorValue(result))
+    }
+
+    /// Emit a high-half extract: result[i] = input[i + N/2] for i in 0..N/2.
+    pub(super) fn emit_hi_extract(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let a = self.compile_expr(&args[0], function)?.into_vector_value();
+        let n = a.get_type().get_size();
+        let half = n / 2;
+        let mask_vals: Vec<_> = (0..half)
+            .map(|i| self.context.i32_type().const_int((i + half) as u64, false))
+            .collect();
+        let mask = VectorType::const_vector(&mask_vals);
+        let undef = a.get_type().get_undef();
+        let result = self
+            .builder
+            .build_shuffle_vector(a, undef, mask, "hi_extract")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+        Ok(BasicValueEnum::VectorValue(result))
+    }
 }

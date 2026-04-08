@@ -132,4 +132,220 @@ export func f(a: u8x16, b: u8x16) -> u8x32 {
             "expected <32 x i8> result, got:\n{ir}"
         );
     }
+
+    #[test]
+    fn lo128_i8x32_extract() {
+        let source = r#"
+export func f(a: i8x32) -> i8x16 {
+    return lo128_i8x32(a)
+}
+"#;
+        let ir = compile_to_ir(source, "lo128_i8x32");
+        assert!(
+            ir.contains("shufflevector <32 x i8>"),
+            "expected shuffle of <32 x i8>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<16 x i8>"),
+            "expected <16 x i8> result, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn hi128_i8x32_extract() {
+        let source = r#"
+export func f(a: i8x32) -> i8x16 {
+    return hi128_i8x32(a)
+}
+"#;
+        let ir = compile_to_ir(source, "hi128_i8x32");
+        assert!(
+            ir.contains("shufflevector <32 x i8>"),
+            "expected shuffle of <32 x i8>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<16 x i8>"),
+            "expected <16 x i8> result, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn lo128_u8x32_extract() {
+        let source = r#"
+export func f(a: u8x32) -> u8x16 {
+    return lo128_u8x32(a)
+}
+"#;
+        let ir = compile_to_ir(source, "lo128_u8x32");
+        assert!(
+            ir.contains("shufflevector <32 x i8>"),
+            "expected shuffle of <32 x i8>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<16 x i8>"),
+            "expected <16 x i8> result, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn hi128_u8x32_extract() {
+        let source = r#"
+export func f(a: u8x32) -> u8x16 {
+    return hi128_u8x32(a)
+}
+"#;
+        let ir = compile_to_ir(source, "hi128_u8x32");
+        assert!(
+            ir.contains("shufflevector <32 x i8>"),
+            "expected shuffle of <32 x i8>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<16 x i8>"),
+            "expected <16 x i8> result, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn lo256_i8x64_extract() {
+        let source = r#"
+export func f(a: i8x64) -> i8x32 {
+    return lo256_i8x64(a)
+}
+"#;
+        let ir = compile_to_ir(source, "lo256_i8x64");
+        assert!(
+            ir.contains("shufflevector <64 x i8>"),
+            "expected shuffle of <64 x i8>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<32 x i8>"),
+            "expected <32 x i8> result, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn hi256_i8x64_extract() {
+        let source = r#"
+export func f(a: i8x64) -> i8x32 {
+    return hi256_i8x64(a)
+}
+"#;
+        let ir = compile_to_ir(source, "hi256_i8x64");
+        assert!(
+            ir.contains("shufflevector <64 x i8>"),
+            "expected shuffle of <64 x i8>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<32 x i8>"),
+            "expected <32 x i8> result, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn lo256_u8x64_extract() {
+        let source = r#"
+export func f(a: u8x64) -> u8x32 {
+    return lo256_u8x64(a)
+}
+"#;
+        let ir = compile_to_ir(source, "lo256_u8x64");
+        assert!(
+            ir.contains("shufflevector <64 x i8>"),
+            "expected shuffle of <64 x i8>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<32 x i8>"),
+            "expected <32 x i8> result, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn hi256_u8x64_extract() {
+        let source = r#"
+export func f(a: u8x64) -> u8x32 {
+    return hi256_u8x64(a)
+}
+"#;
+        let ir = compile_to_ir(source, "hi256_u8x64");
+        assert!(
+            ir.contains("shufflevector <64 x i8>"),
+            "expected shuffle of <64 x i8>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<32 x i8>"),
+            "expected <32 x i8> result, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn lo256_i32x16_extract() {
+        let source = r#"
+export func f(a: i32x16) -> i32x8 {
+    return lo256_i32x16(a)
+}
+"#;
+        let ir = compile_to_ir(source, "lo256_i32x16");
+        assert!(
+            ir.contains("shufflevector <16 x i32>"),
+            "expected shuffle of <16 x i32>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<8 x i32>"),
+            "expected <8 x i32> result, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn hi256_i32x16_extract() {
+        let source = r#"
+export func f(a: i32x16) -> i32x8 {
+    return hi256_i32x16(a)
+}
+"#;
+        let ir = compile_to_ir(source, "hi256_i32x16");
+        assert!(
+            ir.contains("shufflevector <16 x i32>"),
+            "expected shuffle of <16 x i32>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<8 x i32>"),
+            "expected <8 x i32> result, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn lo256_f32x16_extract() {
+        let source = r#"
+export func f(a: f32x16) -> f32x8 {
+    return lo256_f32x16(a)
+}
+"#;
+        let ir = compile_to_ir(source, "lo256_f32x16");
+        assert!(
+            ir.contains("shufflevector <16 x float>"),
+            "expected shuffle of <16 x float>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<8 x float>"),
+            "expected <8 x float> result, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn hi256_f32x16_extract() {
+        let source = r#"
+export func f(a: f32x16) -> f32x8 {
+    return hi256_f32x16(a)
+}
+"#;
+        let ir = compile_to_ir(source, "hi256_f32x16");
+        assert!(
+            ir.contains("shufflevector <16 x float>"),
+            "expected shuffle of <16 x float>, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<8 x float>"),
+            "expected <8 x float> result, got:\n{ir}"
+        );
+    }
 }

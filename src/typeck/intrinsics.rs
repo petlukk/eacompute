@@ -102,6 +102,18 @@ impl TypeChecker {
             "concat_u8x32" => Some(self.check_concat(name, args, locals, span, Type::U8, 32)),
             "concat_i32x8" => Some(self.check_concat(name, args, locals, span, Type::I32, 8)),
             "concat_f32x8" => Some(self.check_concat(name, args, locals, span, Type::F32, 8)),
+            "lo128_i8x32" => Some(self.check_lo_extract(name, args, locals, span, Type::I8, 32)),
+            "hi128_i8x32" => Some(self.check_hi_extract(name, args, locals, span, Type::I8, 32)),
+            "lo128_u8x32" => Some(self.check_lo_extract(name, args, locals, span, Type::U8, 32)),
+            "hi128_u8x32" => Some(self.check_hi_extract(name, args, locals, span, Type::U8, 32)),
+            "lo256_i8x64" => Some(self.check_lo_extract(name, args, locals, span, Type::I8, 64)),
+            "hi256_i8x64" => Some(self.check_hi_extract(name, args, locals, span, Type::I8, 64)),
+            "lo256_u8x64" => Some(self.check_lo_extract(name, args, locals, span, Type::U8, 64)),
+            "hi256_u8x64" => Some(self.check_hi_extract(name, args, locals, span, Type::U8, 64)),
+            "lo256_i32x16" => Some(self.check_lo_extract(name, args, locals, span, Type::I32, 16)),
+            "hi256_i32x16" => Some(self.check_hi_extract(name, args, locals, span, Type::I32, 16)),
+            "lo256_f32x16" => Some(self.check_lo_extract(name, args, locals, span, Type::F32, 16)),
+            "hi256_f32x16" => Some(self.check_hi_extract(name, args, locals, span, Type::F32, 16)),
             _ if types::parse_typed_load(name).is_some() => {
                 let vec_type = types::parse_typed_load(name).unwrap();
                 Some(self.check_load(args, locals, Some(&vec_type), span))

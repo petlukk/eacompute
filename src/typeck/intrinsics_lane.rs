@@ -51,4 +51,50 @@ impl TypeChecker {
             width: expected_width * 2,
         })
     }
+
+    /// lo_extract: Vec(2N) -> VecN, result lanes = input[0..N].
+    pub(super) fn check_lo_extract(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+        expected_elem: Type,
+        input_width: usize,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 1 argument"),
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        if !matches!(&a, Type::Vector { elem, width }
+            if **elem == expected_elem && *width == input_width)
+        {
+            return Err(CompileError::type_error(
+                format!("{name} expects {expected_elem}x{input_width}, got {a}"),
+                span.clone(),
+            ));
+        }
+        Ok(Type::Vector {
+            elem: Box::new(expected_elem),
+            width: input_width / 2,
+        })
+    }
+
+    /// hi_extract: Vec(2N) -> VecN, result lanes = input[N..2N].
+    /// Type rules are identical to check_lo_extract; only the emitted
+    /// shufflevector mask differs (handled in codegen).
+    pub(super) fn check_hi_extract(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+        expected_elem: Type,
+        input_width: usize,
+    ) -> crate::error::Result<Type> {
+        self.check_lo_extract(name, args, locals, span, expected_elem, input_width)
+    }
 }

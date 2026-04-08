@@ -100,6 +100,18 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "concat_u8x32"
                 | "concat_i32x8"
                 | "concat_f32x8"
+                | "lo128_i8x32"
+                | "hi128_i8x32"
+                | "lo128_u8x32"
+                | "hi128_u8x32"
+                | "lo256_i8x64"
+                | "hi256_i8x64"
+                | "lo256_u8x64"
+                | "hi256_u8x64"
+                | "lo256_i32x16"
+                | "hi256_i32x16"
+                | "lo256_f32x16"
+                | "hi256_f32x16"
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
@@ -195,6 +207,10 @@ impl<'ctx> CodeGenerator<'ctx> {
             "widen_u8_u16" => self.compile_widen_u8_u16(args, function),
             "concat_i8x16" | "concat_u8x16" | "concat_i8x32" | "concat_u8x32" | "concat_i32x8"
             | "concat_f32x8" => self.emit_concat(args, function),
+            "lo128_i8x32" | "lo128_u8x32" | "lo256_i8x64" | "lo256_u8x64" | "lo256_i32x16"
+            | "lo256_f32x16" => self.emit_lo_extract(args, function),
+            "hi128_i8x32" | "hi128_u8x32" | "hi256_i8x64" | "hi256_u8x64" | "hi256_i32x16"
+            | "hi256_f32x16" => self.emit_hi_extract(args, function),
             _ if typeck_types::parse_typed_load(name).is_some() => {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)
