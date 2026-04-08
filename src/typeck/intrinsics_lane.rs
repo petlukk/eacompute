@@ -5,8 +5,50 @@
 //! See docs/superpowers/plans/2026-04-08-avx512-lane-intrinsics.md for the
 //! full rationale and the llama.cpp Q4K/Q8K gemm path this enables.
 
+use std::collections::HashMap;
+
+use crate::ast::Expr;
+use crate::error::CompileError;
+use crate::lexer::Span;
+
 use super::TypeChecker;
+use super::types::Type;
 
 impl TypeChecker {
-    // Type checkers for concat/extract/bcast families are added in Tasks 2-4.
+    /// concat_*(lo: VecN, hi: VecN) -> Vec(2N)
+    /// Pure linear concatenation: result = [lo_elements, hi_elements].
+    pub(super) fn check_concat(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+        expected_elem: Type,
+        expected_width: usize,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 2 arguments: (lo, hi)"),
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        let matches_expected = |t: &Type| -> bool {
+            matches!(t, Type::Vector { elem, width }
+                if **elem == expected_elem && *width == expected_width)
+        };
+        if !matches_expected(&a) || !matches_expected(&b) {
+            return Err(CompileError::type_error(
+                format!(
+                    "{name} expects two {expected_elem}x{expected_width} arguments, got ({a}, {b})"
+                ),
+                span.clone(),
+            ));
+        }
+        Ok(Type::Vector {
+            elem: Box::new(expected_elem),
+            width: expected_width * 2,
+        })
+    }
 }

@@ -94,6 +94,12 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "cvt_f16_f32"
                 | "cvt_f32_f16"
                 | "widen_u8_u16"
+                | "concat_i8x16"
+                | "concat_u8x16"
+                | "concat_i8x32"
+                | "concat_u8x32"
+                | "concat_i32x8"
+                | "concat_f32x8"
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
@@ -187,6 +193,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             "cvt_f16_f32" => self.compile_cvt_f16_f32(args, function),
             "cvt_f32_f16" => self.compile_cvt_f32_f16(args, function),
             "widen_u8_u16" => self.compile_widen_u8_u16(args, function),
+            "concat_i8x16" | "concat_u8x16" | "concat_i8x32" | "concat_u8x32" | "concat_i32x8"
+            | "concat_f32x8" => self.emit_concat(args, function),
             _ if typeck_types::parse_typed_load(name).is_some() => {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)

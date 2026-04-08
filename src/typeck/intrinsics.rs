@@ -96,6 +96,12 @@ impl TypeChecker {
             "store_masked" => Some(self.check_store_masked(args, locals, span)),
             "movemask" => Some(self.check_movemask(args, locals, span)),
             "min" | "max" => Some(self.check_min_max(name, args, locals, span)),
+            "concat_i8x16" => Some(self.check_concat(name, args, locals, span, Type::I8, 16)),
+            "concat_u8x16" => Some(self.check_concat(name, args, locals, span, Type::U8, 16)),
+            "concat_i8x32" => Some(self.check_concat(name, args, locals, span, Type::I8, 32)),
+            "concat_u8x32" => Some(self.check_concat(name, args, locals, span, Type::U8, 32)),
+            "concat_i32x8" => Some(self.check_concat(name, args, locals, span, Type::I32, 8)),
+            "concat_f32x8" => Some(self.check_concat(name, args, locals, span, Type::F32, 8)),
             _ if types::parse_typed_load(name).is_some() => {
                 let vec_type = types::parse_typed_load(name).unwrap();
                 Some(self.check_load(args, locals, Some(&vec_type), span))
