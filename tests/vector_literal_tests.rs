@@ -163,4 +163,19 @@ export func f(v: i32x4) -> i32x4 {
             "bare array literal in return should still error, got: {err:?}"
         );
     }
+
+    #[test]
+    fn test_parse_wide_vec_type_annotations() {
+        let source = r#"
+export func main() {
+    let a: u8x64 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+}
+"#;
+        let toks = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(toks).unwrap();
+        assert!(!stmts.is_empty());
+    }
 }
