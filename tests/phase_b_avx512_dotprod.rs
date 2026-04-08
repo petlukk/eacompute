@@ -69,4 +69,32 @@ export func f(a: u8x64, b: i8x64) -> i16x32 {
             "expected <64 x i8> argument type in IR, got:\n{ir}"
         );
     }
+
+    #[test]
+    fn to_f32_avx512_i32x16_to_f32x16() {
+        let source = r#"
+export func f(a: i32x16) -> f32x16 {
+    return to_f32(a)
+}
+"#;
+        let ir = compile_to_ir(source, "to_f32_avx512");
+        assert!(
+            ir.contains("sitofp <16 x i32>") && ir.contains("to <16 x float>"),
+            "expected vector sitofp i32x16 -> f32x16 in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn to_f32_avx2_i32x8_to_f32x8() {
+        let source = r#"
+export func f(a: i32x8) -> f32x8 {
+    return to_f32(a)
+}
+"#;
+        let ir = compile_to_ir(source, "to_f32_avx2");
+        assert!(
+            ir.contains("sitofp <8 x i32>") && ir.contains("to <8 x float>"),
+            "expected vector sitofp i32x8 -> f32x8 in IR, got:\n{ir}"
+        );
+    }
 }

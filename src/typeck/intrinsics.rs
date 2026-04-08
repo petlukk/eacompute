@@ -320,6 +320,19 @@ impl TypeChecker {
             ));
         }
         let arg_type = self.check_expr(&args[0], locals)?;
+
+        // Vector conversion: only to_f32 on i32 element type is supported.
+        // Result preserves the lane count: i32xN -> f32xN.
+        if name == "to_f32"
+            && let Type::Vector { elem, width } = &arg_type
+            && matches!(elem.as_ref(), Type::I32)
+        {
+            return Ok(Type::Vector {
+                elem: Box::new(Type::F32),
+                width: *width,
+            });
+        }
+
         if !arg_type.is_numeric() {
             return Err(CompileError::type_error(
                 format!("{name} expects numeric argument, got {arg_type}"),

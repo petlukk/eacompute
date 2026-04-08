@@ -345,6 +345,16 @@ impl<'ctx> CodeGenerator<'ctx> {
                             Ok(val)
                         }
                     }
+                    BasicValueEnum::VectorValue(vv) => {
+                        // Vector i32xN -> f32xN. LLVM build_signed_int_to_float is width-polymorphic.
+                        let width = vv.get_type().get_size();
+                        let f32xn_ty = self.context.f32_type().vec_type(width);
+                        let result = self
+                            .builder
+                            .build_signed_int_to_float(vv, f32xn_ty, "sitofp_vec_i32_f32")
+                            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+                        Ok(BasicValueEnum::VectorValue(result))
+                    }
                     _ => Err(CompileError::codegen_error(
                         "to_f32: unsupported source type",
                     )),
