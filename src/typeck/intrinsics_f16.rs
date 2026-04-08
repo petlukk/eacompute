@@ -8,7 +8,7 @@ use super::TypeChecker;
 use super::types::Type;
 
 impl TypeChecker {
-    /// cvt_f16_f32(i16x4) -> f32x4, cvt_f16_f32(i16x8) -> f32x8
+    /// cvt_f16_f32(i16x4) -> f32x4, cvt_f16_f32(i16x8) -> f32x8, cvt_f16_f32(i16x16) -> f32x16
     pub(super) fn check_cvt_f16_f32(
         &self,
         args: &[Expr],
@@ -17,14 +17,15 @@ impl TypeChecker {
     ) -> crate::error::Result<Type> {
         if args.len() != 1 {
             return Err(CompileError::type_error(
-                "cvt_f16_f32 expects 1 argument: i16x4 or i16x8",
+                "cvt_f16_f32 expects 1 argument: i16x4, i16x8 or i16x16",
                 span.clone(),
             ));
         }
         let arg = self.check_expr(&args[0], locals)?;
         match &arg {
             Type::Vector { elem, width }
-                if matches!(elem.as_ref(), Type::I16) && (*width == 4 || *width == 8) =>
+                if matches!(elem.as_ref(), Type::I16)
+                    && (*width == 4 || *width == 8 || *width == 16) =>
             {
                 Ok(Type::Vector {
                     elem: Box::new(Type::F32),
@@ -32,7 +33,7 @@ impl TypeChecker {
                 })
             }
             _ => Err(CompileError::type_error(
-                format!("cvt_f16_f32 expects i16x4 or i16x8, got {arg}"),
+                format!("cvt_f16_f32 expects i16x4, i16x8 or i16x16, got {arg}"),
                 args[0].span().clone(),
             )),
         }

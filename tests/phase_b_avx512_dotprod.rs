@@ -97,4 +97,23 @@ export func f(a: i32x8) -> f32x8 {
             "expected vector sitofp i32x8 -> f32x8 in IR, got:\n{ir}"
         );
     }
+
+    #[test]
+    fn cvt_f16_f32_avx512_i16x16_to_f32x16() {
+        let source = r#"
+export func f(a: i16x16) -> f32x16 {
+    return cvt_f16_f32(a)
+}
+"#;
+        let ir = compile_to_ir(source, "cvt_f16_f32_avx512");
+        assert!(
+            ir.contains("<16 x float>"),
+            "expected <16 x float> return type in IR, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<16 x half>"),
+            "expected <16 x half> bitcast in IR, got:\n{ir}"
+        );
+        assert!(ir.contains("fpext"), "expected fpext in IR, got:\n{ir}");
+    }
 }
