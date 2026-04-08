@@ -28,8 +28,11 @@ mod tests {
         ));
         let msg = format!("{err:?}");
         assert!(
-            msg.contains("128") || msg.contains("NEON") || msg.contains("narrower"),
-            "error for {type_name} should mention 128-bit/NEON limit, got: {msg}"
+            msg.contains("128")
+                || msg.contains("NEON")
+                || msg.contains("narrower")
+                || msg.contains("AVX2"),
+            "error for {type_name} should mention 128-bit/NEON/AVX2 limit, got: {msg}"
         );
     }
 
@@ -61,5 +64,49 @@ export func f(a: i16x32) -> i16 {
 }
 "#;
         assert_rejects_wide_type(source, "i16x32");
+    }
+
+    #[test]
+    fn concat_i8x32_rejected_on_arm() {
+        let source = r#"
+export func f(a: i8x32, b: i8x32) -> i8x64 {
+    return concat_i8x32(a, b)
+}
+"#;
+        assert_rejects_wide_type(source, "concat_i8x32");
+    }
+
+    #[test]
+    fn hi256_i8x64_rejected_on_arm() {
+        let source = r#"
+export func f(a: i8x64) -> i8x32 {
+    return hi256_i8x64(a)
+}
+"#;
+        assert_rejects_wide_type(source, "hi256_i8x64");
+    }
+
+    #[test]
+    fn bcast_even_pairs_i32x16_rejected_on_arm() {
+        let source = r#"
+export func f(a: i32x16) -> i32x16 {
+    return bcast_even_pairs_i32x16(a)
+}
+"#;
+        assert_rejects_wide_type(source, "bcast_even_pairs_i32x16");
+    }
+
+    #[test]
+    fn lo128_i8x32_rejected_on_arm() {
+        // Input is i8x32 (256 bits, wider than NEON's 128), result is i8x16.
+        // The ARM gate must reject on the INPUT type, not just the result.
+        // If this test ever fails, narrowing extractors bypass the gate —
+        // that's a real safety gap, STOP and report.
+        let source = r#"
+export func f(a: i8x32) -> i8x16 {
+    return lo128_i8x32(a)
+}
+"#;
+        assert_rejects_wide_type(source, "lo128_i8x32");
     }
 }
