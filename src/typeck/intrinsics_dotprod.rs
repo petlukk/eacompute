@@ -10,6 +10,7 @@ use super::types::Type;
 impl TypeChecker {
     /// maddubs_i16(u8x16, i8x16) -> i16x8   (SSSE3 pmaddubsw)
     /// maddubs_i16(u8x32, i8x32) -> i16x16  (AVX2 vpmaddubsw)
+    /// maddubs_i16(u8x64, i8x64) -> i16x32  (AVX-512BW vpmaddubsw)
     pub(super) fn check_maddubs_i16(
         &self,
         args: &[Expr],
@@ -18,7 +19,7 @@ impl TypeChecker {
     ) -> crate::error::Result<Type> {
         if args.len() != 2 {
             return Err(CompileError::type_error(
-                "maddubs_i16 expects 2 arguments: (u8xN, i8xN) where N=16 or 32",
+                "maddubs_i16 expects 2 arguments: (u8xN, i8xN) where N=16, 32 or 64",
                 span.clone(),
             ));
         }
@@ -37,7 +38,7 @@ impl TypeChecker {
             ) if matches!(ea.as_ref(), Type::U8)
                 && matches!(eb.as_ref(), Type::I8)
                 && wa == wb
-                && (*wa == 16 || *wa == 32) =>
+                && (*wa == 16 || *wa == 32 || *wa == 64) =>
             {
                 Ok(Type::Vector {
                     elem: Box::new(Type::I16),
@@ -45,7 +46,10 @@ impl TypeChecker {
                 })
             }
             _ => Err(CompileError::type_error(
-                format!("maddubs_i16 expects (u8x16, i8x16) or (u8x32, i8x32), got ({a}, {b})"),
+                format!(
+                    "maddubs_i16 expects (u8x16, i8x16), (u8x32, i8x32) or (u8x64, i8x64), \
+                     got ({a}, {b})"
+                ),
                 span.clone(),
             )),
         }

@@ -8,6 +8,7 @@ use super::CodeGenerator;
 impl<'ctx> CodeGenerator<'ctx> {
     /// maddubs_i16(u8x16, i8x16) -> i16x8   (SSSE3 pmaddubsw)
     /// maddubs_i16(u8x32, i8x32) -> i16x16  (AVX2 vpmaddubsw)
+    /// maddubs_i16(u8x64, i8x64) -> i16x32  (AVX-512BW vpmaddubsw)
     pub(super) fn compile_maddubs_i16(
         &mut self,
         args: &[Expr],
@@ -61,6 +62,26 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .basic()
                     .ok_or_else(|| {
                         CompileError::codegen_error("maddubs_i16 AVX2 did not return a value")
+                    })
+            }
+            64 => {
+                let i8x64_ty = self.context.i8_type().vec_type(64);
+                let i16x32_ty = self.context.i16_type().vec_type(32);
+                let fn_type = i16x32_ty.fn_type(&[i8x64_ty.into(), i8x64_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function("llvm.x86.avx512.pmaddubs.w.512")
+                    .unwrap_or_else(|| {
+                        self.module
+                            .add_function("llvm.x86.avx512.pmaddubs.w.512", fn_type, None)
+                    });
+                self.builder
+                    .build_call(intrinsic, &[a.into(), b.into()], "maddubs_i16_avx512")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| {
+                        CompileError::codegen_error("maddubs_i16 AVX-512 did not return a value")
                     })
             }
             _ => Err(CompileError::codegen_error(format!(
