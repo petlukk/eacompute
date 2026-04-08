@@ -90,8 +90,9 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
-    /// madd_i16(i16x8, i16x8) -> i32x4   (SSE2 pmaddwd)
-    /// madd_i16(i16x16, i16x16) -> i32x8  (AVX2 vpmaddwd)
+    /// madd_i16(i16x8, i16x8)   -> i32x4   (SSE2 pmaddwd)
+    /// madd_i16(i16x16, i16x16) -> i32x8   (AVX2 vpmaddwd)
+    /// madd_i16(i16x32, i16x32) -> i32x16  (AVX-512BW vpmaddwd)
     /// Multiply i16 pairs, add adjacent products -> i32.
     pub(super) fn compile_madd_i16(
         &mut self,
@@ -144,6 +145,26 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .basic()
                     .ok_or_else(|| {
                         CompileError::codegen_error("madd_i16 AVX2 did not return a value")
+                    })
+            }
+            32 => {
+                let i16x32_ty = self.context.i16_type().vec_type(32);
+                let i32x16_ty = self.context.i32_type().vec_type(16);
+                let fn_type = i32x16_ty.fn_type(&[i16x32_ty.into(), i16x32_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function("llvm.x86.avx512.pmaddw.d.512")
+                    .unwrap_or_else(|| {
+                        self.module
+                            .add_function("llvm.x86.avx512.pmaddw.d.512", fn_type, None)
+                    });
+                self.builder
+                    .build_call(intrinsic, &[a.into(), b.into()], "madd_i16_avx512")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| {
+                        CompileError::codegen_error("madd_i16 AVX-512 did not return a value")
                     })
             }
             _ => Err(CompileError::codegen_error(format!(

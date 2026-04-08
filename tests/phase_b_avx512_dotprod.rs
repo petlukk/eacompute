@@ -27,6 +27,28 @@ mod tests {
     }
 
     #[test]
+    fn madd_i16_avx512_i16x32_to_i32x16() {
+        let source = r#"
+export func f(a: i16x32, b: i16x32) -> i32x16 {
+    return madd_i16(a, b)
+}
+"#;
+        let ir = compile_to_ir(source, "madd_avx512");
+        assert!(
+            ir.contains("llvm.x86.avx512.pmaddw.d.512"),
+            "expected avx512 pmaddwd intrinsic in IR, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<16 x i32>"),
+            "expected <16 x i32> return type in IR, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("<32 x i16>"),
+            "expected <32 x i16> argument type in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
     fn maddubs_i16_avx512_u8x64_to_i16x32() {
         let source = r#"
 export func f(a: u8x64, b: i8x64) -> i16x32 {

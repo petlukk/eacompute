@@ -55,8 +55,9 @@ impl TypeChecker {
         }
     }
 
-    /// madd_i16(i16x8, i16x8) -> i32x4  (SSE2 pmaddwd)
-    /// madd_i16(i16x16, i16x16) -> i32x8  (AVX2 vpmaddwd)
+    /// madd_i16(i16x8, i16x8)   -> i32x4   (SSE2 pmaddwd)
+    /// madd_i16(i16x16, i16x16) -> i32x8   (AVX2 vpmaddwd)
+    /// madd_i16(i16x32, i16x32) -> i32x16  (AVX-512BW vpmaddwd)
     /// Multiply i16 pairs, add adjacent products -> i32.
     pub(super) fn check_madd_i16(
         &self,
@@ -66,7 +67,7 @@ impl TypeChecker {
     ) -> crate::error::Result<Type> {
         if args.len() != 2 {
             return Err(CompileError::type_error(
-                "madd_i16 expects 2 arguments: (i16xN, i16xN) where N=8 or 16",
+                "madd_i16 expects 2 arguments: (i16xN, i16xN) where N=8, 16 or 32",
                 span.clone(),
             ));
         }
@@ -85,10 +86,11 @@ impl TypeChecker {
             ) if matches!(ea.as_ref(), Type::I16)
                 && matches!(eb.as_ref(), Type::I16)
                 && wa == wb
-                && (*wa == 8 || *wa == 16) =>
+                && (*wa == 8 || *wa == 16 || *wa == 32) =>
             {
                 // i16x8,i16x8 → i32x4 (SSE2)
                 // i16x16,i16x16 → i32x8 (AVX2)
+                // i16x32,i16x32 → i32x16 (AVX-512BW)
                 Ok(Type::Vector {
                     elem: Box::new(Type::I32),
                     width: wa / 2,
@@ -96,7 +98,7 @@ impl TypeChecker {
             }
             _ => Err(CompileError::type_error(
                 format!(
-                    "madd_i16 expects (i16x8, i16x8) or (i16x16, i16x16), \
+                    "madd_i16 expects (i16x8, i16x8), (i16x16, i16x16) or (i16x32, i16x32), \
                      got ({a}, {b})"
                 ),
                 span.clone(),
