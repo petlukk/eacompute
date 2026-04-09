@@ -116,6 +116,9 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "bcast_odd_pairs_i32x8"
                 | "bcast_even_pairs_i32x16"
                 | "bcast_odd_pairs_i32x16"
+                | "shuffle_i32x8"
+                | "shuffle_i32x16"
+                | "blend_i32"
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
@@ -215,6 +218,14 @@ impl<'ctx> CodeGenerator<'ctx> {
             | "lo256_f32x16" => self.emit_lo_extract(args, function),
             "hi128_i8x32" | "hi128_u8x32" | "hi256_i8x64" | "hi256_u8x64" | "hi256_i32x16"
             | "hi256_f32x16" => self.emit_hi_extract(args, function),
+            "shuffle_i32x8" | "shuffle_i32x16" => {
+                let imm = Self::extract_imm8(&args[1])?;
+                self.emit_shuffle_i32(args, function, imm)
+            }
+            "blend_i32" => {
+                let imm = Self::extract_imm8(&args[2])?;
+                self.emit_blend_i32(args, function, imm)
+            }
             "bcast_even_pairs_i32x8" | "bcast_even_pairs_i32x16" => {
                 self.emit_bcast_pairs(args, function, false)
             }

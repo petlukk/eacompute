@@ -97,6 +97,27 @@ export func f(a: i32x16) -> i32x16 {
     }
 
     #[test]
+    fn shuffle_i32x16_rejected_on_arm() {
+        let source = r#"
+export func f(a: i32x16) -> i32x16 {
+    return shuffle_i32x16(a, 136)
+}
+"#;
+        assert_rejects_wide_type(source, "shuffle_i32x16");
+    }
+
+    #[test]
+    fn blend_i32_rejected_on_arm() {
+        // i32x8 is 256-bit — must be rejected on NEON.
+        let source = r#"
+export func f(a: i32x8, b: i32x8) -> i32x8 {
+    return blend_i32(a, b, 240)
+}
+"#;
+        assert_rejects_wide_type(source, "blend_i32");
+    }
+
+    #[test]
     fn lo128_i8x32_rejected_on_arm() {
         // Input is i8x32 (256 bits, wider than NEON's 128), result is i8x16.
         // The ARM gate must reject on the INPUT type, not just the result.
