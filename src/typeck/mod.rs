@@ -2,6 +2,7 @@ mod check;
 pub mod const_eval;
 mod expr_check;
 mod intrinsics;
+mod intrinsics_byteshift;
 mod intrinsics_conv;
 mod intrinsics_dotprod;
 mod intrinsics_f16;
