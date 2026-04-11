@@ -9,7 +9,10 @@ use super::CodeGenerator;
 impl<'ctx> CodeGenerator<'ctx> {
     /// vpermq 0xD8 fixup: reorder 64-bit quadwords [0,2,1,3] to get sequential
     /// lane order after AVX2 pack instructions (vpackssdw/vpacksswb).
-    fn permq_fixup(&self, vec: VectorValue<'ctx>) -> crate::error::Result<VectorValue<'ctx>> {
+    pub(super) fn permq_fixup(
+        &self,
+        vec: VectorValue<'ctx>,
+    ) -> crate::error::Result<VectorValue<'ctx>> {
         let i64x4_ty = self.context.i64_type().vec_type(4);
         let orig_ty = vec.get_type();
 

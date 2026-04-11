@@ -40,6 +40,7 @@ pub fn token_name(kind: &TokenKind) -> &'static str {
         TokenKind::I16x16 => "i16x16",
         TokenKind::U16x4 => "u16x4",
         TokenKind::U16x8 => "u16x8",
+        TokenKind::U16x16 => "u16x16",
         TokenKind::F32x4 => "f32x4",
         TokenKind::I32x2 => "i32x2",
         TokenKind::I32x4 => "i32x4",

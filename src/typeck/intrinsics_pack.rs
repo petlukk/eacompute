@@ -199,4 +199,141 @@ impl TypeChecker {
             )),
         }
     }
+
+    /// pack_usat_i32x8(i32x8, i32x8) -> u16x16
+    /// Unsigned saturating narrow. x86: vpackusdw. ARM: sqxtun + concat.
+    pub(super) fn check_pack_usat_i32x8(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "pack_usat_i32x8 expects 2 arguments (i32x8, i32x8)",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (Type::Vector { elem: ea, width: 8 }, Type::Vector { elem: eb, width: 8 })
+                if matches!(ea.as_ref(), Type::I32) && matches!(eb.as_ref(), Type::I32) =>
+            {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::U16),
+                    width: 16,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("pack_usat_i32x8 expects (i32x8, i32x8), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
+
+    /// pack_usat_i16x16(i16x16, i16x16) -> u8x32
+    /// Unsigned saturating narrow. x86: vpackuswb. ARM: sqxtun + concat.
+    pub(super) fn check_pack_usat_i16x16(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "pack_usat_i16x16 expects 2 arguments (i16x16, i16x16)",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (
+                Type::Vector {
+                    elem: ea,
+                    width: 16,
+                },
+                Type::Vector {
+                    elem: eb,
+                    width: 16,
+                },
+            ) if matches!(ea.as_ref(), Type::I16) && matches!(eb.as_ref(), Type::I16) => {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::U8),
+                    width: 32,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("pack_usat_i16x16 expects (i16x16, i16x16), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
+
+    /// pack_usat_i32x4(i32x4, i32x4) -> u16x8
+    /// Unsigned saturating narrow. Cross-platform.
+    /// x86: packusdw (SSE4.1). ARM: sqxtun + concat.
+    pub(super) fn check_pack_usat_i32x4(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "pack_usat_i32x4 expects 2 arguments (i32x4, i32x4)",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (Type::Vector { elem: ea, width: 4 }, Type::Vector { elem: eb, width: 4 })
+                if matches!(ea.as_ref(), Type::I32) && matches!(eb.as_ref(), Type::I32) =>
+            {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::U16),
+                    width: 8,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("pack_usat_i32x4 expects (i32x4, i32x4), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
+
+    /// pack_usat_i16x8(i16x8, i16x8) -> u8x16
+    /// Unsigned saturating narrow. Cross-platform.
+    /// x86: packuswb (SSE2). ARM: sqxtun + concat.
+    pub(super) fn check_pack_usat_i16x8(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "pack_usat_i16x8 expects 2 arguments (i16x8, i16x8)",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (Type::Vector { elem: ea, width: 8 }, Type::Vector { elem: eb, width: 8 })
+                if matches!(ea.as_ref(), Type::I16) && matches!(eb.as_ref(), Type::I16) =>
+            {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::U8),
+                    width: 16,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("pack_usat_i16x8 expects (i16x8, i16x8), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
 }

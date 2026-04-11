@@ -9,6 +9,8 @@ mod simd;
 #[cfg(feature = "llvm")]
 mod simd_arithmetic;
 #[cfg(feature = "llvm")]
+mod simd_byteshift;
+#[cfg(feature = "llvm")]
 mod simd_dotprod;
 #[cfg(feature = "llvm")]
 mod simd_lane;
@@ -20,6 +22,8 @@ mod simd_math;
 mod simd_memory;
 #[cfg(feature = "llvm")]
 mod simd_pack;
+#[cfg(feature = "llvm")]
+mod simd_pack_unsigned;
 #[cfg(feature = "llvm")]
 mod simd_saturating;
 #[cfg(feature = "llvm")]

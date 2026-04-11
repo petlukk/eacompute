@@ -91,6 +91,14 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "round_f32x4_i32x4"
                 | "pack_sat_i32x4"
                 | "pack_sat_i16x8"
+                | "pack_usat_i32x8"
+                | "pack_usat_i16x16"
+                | "pack_usat_i32x4"
+                | "pack_usat_i16x8"
+                | "bsrli_i8x16"
+                | "bsrli_i8x32"
+                | "bslli_i8x16"
+                | "bslli_i8x32"
                 | "cvt_f16_f32"
                 | "cvt_f32_f16"
                 | "widen_u8_u16"
@@ -209,6 +217,26 @@ impl<'ctx> CodeGenerator<'ctx> {
             "round_f32x4_i32x4" => self.compile_round_f32x4_i32x4(args, function),
             "pack_sat_i32x4" => self.compile_pack_sat_i32x4(args, function),
             "pack_sat_i16x8" => self.compile_pack_sat_i16x8(args, function),
+            "pack_usat_i32x8" => self.compile_pack_usat_i32x8(args, function),
+            "pack_usat_i16x16" => self.compile_pack_usat_i16x16(args, function),
+            "pack_usat_i32x4" => self.compile_pack_usat_i32x4(args, function),
+            "pack_usat_i16x8" => self.compile_pack_usat_i16x8(args, function),
+            "bsrli_i8x16" => {
+                let imm = Self::extract_imm8(&args[1])?;
+                self.compile_bsrli_i8x16(args, function, imm)
+            }
+            "bsrli_i8x32" => {
+                let imm = Self::extract_imm8(&args[1])?;
+                self.compile_bsrli_i8x32(args, function, imm)
+            }
+            "bslli_i8x16" => {
+                let imm = Self::extract_imm8(&args[1])?;
+                self.compile_bslli_i8x16(args, function, imm)
+            }
+            "bslli_i8x32" => {
+                let imm = Self::extract_imm8(&args[1])?;
+                self.compile_bslli_i8x32(args, function, imm)
+            }
             "cvt_f16_f32" => self.compile_cvt_f16_f32(args, function),
             "cvt_f32_f16" => self.compile_cvt_f32_f16(args, function),
             "widen_u8_u16" => self.compile_widen_u8_u16(args, function),

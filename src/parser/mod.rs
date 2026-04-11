@@ -230,6 +230,7 @@ impl Parser {
             (TokenKind::I16x16, "i16", 16),
             (TokenKind::U16x4, "u16", 4),
             (TokenKind::U16x8, "u16", 8),
+            (TokenKind::U16x16, "u16", 16),
             (TokenKind::F32x4, "f32", 4),
             (TokenKind::I32x2, "i32", 2),
             (TokenKind::I32x4, "i32", 4),
