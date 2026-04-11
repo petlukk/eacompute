@@ -427,4 +427,46 @@ mod tests {
             "expected avx2.pshuf.b in IR:\n{ir}"
         );
     }
+
+    /// shuffle_bytes accepts i8x32 as first argument (sign-agnostic vpshufb).
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_shuffle_bytes_i8x32_data() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        let source = r#"
+            export func f(data: i8x32, idx: u8x32) -> i8x32 {
+                return shuffle_bytes(data, idx)
+            }
+        "#;
+        let dir = tempfile::TempDir::new().unwrap();
+        let out = dir.path().join("out.o");
+        ea_compiler::compile_with_options(
+            source,
+            &out,
+            OutputMode::ObjectFile,
+            &CompileOptions::default(),
+        )
+        .expect("shuffle_bytes(i8x32, u8x32) should compile");
+    }
+
+    /// shuffle_bytes accepts i8x16 as first argument (sign-agnostic pshufb).
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_shuffle_bytes_i8x16_data() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        let source = r#"
+            export func f(data: i8x16, idx: u8x16) -> i8x16 {
+                return shuffle_bytes(data, idx)
+            }
+        "#;
+        let dir = tempfile::TempDir::new().unwrap();
+        let out = dir.path().join("out.o");
+        ea_compiler::compile_with_options(
+            source,
+            &out,
+            OutputMode::ObjectFile,
+            &CompileOptions::default(),
+        )
+        .expect("shuffle_bytes(i8x16, u8x16) should compile");
+    }
 }

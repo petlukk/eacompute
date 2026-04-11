@@ -192,8 +192,10 @@ impl TypeChecker {
         }
     }
 
-    /// shuffle_bytes(u8x16, u8x16) -> u8x16  (SSSE3 pshufb / NEON tbl)
-    /// shuffle_bytes(u8x32, u8x32) -> u8x32  (AVX2 vpshufb, x86-only)
+    /// shuffle_bytes({u8,i8}x16, u8x16) -> {u8,i8}x16  (SSSE3 pshufb / NEON tbl)
+    /// shuffle_bytes({u8,i8}x32, u8x32) -> {u8,i8}x32  (AVX2 vpshufb, x86-only)
+    /// Data argument may be signed or unsigned; indices are always u8.
+    /// vpshufb is sign-agnostic.
     pub(super) fn check_shuffle_bytes(
         &self,
         args: &[Expr],
@@ -202,7 +204,7 @@ impl TypeChecker {
     ) -> crate::error::Result<Type> {
         if args.len() != 2 {
             return Err(CompileError::type_error(
-                "shuffle_bytes expects 2 arguments: (u8xN, u8xN) where N=16 or 32",
+                "shuffle_bytes expects 2 arguments: ({u8,i8}xN, u8xN) where N=16 or 32",
                 span.clone(),
             ));
         }
@@ -218,18 +220,20 @@ impl TypeChecker {
                     elem: eb,
                     width: wb,
                 },
-            ) if matches!(ea.as_ref(), Type::U8)
+            ) if matches!(ea.as_ref(), Type::U8 | Type::I8)
                 && matches!(eb.as_ref(), Type::U8)
                 && wa == wb
                 && (*wa == 16 || *wa == 32) =>
             {
                 Ok(Type::Vector {
-                    elem: Box::new(Type::U8),
+                    elem: ea.clone(),
                     width: *wa,
                 })
             }
             _ => Err(CompileError::type_error(
-                format!("shuffle_bytes expects (u8x16, u8x16) or (u8x32, u8x32), got ({a}, {b})"),
+                format!(
+                    "shuffle_bytes expects ({{u8,i8}}xN, u8xN) where N=16 or 32, got ({a}, {b})"
+                ),
                 span.clone(),
             )),
         }
