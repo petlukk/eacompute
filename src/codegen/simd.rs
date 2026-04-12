@@ -127,6 +127,10 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "shuffle_i32x8"
                 | "shuffle_i32x16"
                 | "blend_i32"
+                | "bitcast_i8x16"
+                | "bitcast_i8x32"
+                | "bitcast_i32x4"
+                | "bitcast_i32x8"
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
@@ -239,6 +243,10 @@ impl<'ctx> CodeGenerator<'ctx> {
             }
             "cvt_f16_f32" => self.compile_cvt_f16_f32(args, function),
             "cvt_f32_f16" => self.compile_cvt_f32_f16(args, function),
+            "bitcast_i8x16" => self.compile_bitcast(args, function, Type::I8, 16),
+            "bitcast_i8x32" => self.compile_bitcast(args, function, Type::I8, 32),
+            "bitcast_i32x4" => self.compile_bitcast(args, function, Type::I32, 4),
+            "bitcast_i32x8" => self.compile_bitcast(args, function, Type::I32, 8),
             "widen_u8_u16" => self.compile_widen_u8_u16(args, function),
             "concat_i8x16" | "concat_u8x16" | "concat_i8x32" | "concat_u8x32" | "concat_i32x8"
             | "concat_f32x8" => self.emit_concat(args, function),

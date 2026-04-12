@@ -341,6 +341,32 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
+    /// bitcast: reinterpret vector bits as a different vector type.
+    /// Zero-cost: emits a single LLVM bitcast (no machine instruction).
+    pub(super) fn compile_bitcast(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+        target_elem: crate::typeck::Type,
+        target_width: usize,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let v = self.compile_expr(&args[0], function)?;
+        let target_ty = match target_elem {
+            crate::typeck::Type::I8 => self.context.i8_type().vec_type(target_width as u32),
+            crate::typeck::Type::I32 => self.context.i32_type().vec_type(target_width as u32),
+            _ => {
+                return Err(CompileError::codegen_error(format!(
+                    "unsupported bitcast target element type: {target_elem}"
+                )));
+            }
+        };
+        let result = self
+            .builder
+            .build_bit_cast(v, target_ty, "bitcast")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+        Ok(result)
+    }
+
     /// cvt_f16_f32: i16xN (f16 bits) -> f32xN
     /// Bitcasts to <N x half>, then fpext to <N x float>.
     /// x86: emits vcvtph2ps (F16C). ARM: emits fcvtl (NEON).

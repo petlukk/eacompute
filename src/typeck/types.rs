@@ -73,6 +73,17 @@ impl Type {
         matches!(self, Type::Vector { .. })
     }
 
+    /// Size in bits of a scalar element type. Panics on non-scalar types.
+    pub fn size_bits(&self) -> usize {
+        match self {
+            Type::I8 | Type::U8 | Type::Bool => 8,
+            Type::I16 | Type::U16 => 16,
+            Type::I32 | Type::U32 | Type::F32 => 32,
+            Type::I64 | Type::U64 | Type::F64 => 64,
+            _ => panic!("size_bits called on non-scalar type: {self}"),
+        }
+    }
+
     pub fn pointee(&self) -> Option<&Type> {
         match self {
             Type::Pointer { inner, .. } => Some(inner),

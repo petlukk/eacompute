@@ -177,4 +177,107 @@ mod tests {
         assert!(ir.contains("<16 x float>"), "expected <16 x float> in IR");
         assert!(ir.contains("reduce.fadd"), "expected reduce.fadd in IR");
     }
+
+    // ── bitcast intrinsics ─────────────────────────────────────────────
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_bitcast_i8x32_from_i32x8() {
+        assert_output(
+            r#"
+            export func main() {
+                let v: i32x8 = splat(1)
+                let b: i8x32 = bitcast_i8x32(v)
+                println(b[0])
+                println(b[1])
+            }
+            "#,
+            "1\n0",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_bitcast_i32x8_from_i8x32() {
+        assert_output(
+            r#"
+            export func main() {
+                let b: i8x32 = splat(1)
+                let v: i32x8 = bitcast_i32x8(b)
+                println(v[0])
+            }
+            "#,
+            "16843009",
+        );
+    }
+
+    #[test]
+    fn test_bitcast_i8x16_from_i32x4() {
+        assert_output(
+            r#"
+            export func main() {
+                let v: i32x4 = splat(1)
+                let b: i8x16 = bitcast_i8x16(v)
+                println(b[0])
+                println(b[4])
+            }
+            "#,
+            "1\n1",
+        );
+    }
+
+    #[test]
+    fn test_bitcast_i32x4_from_i8x16() {
+        assert_output(
+            r#"
+            export func main() {
+                let b: i8x16 = splat(1)
+                let v: i32x4 = bitcast_i32x4(b)
+                println(v[0])
+            }
+            "#,
+            "16843009",
+        );
+    }
+
+    #[test]
+    fn test_bitcast_wrong_bit_width() {
+        let source = "export func f(a: i32x4) -> i8x32 { return bitcast_i8x32(a) }";
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let err = ea_compiler::check_types(&stmts).unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("bit widths"),
+            "expected bit width error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_bitcast_non_vector() {
+        let source = "export func f(a: i32) -> i8x16 { return bitcast_i8x16(a) }";
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let err = ea_compiler::check_types(&stmts).unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("vector"), "expected vector error, got: {msg}");
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_bitcast_roundtrip_shuffle_bytes() {
+        assert_output(
+            r#"
+            export func main() {
+                let acc: i32x8 = splat(42)
+                let bytes: i8x32 = bitcast_i8x32(acc)
+                let idx: u8x32 = splat(0)
+                let shuffled: i8x32 = shuffle_bytes(bytes, idx)
+                let back: i32x8 = bitcast_i32x8(shuffled)
+                println(back[0])
+            }
+            "#,
+            "707406378",
+        );
+    }
 }

@@ -192,6 +192,48 @@ impl TypeChecker {
         }
     }
 
+    /// bitcast_T(vec) -> TxN: reinterpret bits as a different vector type.
+    /// Both sides must have the same total bit width.
+    /// Zero-cost: emits a single LLVM bitcast (no instruction).
+    pub(super) fn check_bitcast(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+        target_elem: Type,
+        target_width: usize,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                "bitcast expects 1 argument",
+                span.clone(),
+            ));
+        }
+        let arg_type = self.check_expr(&args[0], locals)?;
+        let target_bits = target_elem.size_bits() * target_width;
+        match &arg_type {
+            Type::Vector { elem, width } => {
+                let src_bits = elem.size_bits() * width;
+                if src_bits != target_bits {
+                    return Err(CompileError::type_error(
+                        format!(
+                            "bitcast requires matching bit widths: source {arg_type} is {src_bits} bits, target is {target_bits} bits"
+                        ),
+                        args[0].span().clone(),
+                    ));
+                }
+                Ok(Type::Vector {
+                    elem: Box::new(target_elem),
+                    width: target_width,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("bitcast expects a vector argument, got {arg_type}"),
+                args[0].span().clone(),
+            )),
+        }
+    }
+
     /// shuffle_bytes({u8,i8}x16, u8x16) -> {u8,i8}x16  (SSSE3 pshufb / NEON tbl)
     /// shuffle_bytes({u8,i8}x32, u8x32) -> {u8,i8}x32  (AVX2 vpshufb, x86-only)
     /// Data argument may be signed or unsigned; indices are always u8.
