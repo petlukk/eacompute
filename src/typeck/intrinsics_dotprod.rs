@@ -190,6 +190,63 @@ impl TypeChecker {
         }
     }
 
+    /// vdot_lane_i32(acc: i32x4, a: i8x16, b: i8x16, lane: const 0..3) -> i32x4
+    /// ARM NEON dot product by element: dot(a, b[lane]) accumulated into acc.
+    pub(super) fn check_vdot_lane_i32(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 4 {
+            return Err(CompileError::type_error(
+                "vdot_lane_i32 expects 4 arguments: (i32x4, i8x16, i8x16, lane)",
+                span.clone(),
+            ));
+        }
+        let acc = self.check_expr(&args[0], locals)?;
+        let a = self.check_expr(&args[1], locals)?;
+        let b = self.check_expr(&args[2], locals)?;
+        let i32x4 = Type::Vector {
+            elem: Box::new(Type::I32),
+            width: 4,
+        };
+        let i8x16 = Type::Vector {
+            elem: Box::new(Type::I8),
+            width: 16,
+        };
+        if acc != i32x4 || a != i8x16 || b != i8x16 {
+            return Err(CompileError::type_error(
+                format!(
+                    "vdot_lane_i32 expects (i32x4, i8x16, i8x16, lane), got ({acc}, {a}, {b}, _)"
+                ),
+                span.clone(),
+            ));
+        }
+        let imm = self.eval_const_expr(&args[3]).map_err(|_| {
+            CompileError::type_error(
+                "vdot_lane_i32 requires a compile-time constant lane index (0..3)",
+                span.clone(),
+            )
+        })?;
+        let lane = match imm {
+            super::const_eval::ConstValue::Integer(v) => v,
+            _ => {
+                return Err(CompileError::type_error(
+                    "vdot_lane_i32 lane must be an integer, not a float or bool",
+                    span.clone(),
+                ));
+            }
+        };
+        if !(0..=3).contains(&lane) {
+            return Err(CompileError::type_error(
+                format!("vdot_lane_i32 lane must be 0..3, got {lane}"),
+                span.clone(),
+            ));
+        }
+        Ok(i32x4)
+    }
+
     /// smmla_i32(acc: i32x4, a: i8x16, b: i8x16) -> i32x4
     /// ARM I8MM: signed x signed matrix multiply-accumulate.
     pub(super) fn check_smmla_i32(

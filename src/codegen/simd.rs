@@ -63,6 +63,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "madd_i16"
                 | "hadd_i16"
                 | "vdot_i32"
+                | "vdot_lane_i32"
                 | "smmla_i32"
                 | "ummla_i32"
                 | "usmmla_i32"
@@ -196,6 +197,10 @@ impl<'ctx> CodeGenerator<'ctx> {
             "madd_i16" => self.compile_madd_i16(args, function),
             "hadd_i16" => self.compile_hadd_i16(args, function),
             "vdot_i32" => self.compile_vdot_i32(args, function),
+            "vdot_lane_i32" => {
+                let lane = Self::extract_imm8(&args[3])?;
+                self.compile_vdot_lane_i32(args, function, lane)
+            }
             "smmla_i32" => self.compile_smmla_i32(args, function),
             "ummla_i32" => self.compile_ummla_i32(args, function),
             "usmmla_i32" => self.compile_usmmla_i32(args, function),

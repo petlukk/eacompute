@@ -31,6 +31,8 @@ mod simd_util;
 #[cfg(feature = "llvm")]
 mod simd_wmul;
 #[cfg(feature = "llvm")]
+mod simd_x86_dotprod;
+#[cfg(feature = "llvm")]
 mod statements;
 #[cfg(feature = "llvm")]
 mod structs;

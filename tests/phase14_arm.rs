@@ -207,6 +207,95 @@ mod tests {
         );
     }
 
+    // === ARM: vdot_lane_i32 (dot product by element) ===
+
+    #[test]
+    fn test_arm_accepts_vdot_lane_i32() {
+        let source = r#"
+            export func f(acc: i32x4, a: i8x16, b: i8x16) -> i32x4 {
+                return vdot_lane_i32(acc, a, b, 2)
+            }
+        "#;
+        try_compile(source, &arm_dotprod_opts())
+            .expect("vdot_lane_i32 should compile on ARM with --dotprod");
+    }
+
+    #[test]
+    fn test_arm_vdot_lane_i32_ir_contains_sdot() {
+        let source = r#"
+            export func f(acc: i32x4, a: i8x16, b: i8x16) -> i32x4 {
+                return vdot_lane_i32(acc, a, b, 1)
+            }
+        "#;
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("vdot_lane.ll");
+        let mut opts = arm_dotprod_opts();
+        opts.opt_level = 0;
+        ea_compiler::compile_with_options(source, &ir_path, OutputMode::LlvmIr, &opts)
+            .expect("vdot_lane_i32 IR compilation failed");
+        let ir = std::fs::read_to_string(&ir_path).unwrap_or_default();
+        assert!(
+            ir.contains("aarch64.neon.sdot"),
+            "expected aarch64.neon.sdot in IR, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("shufflevector"),
+            "expected shufflevector for lane splat in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn test_arm_rejects_vdot_lane_i32_without_dotprod() {
+        let err = try_compile(
+            r#"
+            export func f(acc: i32x4, a: i8x16, b: i8x16) -> i32x4 {
+                return vdot_lane_i32(acc, a, b, 0)
+            }
+            "#,
+            &arm_opts(),
+        )
+        .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("--dotprod"),
+            "expected --dotprod hint, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_arm_vdot_lane_i32_rejects_out_of_range_lane() {
+        let source = r#"
+            export func f(acc: i32x4, a: i8x16, b: i8x16) -> i32x4 {
+                return vdot_lane_i32(acc, a, b, 4)
+            }
+        "#;
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let err = ea_compiler::check_types(&stmts).unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("0..3"),
+            "expected lane range error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_arm_vdot_lane_i32_rejects_wrong_types() {
+        let source = r#"
+            export func f(acc: i32x4, a: f32x4, b: i8x16) -> i32x4 {
+                return vdot_lane_i32(acc, a, b, 0)
+            }
+        "#;
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let err = ea_compiler::check_types(&stmts).unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("i8x16"),
+            "expected type mismatch error, got: {msg}"
+        );
+    }
+
     // === ARM: I8MM smmla_i32 ===
 
     #[test]
