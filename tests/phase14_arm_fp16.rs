@@ -365,6 +365,102 @@ mod tests {
         assert_eq!(stdout.trim(), "36\n8\n1");
     }
 
+    // --- IR-level regression guards (run on any host, no execution required) ---
+
+    #[test]
+    fn test_f16_ir_emits_native_half() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        let src = r#"
+            export func add(a: *f16, b: *f16, out: *mut f16) {
+                let va: f16x8 = load(a, 0)
+                let vb: f16x8 = load(b, 0)
+                let r: f16x8 = va .+ vb
+                store(out, 0, r)
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+        };
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("k.ll");
+        ea_compiler::compile_with_options(src, &ir_path, OutputMode::LlvmIr, &opts).unwrap();
+        let ir = std::fs::read_to_string(&ir_path).unwrap();
+        assert!(
+            ir.contains("<8 x half>"),
+            "expected <8 x half> in IR, got:\n{ir}"
+        );
+        assert!(ir.contains("fadd"), "expected fadd in IR");
+    }
+
+    #[test]
+    fn test_f16_fma_uses_llvm_intrinsic() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        let src = r#"
+            export func fma_k(a: *f16, b: *f16, c: *f16, out: *mut f16) {
+                let va: f16x8 = load(a, 0)
+                let vb: f16x8 = load(b, 0)
+                let vc: f16x8 = load(c, 0)
+                let r: f16x8 = fma(va, vb, vc)
+                store(out, 0, r)
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+        };
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("k.ll");
+        ea_compiler::compile_with_options(src, &ir_path, OutputMode::LlvmIr, &opts).unwrap();
+        let ir = std::fs::read_to_string(&ir_path).unwrap();
+        assert!(
+            ir.contains("@llvm.fma.v8f16"),
+            "expected llvm.fma.v8f16 intrinsic, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn test_f16_reduce_uses_llvm_intrinsics() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        let src = r#"
+            export func red(a: *f16, out: *mut f16) {
+                let v: f16x8 = load(a, 0)
+                let s: f16 = reduce_add(v)
+                let mx: f16 = reduce_max(v)
+                let mn: f16 = reduce_min(v)
+                out[0] = s
+                out[1] = mx
+                out[2] = mn
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+        };
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("k.ll");
+        ea_compiler::compile_with_options(src, &ir_path, OutputMode::LlvmIr, &opts).unwrap();
+        let ir = std::fs::read_to_string(&ir_path).unwrap();
+        assert!(
+            ir.contains("@llvm.vector.reduce.fadd.v8f16"),
+            "expected fadd reduction intrinsic, got:\n{ir}"
+        );
+        assert!(
+            ir.contains("@llvm.vector.reduce.fmax.v8f16"),
+            "expected fmax reduction intrinsic"
+        );
+        assert!(
+            ir.contains("@llvm.vector.reduce.fmin.v8f16"),
+            "expected fmin reduction intrinsic"
+        );
+    }
+
     #[test]
     #[cfg(target_arch = "aarch64")]
     fn test_f16_splat() {
