@@ -248,6 +248,66 @@ mod tests {
 
     #[test]
     #[cfg(target_arch = "aarch64")]
+    fn test_f16_fma() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        use std::process::Command;
+
+        let ea = r#"
+            export func fma_test(a: *f16, b: *f16, c: *f16, out: *mut f16) {
+                let va: f16x8 = load(a, 0)
+                let vb: f16x8 = load(b, 0)
+                let vc: f16x8 = load(c, 0)
+                let r: f16x8 = fma(va, vb, vc)
+                store(out, 0, r)
+            }
+        "#;
+        let c = r#"
+            #include <stdio.h>
+            extern void fma_test(const _Float16 *a, const _Float16 *b,
+                                 const _Float16 *c, _Float16 *out);
+            int main(void) {
+                _Float16 a[8] = {2,2,2,2,2,2,2,2};
+                _Float16 b[8] = {3,3,3,3,3,3,3,3};
+                _Float16 c[8] = {1,1,1,1,1,1,1,1};
+                _Float16 out[8] = {0};
+                fma_test(a, b, c, out);
+                for (int i = 0; i < 8; ++i) printf("%g\n", (double)out[i]);
+                return 0;
+            }
+        "#;
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let cpath = dir.path().join("h.c");
+        let bin = dir.path().join("k_bin");
+        let opts = CompileOptions {
+            opt_level: 3,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: None,
+        };
+        ea_compiler::compile_with_options(ea, &obj, OutputMode::ObjectFile, &opts)
+            .expect("compile failed");
+        std::fs::write(&cpath, c).expect("write c");
+        let status = Command::new("cc")
+            .args([
+                cpath.to_str().unwrap(),
+                obj.to_str().unwrap(),
+                "-o",
+                bin.to_str().unwrap(),
+                "-lm",
+                "-march=armv8-a+fp16",
+            ])
+            .status()
+            .expect("link failed");
+        assert!(status.success(), "linker failed");
+        let out = Command::new(&bin).output().expect("run failed");
+        let stdout = String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n");
+        // 2*3 + 1 = 7 per lane
+        assert_eq!(stdout.trim(), "7\n7\n7\n7\n7\n7\n7\n7");
+    }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
     fn test_f16_splat() {
         use ea_compiler::{CompileOptions, OutputMode};
         use std::process::Command;

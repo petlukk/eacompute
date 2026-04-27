@@ -103,4 +103,32 @@ impl<'ctx> CodeGenerator<'ctx> {
             self.context.i32_type().const_int(0, false),
         ))
     }
+
+    /// Native f16 fused multiply-add: `llvm.fma.v{N}f16(a, b, c)`.
+    /// With +fullfp16 the backend emits `fmla v.8h, v.8h, v.8h` directly.
+    pub(super) fn compile_fma_f16(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let a = self.compile_expr(&args[0], function)?.into_vector_value();
+        let b = self.compile_expr(&args[1], function)?.into_vector_value();
+        let c = self.compile_expr(&args[2], function)?.into_vector_value();
+        let width = a.get_type().get_size();
+        let f16_ty = self.context.f16_type();
+        let vec_ty = f16_ty.vec_type(width);
+        let name = format!("llvm.fma.v{width}f16");
+        let intrinsic = self.module.get_function(&name).unwrap_or_else(|| {
+            let fn_ty = vec_ty.fn_type(&[vec_ty.into(), vec_ty.into(), vec_ty.into()], false);
+            self.module.add_function(&name, fn_ty, None)
+        });
+        let result = self
+            .builder
+            .build_call(intrinsic, &[a.into(), b.into(), c.into()], "fma_f16")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .try_as_basic_value()
+            .basic()
+            .ok_or_else(|| CompileError::codegen_error("fma_f16 returned no value"))?;
+        Ok(result)
+    }
 }
