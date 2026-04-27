@@ -13,6 +13,8 @@ mod simd_byteshift;
 #[cfg(feature = "llvm")]
 mod simd_dotprod;
 #[cfg(feature = "llvm")]
+mod simd_fp16;
+#[cfg(feature = "llvm")]
 mod simd_lane;
 #[cfg(feature = "llvm")]
 mod simd_masked;
@@ -210,6 +212,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 BasicTypeEnum::IntType(self.context.i32_type())
             }
             Type::I64 | Type::U64 => BasicTypeEnum::IntType(self.context.i64_type()),
+            Type::F16 => BasicTypeEnum::FloatType(self.context.f16_type()),
             Type::F32 => BasicTypeEnum::FloatType(self.context.f32_type()),
             Type::F64 | Type::FloatLiteral => BasicTypeEnum::FloatType(self.context.f64_type()),
             Type::Bool => BasicTypeEnum::IntType(self.context.bool_type()),
@@ -236,7 +239,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     )
                 }
             }
-            Type::F16 | Type::String | Type::Void => {
+            Type::String | Type::Void => {
                 panic!(
                     "internal compiler error: type '{ty}' cannot be compiled (please report this bug)"
                 )

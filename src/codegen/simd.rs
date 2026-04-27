@@ -174,6 +174,9 @@ impl<'ctx> CodeGenerator<'ctx> {
                 } else {
                     None
                 };
+                if matches!(elem_hint, Some(Type::F16)) {
+                    return self.compile_splat_f16(args, type_hint, function);
+                }
                 let width = match type_hint {
                     Some(Type::Vector { width, .. }) => *width as u32,
                     _ => 4,

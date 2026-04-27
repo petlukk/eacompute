@@ -124,4 +124,56 @@ mod tests {
         let tokens = ea_compiler::tokenize(src).expect("tokenize failed");
         ea_compiler::parse(tokens).expect("parse failed — f16x8 not recognized as type");
     }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn test_f16_splat() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        use std::process::Command;
+
+        let ea = r#"
+            export func splat_one(out: *mut f16) {
+                let v: f16x8 = splat(1.0)
+                store(out, 0, v)
+            }
+        "#;
+        let c = r#"
+            #include <stdio.h>
+            extern void splat_one(_Float16 *out);
+            int main(void) {
+                _Float16 buf[8] = {0};
+                splat_one(buf);
+                for (int i = 0; i < 8; ++i) printf("%g\n", (double)buf[i]);
+                return 0;
+            }
+        "#;
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let cpath = dir.path().join("h.c");
+        let bin = dir.path().join("k_bin");
+        let opts = CompileOptions {
+            opt_level: 3,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: None,
+        };
+        ea_compiler::compile_with_options(ea, &obj, OutputMode::ObjectFile, &opts)
+            .expect("compile failed");
+        std::fs::write(&cpath, c).expect("write c");
+        let status = Command::new("cc")
+            .args([
+                cpath.to_str().unwrap(),
+                obj.to_str().unwrap(),
+                "-o",
+                bin.to_str().unwrap(),
+                "-lm",
+                "-march=armv8-a+fp16",
+            ])
+            .status()
+            .expect("link failed");
+        assert!(status.success(), "linker failed");
+        let out = Command::new(&bin).output().expect("run failed");
+        let stdout = String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n");
+        assert_eq!(stdout.trim(), "1\n1\n1\n1\n1\n1\n1\n1");
+    }
 }
