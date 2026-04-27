@@ -103,6 +103,16 @@ fn init_llvm() {
 }
 
 #[cfg(feature = "llvm")]
+fn validate_fp16_compatibility(opts: &CompileOptions) -> error::Result<()> {
+    if !opts.is_arm() && opts.extra_features.contains("fullfp16") {
+        return Err(error::CompileError::codegen_error(
+            "--fp16 is incompatible with non-ARM target",
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(feature = "llvm")]
 pub fn compile(source: &str, output_path: &std::path::Path, mode: OutputMode) -> error::Result<()> {
     compile_with_options(source, output_path, mode, &CompileOptions::default())
 }
@@ -113,11 +123,7 @@ pub fn compile_with_options(
     mode: OutputMode,
     opts: &CompileOptions,
 ) -> error::Result<()> {
-    if !opts.is_arm() && opts.extra_features.contains("fullfp16") {
-        return Err(error::CompileError::codegen_error(
-            "--fp16 is incompatible with non-ARM target",
-        ));
-    }
+    validate_fp16_compatibility(opts)?;
     init_llvm();
 
     let tokens = tokenize(source)?;
@@ -243,11 +249,7 @@ pub fn compile_to_ir(source: &str) -> error::Result<String> {
 
 #[cfg(feature = "llvm")]
 pub fn compile_to_ir_with_options(source: &str, opts: CompileOptions) -> error::Result<String> {
-    if !opts.is_arm() && opts.extra_features.contains("fullfp16") {
-        return Err(error::CompileError::codegen_error(
-            "--fp16 is incompatible with non-ARM target",
-        ));
-    }
+    validate_fp16_compatibility(&opts)?;
     init_llvm();
 
     let tokens = tokenize(source)?;
@@ -268,11 +270,7 @@ pub fn inspect_source(
     source: &str,
     opts: &CompileOptions,
 ) -> error::Result<inspect::InspectReport> {
-    if !opts.is_arm() && opts.extra_features.contains("fullfp16") {
-        return Err(error::CompileError::codegen_error(
-            "--fp16 is incompatible with non-ARM target",
-        ));
-    }
+    validate_fp16_compatibility(opts)?;
     init_llvm();
 
     let tokens = tokenize(source)?;
