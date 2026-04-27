@@ -137,6 +137,24 @@ impl<'ctx> CodeGenerator<'ctx> {
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
+    /// Returns true if any arg is an f16 vector variable, or if the type_hint is an f16 vector.
+    fn call_uses_f16(&self, args: &[Expr], type_hint: Option<&Type>) -> bool {
+        if let Some(Type::Vector { elem, .. }) = type_hint
+            && matches!(**elem, Type::F16)
+        {
+            return true;
+        }
+        for a in args {
+            if let Expr::Variable(name, _) = a
+                && let Some((_, Type::Vector { elem, .. })) = self.variables.get(name)
+                && matches!(**elem, Type::F16)
+            {
+                return true;
+            }
+        }
+        false
+    }
+
     pub(crate) fn compile_simd_call(
         &mut self,
         name: &str,
@@ -144,6 +162,11 @@ impl<'ctx> CodeGenerator<'ctx> {
         type_hint: Option<&Type>,
         function: FunctionValue<'ctx>,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        if !self.fp16 && self.call_uses_f16(args, type_hint) {
+            return Err(CompileError::codegen_error(
+                "f16 vector types require --fp16; use cvt_f16_f32 to compute through f32 instead",
+            ));
+        }
         match name {
             "splat" => {
                 let elem_hint = if let Some(Type::Vector { elem, .. }) = type_hint {

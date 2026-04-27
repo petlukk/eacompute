@@ -1,9 +1,37 @@
 // Lexer/parser recognition tests for f16, f16x4, f16x8 tokens (B4).
-// No codegen yet — that's B5+.
+// B5: codegen gate — f16 vector types require --fp16 flag.
 
 #[cfg(feature = "llvm")]
 mod tests {
     use ea_compiler::lexer::TokenKind;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_f16_without_flag_is_rejected() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(), // no --fp16
+            target_triple: None,
+        };
+        // Use a pointer parameter to avoid inline cast syntax.
+        let src = r#"
+            export func k(p: *f16, out: *mut f16) {
+                let v: f16x8 = load(p, 0)
+                store(out, 0, v)
+            }
+        "#;
+        let err = ea_compiler::compile_with_options(src, &obj, OutputMode::ObjectFile, &opts)
+            .expect_err("f16 without --fp16 should fail");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("--fp16"),
+            "error must mention --fp16, got: {msg}"
+        );
+    }
 
     #[test]
     fn test_f16_lexer_recognizes_token() {

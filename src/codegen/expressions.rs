@@ -247,6 +247,14 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
 
         let hint = self.infer_binary_hint(lhs, rhs, type_hint);
+        if !self.fp16
+            && let Some(Type::Vector { elem, .. }) = hint.as_ref()
+            && matches!(**elem, Type::F16)
+        {
+            return Err(CompileError::codegen_error(
+                "f16 vector types require --fp16; use cvt_f16_f32 to compute through f32 instead",
+            ));
+        }
         let unsigned = hint.as_ref().map(is_unsigned).unwrap_or(false);
         let left = self.compile_expr_typed(lhs, hint.as_ref(), function)?;
         let right = self.compile_expr_typed(rhs, hint.as_ref(), function)?;

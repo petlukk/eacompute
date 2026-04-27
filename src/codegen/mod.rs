@@ -265,6 +265,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 "u32" => Type::U32,
                 "i64" => Type::I64,
                 "u64" => Type::U64,
+                "f16" => Type::F16,
                 "f32" => Type::F32,
                 "f64" => Type::F64,
                 "bool" => Type::Bool,
@@ -375,6 +376,14 @@ impl<'ctx> CodeGenerator<'ctx> {
     }
 
     pub(crate) fn validate_type_for_target(&self, ty: &Type) -> crate::error::Result<()> {
+        if let Type::Vector { elem, .. } = ty
+            && matches!(**elem, Type::F16)
+            && !self.fp16
+        {
+            return Err(CompileError::codegen_error(
+                "f16 vector types require --fp16; use cvt_f16_f32 to compute through f32 instead",
+            ));
+        }
         if let Type::Vector { elem, width } = ty {
             let elem_bits = match elem.as_ref() {
                 Type::F32 | Type::I32 | Type::U32 => 32,
