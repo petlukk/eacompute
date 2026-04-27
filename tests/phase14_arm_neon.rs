@@ -305,4 +305,20 @@ mod tests {
             "10",
         );
     }
+
+    #[test]
+    fn test_f32x8_from_scalars() {
+        assert_output(
+            r#"
+        export func main() {
+            let v: f32x8 = f32x8_from_scalars(
+                1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0
+            )
+            let s: f32 = reduce_add(v)
+            println(s)
+        }
+        "#,
+            "36",
+        );
+    }
 }

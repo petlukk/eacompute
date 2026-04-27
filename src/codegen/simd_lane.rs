@@ -11,6 +11,7 @@ use inkwell::values::{BasicValueEnum, FunctionValue};
 
 use crate::ast::{Expr, Literal};
 use crate::error::CompileError;
+use crate::typeck::Type;
 
 use super::CodeGenerator;
 
@@ -164,7 +165,9 @@ impl<'ctx> CodeGenerator<'ctx> {
         let vec_ty = f32_ty.vec_type(width);
         let mut v: BasicValueEnum<'ctx> = vec_ty.get_undef().into();
         for (i, arg) in args.iter().enumerate() {
-            let scalar = self.compile_expr(arg, function)?.into_float_value();
+            let scalar = self
+                .compile_expr_typed(arg, Some(&Type::F32), function)?
+                .into_float_value();
             let lane = self.context.i32_type().const_int(i as u64, false);
             v = self
                 .builder
