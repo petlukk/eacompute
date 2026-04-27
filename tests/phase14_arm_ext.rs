@@ -112,7 +112,7 @@ mod tests {
         .unwrap_err();
         let msg = format!("{err}");
         assert!(
-            msg.contains("x86-only") || msg.contains("256-bit"),
+            msg.contains("x86-only") || msg.contains("256-bit") || msg.contains("AVX2"),
             "got: {msg}"
         );
     }

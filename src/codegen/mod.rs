@@ -301,17 +301,20 @@ impl<'ctx> CodeGenerator<'ctx> {
         return_type: Option<&TypeAnnotation>,
         export: bool,
     ) -> crate::error::Result<()> {
-        let param_types: Vec<BasicMetadataTypeEnum> = params
-            .iter()
-            .map(|p| {
+        let param_types: Vec<BasicMetadataTypeEnum> = {
+            let mut out = Vec::with_capacity(params.len());
+            for p in params {
                 let ty = Self::resolve_annotation(&p.ty);
-                self.llvm_type(&ty).into()
-            })
-            .collect();
+                self.validate_type_for_target(&ty)?;
+                out.push(self.llvm_type(&ty).into());
+            }
+            out
+        };
 
         let fn_type = match return_type {
             Some(ann) => {
                 let ret_ty = Self::resolve_annotation(ann);
+                self.validate_type_for_target(&ret_ty)?;
                 let llvm_ret = self.llvm_type(&ret_ty);
                 llvm_ret.fn_type(&param_types, false)
             }

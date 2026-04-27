@@ -34,6 +34,30 @@ mod tests {
     }
 
     #[test]
+    fn test_f16x8_param_without_flag_is_rejected() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: None,
+        };
+        // f16x8 parameter — used to panic in declare_function before this fix
+        let src = r#"
+            export func k(v: f16x8) { }
+        "#;
+        let err = ea_compiler::compile_with_options(src, &obj, OutputMode::ObjectFile, &opts)
+            .expect_err("f16x8 parameter without --fp16 should fail with error, not panic");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("--fp16"),
+            "error must mention --fp16, got: {msg}"
+        );
+    }
+
+    #[test]
     fn test_f16_lexer_recognizes_token() {
         let src = "let x: f16 = 0";
         let tokens = ea_compiler::tokenize(src).expect("tokenize failed");
