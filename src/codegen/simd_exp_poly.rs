@@ -15,7 +15,17 @@ use crate::error::CompileError;
 
 use super::CodeGenerator;
 
-// Sleef-derived f32 minimax exp constants, max relative error ~2^-18.
+// Cody-Waite split of ln(2) for high-precision range reduction:
+//   LN2_HI + LN2_LO ≈ ln(2) = 0.6931471805599453
+//   LN2_HI + LN2_LO = 0.6931471805645938   (error ~5e-12)
+// Splitting ln(2) into two f32 constants lets us subtract n·ln(2) from x
+// without losing the bottom 7 bits of precision (which a single-constant
+// subtract would). Standard technique used by Sleef, Cephes, glibc, etc.
+//
+// Polynomial coefficients are degree-5 minimax over [-ln(2)/2, +ln(2)/2]
+// matched to exp(r). Max relative error on the safe range [-50, 50]:
+// ~2^-18 (~3.8e-6).
+//
 // LOG2_E is spelled as a cast from f64 to avoid the clippy::approx_constant lint
 // (the f32 value is the same bit pattern as std::f32::consts::LOG2_E).
 #[allow(clippy::excessive_precision)]
