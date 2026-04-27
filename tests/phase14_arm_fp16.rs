@@ -180,6 +180,74 @@ mod tests {
 
     #[test]
     #[cfg(target_arch = "aarch64")]
+    fn test_f16_elementwise_arithmetic() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        use std::process::Command;
+
+        let ea = r#"
+        export func add_mul(a: *f16, b: *f16, out: *mut f16) {
+            let va: f16x8 = load(a, 0)
+            let vb: f16x8 = load(b, 0)
+            let vsum: f16x8 = va .+ vb
+            let vprod: f16x8 = va .* vb
+            store(out, 0, vsum)
+            store(out, 8, vprod)
+        }
+    "#;
+        let c = r#"
+        #include <stdio.h>
+        extern void add_mul(const _Float16 *a, const _Float16 *b, _Float16 *out);
+        int main(void) {
+            _Float16 a[8] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
+            _Float16 b[8] = {10.0f, 20.0f, 30.0f, 40.0f, 50.0f, 60.0f, 70.0f, 80.0f};
+            _Float16 out[16] = {0};
+            add_mul(a, b, out);
+            for (int i = 0; i < 16; ++i) printf("%g\n", (double)out[i]);
+            return 0;
+        }
+    "#;
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let cpath = dir.path().join("h.c");
+        let bin = dir.path().join("k_bin");
+        let opts = CompileOptions {
+            opt_level: 3,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: None,
+        };
+        ea_compiler::compile_with_options(ea, &obj, OutputMode::ObjectFile, &opts)
+            .expect("compile failed");
+        std::fs::write(&cpath, c).expect("write c");
+        let status = Command::new("cc")
+            .args([
+                cpath.to_str().unwrap(),
+                obj.to_str().unwrap(),
+                "-o",
+                bin.to_str().unwrap(),
+                "-lm",
+                "-march=armv8-a+fp16",
+            ])
+            .status()
+            .expect("link failed");
+        assert!(status.success(), "linker failed");
+        let out = Command::new(&bin).output().expect("run failed");
+        let stdout = String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n");
+        let lines: Vec<&str> = stdout.trim().split('\n').collect();
+        // Sums: 11 22 33 44 55 66 77 88
+        // Products: 10 40 90 160 250 360 490 640
+        assert_eq!(
+            &lines[0..8],
+            &["11", "22", "33", "44", "55", "66", "77", "88"]
+        );
+        assert_eq!(
+            &lines[8..16],
+            &["10", "40", "90", "160", "250", "360", "490", "640"]
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
     fn test_f16_splat() {
         use ea_compiler::{CompileOptions, OutputMode};
         use std::process::Command;
