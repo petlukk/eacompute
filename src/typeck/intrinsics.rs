@@ -26,7 +26,9 @@ impl TypeChecker {
             "abs" if !self.functions.contains_key("abs") => {
                 Some(self.check_abs(args, locals, span))
             }
-            "sqrt" | "rsqrt" | "exp" => Some(self.check_sqrt(name, args, locals, span)),
+            "sqrt" | "rsqrt" | "exp" | "exp_poly_f32" => {
+                Some(self.check_sqrt(name, args, locals, span))
+            }
             "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" => {
                 Some(self.check_conversion(name, args, locals, span))
             }

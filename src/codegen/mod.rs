@@ -15,6 +15,8 @@ mod simd_conv;
 #[cfg(feature = "llvm")]
 mod simd_dotprod;
 #[cfg(feature = "llvm")]
+mod simd_exp_poly;
+#[cfg(feature = "llvm")]
 mod simd_fp16;
 #[cfg(feature = "llvm")]
 mod simd_lane;
