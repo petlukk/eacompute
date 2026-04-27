@@ -158,4 +158,22 @@ export func main() {}
             "error should explain the cross-arch restriction, got: {msg}"
         );
     }
+
+    #[test]
+    fn test_fp16_on_x86_is_rejected_in_inspect() {
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: Some("x86_64-unknown-linux-gnu".to_string()),
+        };
+        let src = "export func main() {}";
+        let err = ea_compiler::inspect_source(src, &opts)
+            .expect_err("inspect with --fp16 on x86 should fail");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("--fp16 is incompatible with non-ARM target"),
+            "expected cross-arch error, got: {msg}"
+        );
+    }
 }
