@@ -27,7 +27,7 @@ impl TypeChecker {
                 Some(self.check_abs(args, locals, span))
             }
             "sqrt" | "rsqrt" | "exp" => Some(self.check_sqrt(name, args, locals, span)),
-            "to_f32" | "to_f64" | "to_i16" | "to_i32" | "to_i64" => {
+            "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" => {
                 Some(self.check_conversion(name, args, locals, span))
             }
             "ptr_as_i8" | "ptr_as_u8" | "ptr_as_i16" | "ptr_as_u16" | "ptr_as_i32"
@@ -382,6 +382,7 @@ impl TypeChecker {
         let target = match name {
             "to_f32" => Type::F32,
             "to_f64" => Type::F64,
+            "to_f16" => Type::F16,
             "to_i16" => Type::I16,
             "to_i32" => Type::I32,
             "to_i64" => Type::I64,

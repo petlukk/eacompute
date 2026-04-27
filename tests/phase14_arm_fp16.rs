@@ -462,6 +462,133 @@ mod tests {
     }
 
     #[test]
+    fn test_f16_to_f16_ir() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        let src = r#"
+            export func k(x: f32) -> f16 {
+                return to_f16(x)
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+        };
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("k.ll");
+        ea_compiler::compile_with_options(src, &ir_path, OutputMode::LlvmIr, &opts).unwrap();
+        let ir = std::fs::read_to_string(&ir_path).unwrap();
+        assert!(
+            ir.contains("fptrunc float") && ir.contains("to half"),
+            "expected 'fptrunc float ... to half' in IR, got:\n{ir}"
+        );
+    }
+
+    #[test]
+    fn test_f16_rmsnorm_ir() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        let ea = include_str!("data/rmsnorm_f16.ea");
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+        };
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("k.ll");
+        ea_compiler::compile_with_options(ea, &ir_path, OutputMode::LlvmIr, &opts)
+            .expect("compile failed");
+        let ir = std::fs::read_to_string(&ir_path).unwrap();
+        assert!(
+            ir.contains("<8 x half>"),
+            "expected <8 x half> vectors in IR"
+        );
+        assert!(
+            ir.contains("fpext") && ir.contains("to float"),
+            "expected fpext half to float for to_f32(f16) conversion"
+        );
+        assert!(
+            ir.contains("fptrunc") && ir.contains("to half"),
+            "expected fptrunc float to half for to_f16(f32) conversion"
+        );
+        assert!(
+            ir.contains("llvm.sqrt.f32"),
+            "expected scalar f32 sqrt in IR"
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn test_f16_rmsnorm_reference() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        use std::process::Command;
+
+        let ea = include_str!("data/rmsnorm_f16.ea");
+        let c = r#"
+            #include <stdio.h>
+            #include <math.h>
+            extern void rmsnorm_f16(const _Float16 *x, _Float16 scale, _Float16 *out);
+
+            int main(void) {
+                _Float16 x[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+                _Float16 out[8] = {0};
+                rmsnorm_f16(x, (_Float16)0.5f, out);
+
+                // f32 reference
+                float xf[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+                float sumsq = 0;
+                for (int i = 0; i < 8; ++i) sumsq += xf[i] * xf[i];
+                float denom = sqrtf(sumsq / 8.0f + 1e-6f);
+                for (int i = 0; i < 8; ++i) {
+                    float ref = xf[i] / denom * 0.5f;
+                    float got = (float)out[i];
+                    float rel = fabsf(got - ref) / fabsf(ref);
+                    if (rel > 0.05f) {
+                        printf("FAIL lane %d: got %g ref %g rel %g\n", i, got, ref, rel);
+                        return 1;
+                    }
+                }
+                printf("OK\n");
+                return 0;
+            }
+        "#;
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let cpath = dir.path().join("h.c");
+        let bin = dir.path().join("k_bin");
+        let opts = CompileOptions {
+            opt_level: 3,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: None,
+        };
+        ea_compiler::compile_with_options(ea, &obj, OutputMode::ObjectFile, &opts)
+            .expect("compile failed");
+        std::fs::write(&cpath, c).expect("write c");
+        let status = Command::new("cc")
+            .args([
+                cpath.to_str().unwrap(),
+                obj.to_str().unwrap(),
+                "-o",
+                bin.to_str().unwrap(),
+                "-lm",
+                "-march=armv8-a+fp16",
+            ])
+            .status()
+            .expect("link failed");
+        assert!(status.success(), "linker failed");
+        let out = Command::new(&bin).output().expect("run failed");
+        let stdout = String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n");
+        assert_eq!(
+            stdout.trim(),
+            "OK",
+            "stderr: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    #[test]
     #[cfg(target_arch = "aarch64")]
     fn test_f16_splat() {
         use ea_compiler::{CompileOptions, OutputMode};

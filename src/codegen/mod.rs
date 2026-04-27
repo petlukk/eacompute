@@ -11,6 +11,8 @@ mod simd_arithmetic;
 #[cfg(feature = "llvm")]
 mod simd_byteshift;
 #[cfg(feature = "llvm")]
+mod simd_conv;
+#[cfg(feature = "llvm")]
 mod simd_dotprod;
 #[cfg(feature = "llvm")]
 mod simd_fp16;
