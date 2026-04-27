@@ -442,4 +442,89 @@ mod tests {
             "error must clarify why integer vector is rejected, got: {msg}"
         );
     }
+
+    /// End-to-end softmax using exp_poly_f32. Compares against an expf-based
+    /// reference. Tolerance 1e-3 relative (~2^-10 — softmax's normalize-by-sum
+    /// absorbs the polynomial error).
+    #[test]
+    fn test_exp_poly_f32_softmax_integration() {
+        let ea = r#"
+            export func softmax(x: *f32, out: *mut f32) {
+                let v: f32x8 = load(x, 0)
+                let mx: f32 = reduce_max(v)
+                let mxv: f32x8 = splat(mx)
+                let shifted: f32x8 = v .- mxv
+                let ev: f32x8 = exp_poly_f32(shifted)
+                let s: f32 = reduce_add(ev)
+                let inv: f32 = 1.0 / s
+                let invv: f32x8 = splat(inv)
+                let r: f32x8 = ev .* invv
+                store(out, 0, r)
+            }
+        "#;
+        let c = r#"
+            #include <stdio.h>
+            #include <math.h>
+            extern void softmax(const float *x, float *out);
+            int main(void) {
+                float x[8] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
+                float out[8] = {0};
+                softmax(x, out);
+
+                // Reference softmax
+                float mx = x[0];
+                for (int i = 1; i < 8; ++i) if (x[i] > mx) mx = x[i];
+                float ref[8];
+                float s = 0.0f;
+                for (int i = 0; i < 8; ++i) {
+                    ref[i] = expf(x[i] - mx);
+                    s += ref[i];
+                }
+                for (int i = 0; i < 8; ++i) ref[i] /= s;
+
+                // Compare with relative tolerance 1e-3 (~2^-10)
+                for (int i = 0; i < 8; ++i) {
+                    float rel = fabsf(out[i] - ref[i]) / ref[i];
+                    if (rel > 1.0e-3f) {
+                        printf("FAIL i=%d got=%g ref=%g rel=%g\n", i, out[i], ref[i], rel);
+                        return 1;
+                    }
+                }
+                printf("OK\n");
+                return 0;
+            }
+        "#;
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let cpath = dir.path().join("h.c");
+        let bin = dir.path().join("k_bin");
+        let opts = CompileOptions {
+            opt_level: 3,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: None,
+        };
+        ea_compiler::compile_with_options(ea, &obj, OutputMode::ObjectFile, &opts)
+            .expect("compile failed");
+        std::fs::write(&cpath, c).expect("write c");
+        let status = Command::new("cc")
+            .args([
+                cpath.to_str().unwrap(),
+                obj.to_str().unwrap(),
+                "-o",
+                bin.to_str().unwrap(),
+                "-lm",
+            ])
+            .status()
+            .expect("link failed");
+        assert!(status.success(), "linker failed");
+        let out = Command::new(&bin).output().expect("run failed");
+        let stdout = String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n");
+        assert_eq!(
+            stdout.trim(),
+            "OK",
+            "stderr: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
 }
