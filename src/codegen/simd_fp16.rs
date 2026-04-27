@@ -104,6 +104,67 @@ impl<'ctx> CodeGenerator<'ctx> {
         ))
     }
 
+    /// Native f16 reductions: `llvm.vector.reduce.{fadd,fmax,fmin}.v{N}f16`.
+    /// With +fullfp16 the backend emits `faddv h0, v0.8h` / `fmaxv` / `fminv` directly.
+    pub(super) fn compile_reduce_f16(
+        &mut self,
+        args: &[Expr],
+        name: &str,
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let v = self.compile_expr(&args[0], function)?.into_vector_value();
+        let width = v.get_type().get_size();
+        let f16_ty = self.context.f16_type();
+        let vec_ty = f16_ty.vec_type(width);
+
+        let intrinsic_name = match name {
+            "reduce_add" | "reduce_add_fast" => format!("llvm.vector.reduce.fadd.v{width}f16"),
+            "reduce_max" => format!("llvm.vector.reduce.fmax.v{width}f16"),
+            "reduce_min" => format!("llvm.vector.reduce.fmin.v{width}f16"),
+            _ => {
+                return Err(CompileError::codegen_error(format!(
+                    "unsupported f16 reduction: {name}"
+                )));
+            }
+        };
+
+        if name.starts_with("reduce_add") {
+            // fadd reduction takes a start (seed) value
+            let zero = f16_ty.const_zero();
+            let intrinsic = self
+                .module
+                .get_function(&intrinsic_name)
+                .unwrap_or_else(|| {
+                    let fn_ty = f16_ty.fn_type(&[f16_ty.into(), vec_ty.into()], false);
+                    self.module.add_function(&intrinsic_name, fn_ty, None)
+                });
+            let result = self
+                .builder
+                .build_call(intrinsic, &[zero.into(), v.into()], "reduce_add_f16")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("reduce_f16 returned no value"))?;
+            Ok(result)
+        } else {
+            let intrinsic = self
+                .module
+                .get_function(&intrinsic_name)
+                .unwrap_or_else(|| {
+                    let fn_ty = f16_ty.fn_type(&[vec_ty.into()], false);
+                    self.module.add_function(&intrinsic_name, fn_ty, None)
+                });
+            let result = self
+                .builder
+                .build_call(intrinsic, &[v.into()], "reduce_minmax_f16")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| CompileError::codegen_error("reduce_f16 returned no value"))?;
+            Ok(result)
+        }
+    }
+
     /// Native f16 fused multiply-add: `llvm.fma.v{N}f16(a, b, c)`.
     /// With +fullfp16 the backend emits `fmla v.8h, v.8h, v.8h` directly.
     pub(super) fn compile_fma_f16(

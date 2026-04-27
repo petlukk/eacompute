@@ -226,6 +226,9 @@ impl<'ctx> CodeGenerator<'ctx> {
             "rsqrt" => self.compile_rsqrt(args, function),
             "exp" => self.compile_exp(args, function),
             "reduce_add" | "reduce_add_fast" | "reduce_max" | "reduce_min" => {
+                if self.call_uses_f16(args, None) {
+                    return self.compile_reduce_f16(args, name, function);
+                }
                 self.compile_reduce(args, name, function)
             }
             "shuffle" => self.compile_shuffle(args, function),

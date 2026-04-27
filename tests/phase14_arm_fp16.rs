@@ -308,6 +308,65 @@ mod tests {
 
     #[test]
     #[cfg(target_arch = "aarch64")]
+    fn test_f16_reductions() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        use std::process::Command;
+
+        let ea = r#"
+            export func reductions(a: *f16, out: *mut f16) {
+                let v: f16x8 = load(a, 0)
+                let s: f16 = reduce_add(v)
+                let mx: f16 = reduce_max(v)
+                let mn: f16 = reduce_min(v)
+                out[0] = s
+                out[1] = mx
+                out[2] = mn
+            }
+        "#;
+        let c = r#"
+            #include <stdio.h>
+            extern void reductions(const _Float16 *a, _Float16 *out);
+            int main(void) {
+                _Float16 a[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+                _Float16 out[3] = {0};
+                reductions(a, out);
+                printf("%g\n%g\n%g\n", (double)out[0], (double)out[1], (double)out[2]);
+                return 0;
+            }
+        "#;
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let cpath = dir.path().join("h.c");
+        let bin = dir.path().join("k_bin");
+        let opts = CompileOptions {
+            opt_level: 3,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: None,
+        };
+        ea_compiler::compile_with_options(ea, &obj, OutputMode::ObjectFile, &opts)
+            .expect("compile failed");
+        std::fs::write(&cpath, c).expect("write c");
+        let status = Command::new("cc")
+            .args([
+                cpath.to_str().unwrap(),
+                obj.to_str().unwrap(),
+                "-o",
+                bin.to_str().unwrap(),
+                "-lm",
+                "-march=armv8-a+fp16",
+            ])
+            .status()
+            .expect("link failed");
+        assert!(status.success(), "linker failed");
+        let out = Command::new(&bin).output().expect("run failed");
+        let stdout = String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n");
+        // sum=36, max=8, min=1
+        assert_eq!(stdout.trim(), "36\n8\n1");
+    }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
     fn test_f16_splat() {
         use ea_compiler::{CompileOptions, OutputMode};
         use std::process::Command;
