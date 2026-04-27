@@ -14,6 +14,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             BasicTypeEnum::FloatType(ft) => {
                 if ft == self.context.f64_type() {
                     8
+                } else if ft == self.context.f16_type() {
+                    2
                 } else {
                     4
                 }

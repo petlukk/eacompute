@@ -137,6 +137,17 @@ impl<'ctx> CodeGenerator<'ctx> {
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
+    /// Returns true if the expression is a variable whose type is an f16 vector.
+    fn value_is_f16_vector(&self, expr: &Expr) -> bool {
+        if let Expr::Variable(name, _) = expr
+            && let Some((_, Type::Vector { elem, .. })) = self.variables.get(name)
+            && matches!(**elem, Type::F16)
+        {
+            return true;
+        }
+        false
+    }
+
     /// Returns true if any arg is an f16 vector variable, or if the type_hint is an f16 vector.
     fn call_uses_f16(&self, args: &[Expr], type_hint: Option<&Type>) -> bool {
         if let Some(Type::Vector { elem, .. }) = type_hint
@@ -185,8 +196,20 @@ impl<'ctx> CodeGenerator<'ctx> {
                 let vec = self.build_splat(val, width)?;
                 Ok(BasicValueEnum::VectorValue(vec))
             }
-            "load" => self.compile_load(args, type_hint, function),
-            "store" => self.compile_store(args, function),
+            "load" => {
+                if let Some(Type::Vector { elem, .. }) = type_hint
+                    && matches!(**elem, Type::F16)
+                {
+                    return self.compile_load_f16(args, type_hint, function);
+                }
+                self.compile_load(args, type_hint, function)
+            }
+            "store" => {
+                if self.value_is_f16_vector(&args[2]) {
+                    return self.compile_store_f16(args, function);
+                }
+                self.compile_store(args, function)
+            }
             "stream_store" => self.compile_stream_store(args, function),
             "gather" => self.compile_gather(args, type_hint, function),
             "scatter" => self.compile_scatter(args, function),

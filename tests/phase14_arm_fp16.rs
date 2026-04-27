@@ -127,6 +127,59 @@ mod tests {
 
     #[test]
     #[cfg(target_arch = "aarch64")]
+    fn test_f16_load_store() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        use std::process::Command;
+
+        let ea = r#"
+            export func copy(input: *f16, output: *mut f16) {
+                let v: f16x8 = load(input, 0)
+                store(output, 0, v)
+            }
+        "#;
+        let c = r#"
+            #include <stdio.h>
+            extern void copy(const _Float16 *in, _Float16 *out);
+            int main(void) {
+                _Float16 in_buf[8] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
+                _Float16 out_buf[8] = {0};
+                copy(in_buf, out_buf);
+                for (int i = 0; i < 8; ++i) printf("%g\n", (double)out_buf[i]);
+                return 0;
+            }
+        "#;
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let cpath = dir.path().join("h.c");
+        let bin = dir.path().join("k_bin");
+        let opts = CompileOptions {
+            opt_level: 3,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(),
+            target_triple: None,
+        };
+        ea_compiler::compile_with_options(ea, &obj, OutputMode::ObjectFile, &opts)
+            .expect("compile failed");
+        std::fs::write(&cpath, c).expect("write c");
+        let status = Command::new("cc")
+            .args([
+                cpath.to_str().unwrap(),
+                obj.to_str().unwrap(),
+                "-o",
+                bin.to_str().unwrap(),
+                "-lm",
+                "-march=armv8-a+fp16",
+            ])
+            .status()
+            .expect("link failed");
+        assert!(status.success(), "linker failed");
+        let out = Command::new(&bin).output().expect("run failed");
+        let stdout = String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n");
+        assert_eq!(stdout.trim(), "1\n2\n3\n4\n5\n6\n7\n8");
+    }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
     fn test_f16_splat() {
         use ea_compiler::{CompileOptions, OutputMode};
         use std::process::Command;
