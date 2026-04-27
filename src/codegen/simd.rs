@@ -132,6 +132,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "bitcast_i8x32"
                 | "bitcast_i32x4"
                 | "bitcast_i32x8"
+                | "f32x4_from_scalars"
+                | "f32x8_from_scalars"
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
@@ -273,6 +275,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             "bcast_odd_pairs_i32x8" | "bcast_odd_pairs_i32x16" => {
                 self.emit_bcast_pairs(args, function, true)
             }
+            "f32x4_from_scalars" => self.emit_f32_from_scalars(args, function, 4),
+            "f32x8_from_scalars" => self.emit_f32_from_scalars(args, function, 8),
             _ if typeck_types::parse_typed_load(name).is_some() => {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)

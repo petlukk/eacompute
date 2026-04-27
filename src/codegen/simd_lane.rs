@@ -152,6 +152,29 @@ impl<'ctx> CodeGenerator<'ctx> {
         Ok(BasicValueEnum::VectorValue(result))
     }
 
+    /// Emit a vector built from N scalar values via `insertelement` chain.
+    /// LLVM 18 folds this to `ins v.s[i], wn` on NEON and `vinsertps` on x86.
+    pub(super) fn emit_f32_from_scalars(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+        width: u32,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let f32_ty = self.context.f32_type();
+        let vec_ty = f32_ty.vec_type(width);
+        let mut v: BasicValueEnum<'ctx> = vec_ty.get_undef().into();
+        for (i, arg) in args.iter().enumerate() {
+            let scalar = self.compile_expr(arg, function)?.into_float_value();
+            let lane = self.context.i32_type().const_int(i as u64, false);
+            v = self
+                .builder
+                .build_insert_element(v.into_vector_value(), scalar, lane, "ins")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .into();
+        }
+        Ok(v)
+    }
+
     /// Emit a per-sublane 32-bit broadcast shufflevector.
     /// `odd = false` produces [l0, l0, l2, l2] per 4-lane sublane (lowers to vpshufd imm=0xA0).
     /// `odd = true`  produces [l1, l1, l3, l3] per 4-lane sublane (lowers to vpshufd imm=0xF5).

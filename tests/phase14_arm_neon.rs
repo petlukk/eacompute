@@ -1,5 +1,9 @@
 #[cfg(feature = "llvm")]
+mod common;
+
+#[cfg(feature = "llvm")]
 mod tests {
+    use super::common::*;
     use ea_compiler::{CompileOptions, OutputMode};
     use tempfile::TempDir;
 
@@ -281,6 +285,24 @@ mod tests {
         assert!(
             msg.contains("i32x4"),
             "expected type error mentioning i32x4, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_f32x4_from_scalars() {
+        assert_output(
+            r#"
+        export func main() {
+            let a: f32 = 1.0
+            let b: f32 = 2.0
+            let c: f32 = 3.0
+            let d: f32 = 4.0
+            let v: f32x4 = f32x4_from_scalars(a, b, c, d)
+            let s: f32 = reduce_add(v)
+            println(s)
+        }
+        "#,
+            "10",
         );
     }
 }

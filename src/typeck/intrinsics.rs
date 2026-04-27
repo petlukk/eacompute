@@ -74,6 +74,8 @@ impl TypeChecker {
             "shuffle_bytes" => Some(self.check_shuffle_bytes(args, locals, span)),
             "cvt_f16_f32" => Some(self.check_cvt_f16_f32(args, locals, span)),
             "cvt_f32_f16" => Some(self.check_cvt_f32_f16(args, locals, span)),
+            "f32x4_from_scalars" => Some(self.check_f32_from_scalars(args, locals, span, 4)),
+            "f32x8_from_scalars" => Some(self.check_f32_from_scalars(args, locals, span, 8)),
             "bitcast_i8x16" => Some(self.check_bitcast(args, locals, span, Type::I8, 16)),
             "bitcast_i8x32" => Some(self.check_bitcast(args, locals, span, Type::I8, 32)),
             "bitcast_i32x4" => Some(self.check_bitcast(args, locals, span, Type::I32, 4)),
