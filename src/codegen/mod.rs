@@ -79,7 +79,6 @@ pub struct CodeGenerator<'ctx> {
     pub(crate) avx512: bool,
     pub(crate) dotprod: bool,
     pub(crate) i8mm: bool,
-    #[allow(dead_code)] // used in B5+ when FP16 intrinsics are implemented
     pub(crate) fp16: bool,
     pub(crate) is_arm: bool,
     pub(crate) constants: HashMap<String, (Type, Literal)>,
