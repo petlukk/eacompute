@@ -1,7 +1,4 @@
 #[cfg(feature = "llvm")]
-mod common;
-
-#[cfg(feature = "llvm")]
 mod tests {
     use ea_compiler::{CompileOptions, OutputMode};
     use std::process::Command;

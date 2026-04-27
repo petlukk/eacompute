@@ -26,9 +26,8 @@ impl TypeChecker {
             "abs" if !self.functions.contains_key("abs") => {
                 Some(self.check_abs(args, locals, span))
             }
-            "sqrt" | "rsqrt" | "exp" | "exp_poly_f32" => {
-                Some(self.check_sqrt(name, args, locals, span))
-            }
+            "sqrt" | "rsqrt" | "exp" => Some(self.check_sqrt(name, args, locals, span)),
+            "exp_poly_f32" => Some(self.check_exp_poly_f32(args, locals, span)),
             "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" => {
                 Some(self.check_conversion(name, args, locals, span))
             }
@@ -287,6 +286,40 @@ impl TypeChecker {
             _ => Err(CompileError::type_error(
                 format!("{name} expects float or float vector argument, got {arg_type}"),
                 args[0].span().clone(),
+            )),
+        }
+    }
+
+    /// Type-check `exp_poly_f32(v: f32xN) -> f32xN`. Restricts to f32-element
+    /// vectors only — scalar f32, f64xN, f16xN, integer vectors all rejected
+    /// at typeck. Codegen retains a defense-in-depth guard.
+    fn check_exp_poly_f32(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                format!("exp_poly_f32 expects 1 argument, got {}", args.len()),
+                span.clone(),
+            ));
+        }
+        let t = self.check_expr(&args[0], locals)?;
+        match &t {
+            Type::Vector { elem, .. } if **elem == Type::F32 => Ok(t),
+            Type::Vector { elem, .. } => Err(CompileError::type_error(
+                format!("exp_poly_f32 expects f32 element type, got {elem}"),
+                span.clone(),
+            )),
+            Type::F32 | Type::FloatLiteral => Err(CompileError::type_error(
+                "exp_poly_f32 expects f32 vector, got scalar; use exp() for scalar libm-precision"
+                    .to_string(),
+                span.clone(),
+            )),
+            _ => Err(CompileError::type_error(
+                format!("exp_poly_f32 expects float vector, got {t}"),
+                span.clone(),
             )),
         }
     }
