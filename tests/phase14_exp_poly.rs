@@ -332,4 +332,114 @@ mod tests {
             "expected at least 6 @llvm.fma.v4f32 calls; got {fma_count}\nIR:\n{ir}"
         );
     }
+
+    /// Scalar f32 should fail with helpful message pointing at exp().
+    #[test]
+    fn test_exp_poly_f32_rejects_scalar_f32() {
+        let src = r#"
+            export func k(x: f32) -> f32 {
+                return exp_poly_f32(x)
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: None,
+        };
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let err = ea_compiler::compile_with_options(src, &obj, OutputMode::ObjectFile, &opts)
+            .expect_err("scalar f32 should fail");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("f32 vector"),
+            "error must mention f32 vector requirement, got: {msg}"
+        );
+    }
+
+    /// f64x2 vector should fail with f64-not-supported message.
+    #[test]
+    fn test_exp_poly_f32_rejects_f64_vector() {
+        let src = r#"
+            export func k(v: f64x2) -> f64x2 {
+                return exp_poly_f32(v)
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: None,
+        };
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let err = ea_compiler::compile_with_options(src, &obj, OutputMode::ObjectFile, &opts)
+            .expect_err("f64x2 should fail");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("f32") && msg.contains("element type"),
+            "error must mention f32 element type, got: {msg}"
+        );
+    }
+
+    /// f16x8 vector should fail (cut #1 is f32-only).
+    #[test]
+    fn test_exp_poly_f32_rejects_f16_vector() {
+        let src = r#"
+            export func k(v: f16x8) -> f16x8 {
+                return exp_poly_f32(v)
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: "+fullfp16".to_string(), // enable f16 types
+            target_triple: None,
+        };
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let err = ea_compiler::compile_with_options(src, &obj, OutputMode::ObjectFile, &opts)
+            .expect_err("f16x8 should fail");
+        let msg = format!("{err}");
+        // On x86-64 hosts the +fullfp16 feature triggers the ARM-only gate
+        // before exp_poly_f32 ever sees the operand — that's still a correct
+        // rejection. Accept any of the plausible error forms.
+        assert!(
+            msg.contains("f32") && msg.contains("element type")
+                || msg.contains("f16")
+                || msg.contains("not supported")
+                || msg.contains("float")
+                || msg.contains("incompatible")
+                || msg.contains("ARM"),
+            "error must clarify f16 rejection, got: {msg}"
+        );
+    }
+
+    /// i32x4 (integer vector) should fail.
+    #[test]
+    fn test_exp_poly_f32_rejects_integer_vector() {
+        let src = r#"
+            export func k(v: i32x4) -> i32x4 {
+                return exp_poly_f32(v)
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: None,
+        };
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("k.o");
+        let err = ea_compiler::compile_with_options(src, &obj, OutputMode::ObjectFile, &opts)
+            .expect_err("i32x4 should fail");
+        let msg = format!("{err}");
+        // Error class can be either codegen "expects f32 element type" or typeck
+        // sqrt-family "requires float" — both acceptable.
+        assert!(
+            msg.contains("f32") || msg.contains("float") || msg.contains("integer"),
+            "error must clarify why integer vector is rejected, got: {msg}"
+        );
+    }
 }
