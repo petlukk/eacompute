@@ -15,6 +15,7 @@ pub enum Type {
     I64,
     U64,
     F32,
+    F16,
     F64,
     Bool,
     IntLiteral,
@@ -54,7 +55,7 @@ impl Type {
     }
 
     pub fn is_float(&self) -> bool {
-        matches!(self, Type::F32 | Type::F64 | Type::FloatLiteral)
+        matches!(self, Type::F32 | Type::F16 | Type::F64 | Type::FloatLiteral)
     }
 
     pub fn is_numeric(&self) -> bool {
@@ -77,7 +78,7 @@ impl Type {
     pub fn size_bits(&self) -> usize {
         match self {
             Type::I8 | Type::U8 | Type::Bool => 8,
-            Type::I16 | Type::U16 => 16,
+            Type::I16 | Type::U16 | Type::F16 => 16,
             Type::I32 | Type::U32 | Type::F32 => 32,
             Type::I64 | Type::U64 | Type::F64 => 64,
             _ => panic!("size_bits called on non-scalar type: {self}"),
@@ -104,6 +105,7 @@ impl fmt::Display for Type {
             Type::I64 => write!(f, "i64"),
             Type::U64 => write!(f, "u64"),
             Type::F32 => write!(f, "f32"),
+            Type::F16 => write!(f, "f16"),
             Type::F64 => write!(f, "f64"),
             Type::Bool => write!(f, "bool"),
             Type::IntLiteral => write!(f, "integer literal"),
@@ -262,6 +264,7 @@ fn parse_vector_suffix(s: &str) -> Option<(Type, usize)> {
     let width: usize = width_str.parse().ok()?;
     let elem = match elem_str {
         "f32" => Type::F32,
+        "f16" => Type::F16,
         "f64" => Type::F64,
         "i32" => Type::I32,
         "i16" => Type::I16,
@@ -284,6 +287,7 @@ pub fn resolve_type(ty: &TypeAnnotation) -> crate::error::Result<Type> {
             "i64" => Ok(Type::I64),
             "u64" => Ok(Type::U64),
             "f32" => Ok(Type::F32),
+            "f16" => Ok(Type::F16),
             "f64" => Ok(Type::F64),
             "bool" => Ok(Type::Bool),
             other => Ok(Type::Struct(other.to_string())),

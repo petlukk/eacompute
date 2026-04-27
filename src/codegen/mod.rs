@@ -236,7 +236,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     )
                 }
             }
-            Type::String | Type::Void => {
+            Type::F16 | Type::String | Type::Void => {
                 panic!(
                     "internal compiler error: type '{ty}' cannot be compiled (please report this bug)"
                 )
