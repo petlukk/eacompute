@@ -75,6 +75,8 @@ pub struct CodeGenerator<'ctx> {
     pub(crate) avx512: bool,
     pub(crate) dotprod: bool,
     pub(crate) i8mm: bool,
+    #[allow(dead_code)] // used in B5+ when FP16 intrinsics are implemented
+    pub(crate) fp16: bool,
     pub(crate) is_arm: bool,
     pub(crate) constants: HashMap<String, (Type, Literal)>,
 }
@@ -114,6 +116,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             avx512: opts.extra_features.contains("avx512"),
             dotprod: opts.extra_features.contains("dotprod"),
             i8mm: opts.extra_features.contains("i8mm"),
+            fp16: opts.extra_features.contains("fullfp16"),
             is_arm: opts.is_arm(),
             constants: HashMap::new(),
         }

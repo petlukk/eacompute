@@ -118,6 +118,9 @@ fn main() {
             "--i8mm" => {
                 append_feature(&mut extra_features, "+i8mm");
             }
+            "--fp16" => {
+                append_feature(&mut extra_features, "+fullfp16");
+            }
             other => {
                 eprintln!("error: unknown option '{other}'");
                 process::exit(1);
@@ -323,7 +326,7 @@ fn main() {
 
 fn handle_inspect(args: &[String]) {
     if args.is_empty() {
-        eprintln!("Usage: ea inspect <file.ea> [--avx512] [--target=CPU] [--opt-level=N]");
+        eprintln!("Usage: ea inspect <file.ea> [--avx512] [--fp16] [--target=CPU] [--opt-level=N]");
         process::exit(1);
     }
     let input_file = &args[0];
@@ -357,6 +360,8 @@ fn handle_inspect(args: &[String]) {
             append_feature(&mut extra_features, "+dotprod");
         } else if arg == "--i8mm" {
             append_feature(&mut extra_features, "+i8mm");
+        } else if arg == "--fp16" {
+            append_feature(&mut extra_features, "+fullfp16");
         } else {
             eprintln!("error: unknown inspect option '{arg}'");
             process::exit(1);

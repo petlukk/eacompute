@@ -55,7 +55,7 @@ pub enum OutputMode {
 pub struct CompileOptions {
     pub opt_level: u8,
     pub target_cpu: Option<String>,
-    /// Extra target features, e.g. "+avx512f" for AVX-512.
+    /// Extra target features, e.g. "+avx512f" for AVX-512, "+fullfp16" for ARM FP16 compute.
     pub extra_features: String,
     /// Cross-compilation target triple, e.g. "aarch64-unknown-linux-gnu".
     pub target_triple: Option<String>,
@@ -113,6 +113,11 @@ pub fn compile_with_options(
     mode: OutputMode,
     opts: &CompileOptions,
 ) -> error::Result<()> {
+    if !opts.is_arm() && opts.extra_features.contains("fullfp16") {
+        return Err(error::CompileError::codegen_error(
+            "--fp16 is incompatible with non-ARM target",
+        ));
+    }
     init_llvm();
 
     let tokens = tokenize(source)?;
