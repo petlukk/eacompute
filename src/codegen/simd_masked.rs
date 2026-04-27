@@ -210,7 +210,10 @@ impl<'ctx> CodeGenerator<'ctx> {
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         if self.is_arm {
             return Err(CompileError::codegen_error(
-                "gather has no NEON equivalent; use a scalar loop on ARM",
+                "gather has no NEON equivalent on ARM. Use scalar load + \
+                 f32x4_from_scalars (or f32x8_from_scalars) to compose the \
+                 result explicitly. See docs/idioms/neon-gather.md for the \
+                 canonical pattern.",
             ));
         }
         // gather requires AVX2 on x86 (vpgatherdd/vgatherdps).

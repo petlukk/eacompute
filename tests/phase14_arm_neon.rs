@@ -321,4 +321,35 @@ mod tests {
             "36",
         );
     }
+
+    #[cfg(target_arch = "aarch64")]
+    #[test]
+    fn test_gather_on_arm_points_to_compose() {
+        use ea_compiler::{CompileOptions, OutputMode};
+        let src = r#"
+            export func k(lut: *f32, idx: i32x4, out: *mut f32) {
+                let v: f32x4 = gather(lut, idx)
+                store(out, 0, v)
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: None,
+        };
+        let dir = tempfile::TempDir::new().unwrap();
+        let obj = dir.path().join("t.o");
+        let err = ea_compiler::compile_with_options(src, &obj, OutputMode::ObjectFile, &opts)
+            .expect_err("gather on ARM should fail");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("f32x4_from_scalars"),
+            "error must mention the new intrinsic, got: {msg}"
+        );
+        assert!(
+            msg.contains("neon-gather.md"),
+            "error must mention the docs file, got: {msg}"
+        );
+    }
 }
