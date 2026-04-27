@@ -231,4 +231,105 @@ mod tests {
         }
         accuracy_test_impl(&points, "f32x8");
     }
+
+    /// CRITICAL regression guard: a future "simplification" of compile_exp_poly_f32
+    /// to delegate to compile_exp would silently undo the entire feature. This
+    /// test pins the property that motivated the whole spec.
+    #[test]
+    fn test_exp_poly_f32_does_not_emit_llvm_exp() {
+        let src = r#"
+            export func k(v: f32x8) -> f32x8 {
+                return exp_poly_f32(v)
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: None,
+        };
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("k.ll");
+        ea_compiler::compile_with_options(src, &ir_path, OutputMode::LlvmIr, &opts)
+            .expect("compile failed");
+        let ir = std::fs::read_to_string(&ir_path).expect("read IR");
+        assert!(
+            !ir.contains("@llvm.exp"),
+            "exp_poly_f32 must NOT lower to @llvm.exp; found scalarization-prone intrinsic in IR:\n{ir}"
+        );
+    }
+
+    /// Confirm the polynomial / ldexp pattern is actually emitted for f32x8.
+    #[test]
+    fn test_exp_poly_f32x8_emits_expected_pattern() {
+        let src = r#"
+            export func k(v: f32x8) -> f32x8 {
+                return exp_poly_f32(v)
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: None,
+        };
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("k.ll");
+        ea_compiler::compile_with_options(src, &ir_path, OutputMode::LlvmIr, &opts)
+            .expect("compile failed");
+        let ir = std::fs::read_to_string(&ir_path).expect("read IR");
+
+        let fma_count = ir.matches("@llvm.fma.v8f32").count();
+        assert!(
+            fma_count >= 6,
+            "expected at least 6 @llvm.fma.v8f32 calls (8 total: 6 polynomial + 2 range reduction); got {fma_count}\nIR:\n{ir}"
+        );
+        assert!(
+            ir.contains("@llvm.nearbyint"),
+            "expected @llvm.nearbyint for round-to-nearest in range reduction\nIR:\n{ir}"
+        );
+        assert!(
+            ir.contains("bitcast <8 x float>") && ir.contains("to <8 x i32>"),
+            "expected float->int bitcast for ldexp\nIR:\n{ir}"
+        );
+        assert!(
+            ir.contains("bitcast <8 x i32>") && ir.contains("to <8 x float>"),
+            "expected int->float bitcast for ldexp\nIR:\n{ir}"
+        );
+        assert!(
+            ir.contains("shl <8 x i32>"),
+            "expected shl <8 x i32> for shifting n into exponent field\nIR:\n{ir}"
+        );
+        assert!(
+            ir.contains("add <8 x i32>"),
+            "expected add <8 x i32> for ldexp exponent add\nIR:\n{ir}"
+        );
+    }
+
+    /// Same checks for f32x4.
+    #[test]
+    fn test_exp_poly_f32x4_emits_expected_pattern() {
+        let src = r#"
+            export func k(v: f32x4) -> f32x4 {
+                return exp_poly_f32(v)
+            }
+        "#;
+        let opts = CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: None,
+        };
+        let dir = TempDir::new().unwrap();
+        let ir_path = dir.path().join("k.ll");
+        ea_compiler::compile_with_options(src, &ir_path, OutputMode::LlvmIr, &opts)
+            .expect("compile failed");
+        let ir = std::fs::read_to_string(&ir_path).expect("read IR");
+        assert!(!ir.contains("@llvm.exp"), "no @llvm.exp expected:\n{ir}");
+        let fma_count = ir.matches("@llvm.fma.v4f32").count();
+        assert!(
+            fma_count >= 6,
+            "expected at least 6 @llvm.fma.v4f32 calls; got {fma_count}\nIR:\n{ir}"
+        );
+    }
 }
