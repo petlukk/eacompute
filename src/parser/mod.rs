@@ -247,6 +247,9 @@ impl Parser {
             (TokenKind::U32x4, "u32", 4),
             (TokenKind::F64x2, "f64", 2),
             (TokenKind::F64x4, "f64", 4),
+            (TokenKind::U64x2, "u64", 2),
+            (TokenKind::U64x4, "u64", 4),
+            (TokenKind::U64x8, "u64", 8),
         ];
         for (tk, elem_name, width) in vec_types {
             if self.check(tk.clone()) {

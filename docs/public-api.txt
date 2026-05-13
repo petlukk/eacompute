@@ -574,6 +574,9 @@ pub ea_compiler::lexer::TokenKind::U16x16
 pub ea_compiler::lexer::TokenKind::U16x4
 pub ea_compiler::lexer::TokenKind::U16x8
 pub ea_compiler::lexer::TokenKind::U32x4
+pub ea_compiler::lexer::TokenKind::U64x2
+pub ea_compiler::lexer::TokenKind::U64x4
+pub ea_compiler::lexer::TokenKind::U64x8
 pub ea_compiler::lexer::TokenKind::U8
 pub ea_compiler::lexer::TokenKind::U8x16
 pub ea_compiler::lexer::TokenKind::U8x32

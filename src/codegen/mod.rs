@@ -426,6 +426,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                     (Type::I32, 256) => "i32x8 requires AVX2; use i32x4 on ARM",
                     (Type::I8, 256) => "i8x32 requires AVX2; use i8x16 on ARM",
                     (Type::F64, 256) => "f64x4 requires AVX2; use f64x2 on ARM",
+                    (Type::U64, 256) => "u64x4 requires AVX2; use u64x2 on ARM",
+                    (Type::U64, 512) => "u64x8 requires AVX-512; use u64x2 on ARM",
                     (Type::I16, 256) => "i16x16 requires AVX2; use i16x8 on ARM",
                     _ => {
                         return Err(CompileError::codegen_error(format!(
