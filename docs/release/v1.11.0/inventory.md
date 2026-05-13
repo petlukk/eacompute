@@ -2,9 +2,12 @@
 
 Branch: `feat/i8mm-intrinsics` → `main` (audit before merge)
 Diff base: `origin/main`
-HEAD: `6267b6f` (docs: v1.11.0 inventory — correct maddubs_i32 + phase_b.rs entries)
-Commits in branch: 101
-Files changed: 78, +12,192 / −1,189
+Diff snapshot taken at the latest non-doc commit `7c6a9c0` (Windows
+linker fix); doc-only commits since then do not move these counts.
+Commits in branch (excluding inventory docs): 99
+Files changed in code/test diff: 76, +11,766 / −1,189
+For live numbers: `git diff --shortstat origin/main...HEAD` (note:
+includes any subsequent doc commits).
 
 The branch combines three logical layers:
 
@@ -20,17 +23,25 @@ The branch combines three logical layers:
 3. **`exp_poly_f32`** (6 commits): polynomial vector exp. Spec:
    `docs/superpowers/specs/2026-04-27-exp-poly-f32-design.md`.
 
-Plus the head commit `7c6a9c0` (Windows cross-compile linker fix).
+Plus commit `7c6a9c0` (Windows cross-compile linker fix), the latest
+non-doc commit on the branch.
 
-## New CLI Flags
+## CLI Flag Changes
+
+### Net-new flags
 
 | Flag | Effect | Arch |
 |---|---|---|
 | `--fp16` | Appends `+fullfp16` to LLVM target features; enables native f16 SIMD codegen (splat/load/store/fma/reductions) | ARM only — rejected with `--fp16 is incompatible with non-ARM target` on x86 |
 | `--i8mm` | Appends `+i8mm` to LLVM target features; required for `smmla_i32` / `ummla_i32` / `usmmla_i32` | ARM only — rejected with `error: --i8mm is only valid for AArch64 targets` on x86 |
-| `--dotprod` | Appends `+dotprod` to LLVM target features (refactored via `append_feature` helper alongside `--fp16`/`--i8mm`) | ARM only — pre-existed in `origin/main`, but the dispatch arm was rewritten in this branch |
 
-`--avx512` already existed in `origin/main` and is unchanged.
+### Refactored (pre-existing) flags
+
+`--dotprod` (ARM only, pre-existed in `origin/main`) has its dispatch
+arm rewritten via the new shared `append_feature` helper, in lockstep
+with `--fp16` and `--i8mm`. Behavior is unchanged.
+
+`--avx512` is unchanged in this branch.
 
 ## New Types
 
@@ -51,6 +62,12 @@ to dispatch between an x86 LLVM intrinsic and an ARM LLVM intrinsic (or
 that uses pure portable LLVM IR like `shufflevector` / `insertelement`)
 is **Cross-platform**. An intrinsic that hard-errors with `is x86-only`
 or `is ARM-only` is single-arch.
+
+**Table-schema note:** cross-platform rows have 4 columns; x86-only and
+ARM-only rows have a 5th `Required flags` column. Cross-platform rows
+imply `Required flags: none` (any flag requirement would make them
+single-arch by definition). The schema split is intentional so a Phase 3
+walker can rely on "no `Required flags` column ⇒ no flags needed".
 
 ### Cross-platform
 
@@ -92,8 +109,8 @@ or `is ARM-only` is single-arch.
 | `bslli_i8x32` | `(i8x32, imm: i32) -> i8x32` | `src/codegen/simd_byteshift.rs` | `tests/phase14_byteshift.rs` |
 | `bsrli_i8x16` | `(i8x16, imm: i32) -> i8x16` (byte-shift right logical) | `src/codegen/simd_byteshift.rs` | `tests/phase14_byteshift.rs` |
 | `bsrli_i8x32` | `(i8x32, imm: i32) -> i8x32` | `src/codegen/simd_byteshift.rs` | `tests/phase14_byteshift.rs` |
-| `cvt_f16_f32` | `(i16xN) -> f32xN` (i16x4→f32x4 cross-platform; i16x8→f32x8 x86 only) | `src/codegen/simd_pack.rs` | `tests/phase14_arm_ext.rs`, `tests/phase_b_avx2.rs`, `tests/phase_b_avx512_dotprod.rs` |
-| `cvt_f32_f16` | `(f32xN) -> i16xN` (f32x4→i16x4 cross-platform; f32x8→i16x8 x86 only) | `src/codegen/simd_pack.rs` | `tests/phase14_arm_ext.rs`, `tests/phase_b_avx2.rs` |
+| `cvt_f16_f32` | `(i16xN) -> f32xN` for N ∈ {4, 8, 16}: i16x4→f32x4 cross-platform; i16x8→f32x8 and i16x16→f32x16 x86 only | `src/codegen/simd_pack.rs` | `tests/phase14_arm_ext.rs`, `tests/phase_b_avx2.rs`, `tests/phase_b_avx512_dotprod.rs` |
+| `cvt_f32_f16` | `(f32xN) -> i16xN` for N ∈ {4, 8}: f32x4→i16x4 cross-platform; f32x8→i16x8 x86 only | `src/codegen/simd_pack.rs` | `tests/phase14_arm_ext.rs`, `tests/phase_b_avx2.rs` |
 | `round_f32x4_i32x4` | `(f32x4) -> i32x4` (round-to-nearest) | `src/codegen/simd_pack.rs` | `tests/phase14_pack.rs` |
 | `round_f32x8_i32x8` | `(f32x8) -> i32x8` | `src/codegen/simd_pack.rs` | `tests/phase14_pack.rs` |
 | `pack_sat_i16x8` | `(i16x8, i16x8) -> i8x16` (signed saturate to i8) | `src/codegen/simd_pack.rs` | `tests/phase14_pack.rs` |
@@ -115,7 +132,7 @@ or `is ARM-only` is single-arch.
 | `ptr_as_u64` | `(*T) -> *u64` | `src/typeck/intrinsics.rs` | none (Phase 4 gap) |
 | `ptr_as_f32` | `(*T) -> *f32` | `src/typeck/intrinsics.rs` | none (Phase 4 gap) |
 | `ptr_as_f64` | `(*T) -> *f64` | `src/typeck/intrinsics.rs` | none (Phase 4 gap) |
-| `widen_u8_u16` | `(u8x16) -> u16x16` (zero-extend) | `src/codegen/simd_arithmetic.rs` | `tests/phase_b_avx2.rs` |
+| `widen_u8_u16` | `(u8x16) -> u16x8` (zero-extend low 8 lanes; upper 8 lanes of source discarded) | `src/codegen/simd_arithmetic.rs` | `tests/phase_b_avx2.rs` |
 | `widen_i8_f32x4_4`, `widen_i8_f32x4_8`, `widen_i8_f32x4_12` | `(i8x16) -> f32x4` (lane-offset variants) | `src/codegen/simd.rs` (existing `compile_widen_i8_f32` reused) | `tests/phase14_widen.rs` |
 | `widen_u8_f32x4_4`, `widen_u8_f32x4_8`, `widen_u8_f32x4_12` | `(u8x16) -> f32x4` | `src/codegen/simd.rs` | `tests/phase14_widen.rs` |
 | `widen_u8_i32x4_4`, `widen_u8_i32x4_8`, `widen_u8_i32x4_12` | `(u8x16) -> i32x4` | `src/codegen/simd.rs` | `tests/phase14_widen.rs` |
@@ -244,8 +261,10 @@ extends to tests.
   breaking change). The old single intrinsic hid a 2-instruction chain
   (`pmaddubsw + pmaddwd`) behind one name, violating the "programmer
   sees the cost" philosophy. The chain is now explicit: callers write
-  `let t: i16x8 = maddubs_i16(a, b); let r: i32x4 = madd_i16(t, ones)`.
-  This is the only breaking change in v1.11.0.
+  `let t: i16x8 = maddubs_i16(a_u8, b_i8); let r: i32x4 = madd_i16(t, ones_i16x8)`
+  (`maddubs_i16` takes asymmetric u8x16/i8x16 operands per
+  `intrinsics_dotprod.rs:11-14`). This is the only breaking change in
+  v1.11.0.
 
 - **NEON `gather()` error rewrite.** `src/codegen/simd_masked.rs:211`
   now points the user at `f32x{4,8}_from_scalars` + `docs/idioms/neon-gather.md`

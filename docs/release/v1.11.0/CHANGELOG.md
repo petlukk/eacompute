@@ -33,8 +33,10 @@
 - `bsrli_i8x{16,32}` / `bslli_i8x{16,32}` — byte-shift left/right
   logical, immediate count.
 - `cvt_f16_f32` / `cvt_f32_f16` — i16↔f32 pair via f16 (NEON `fcvtl/fcvtn`
-  on ARM, F16C `vcvtph2ps/vcvtps2ph` on x86; i16x4/f32x4 cross-platform,
-  i16x8/f32x8 x86-only).
+  on ARM, F16C `vcvtph2ps/vcvtps2ph` on x86). `cvt_f16_f32` accepts
+  widths 4/8/16: i16x4↔f32x4 cross-platform; i16x8↔f32x8 and
+  i16x16↔f32x16 x86-only. `cvt_f32_f16` is symmetric only up to 8:
+  f32x4→i16x4 cross-platform; f32x8→i16x8 x86-only.
 - `round_f32x{4,8}_i32x{4,8}` — round-to-nearest f32→i32.
 - `pack_sat_i16x8`, `pack_sat_i32x4` — signed saturation pack
   (cross-platform); wide AVX2 variants `pack_sat_i16x16`, `pack_sat_i32x8`
@@ -51,7 +53,8 @@
 - `ptr_as_i8`, `ptr_as_u8`, `ptr_as_i16`, `ptr_as_u16`, `ptr_as_i32`,
   `ptr_as_u32`, `ptr_as_i64`, `ptr_as_u64`, `ptr_as_f32`, `ptr_as_f64`
   — zero-cost typed pointer casts.
-- `widen_u8_u16(u8x16) -> u16x16` — zero-extend widening.
+- `widen_u8_u16(u8x16) -> u16x8` — zero-extend the low 8 lanes of a
+  u8x16 vector to u16x8 (upper 8 lanes of the source are discarded).
 - Multi-width widen variants with lane offsets: `widen_i8_f32x4_{4,8,12}`,
   `widen_u8_f32x4_{4,8,12}`, `widen_u8_i32x4_{4,8,12}`.
 
@@ -87,7 +90,7 @@
 
 ### Changed
 
-- `intrinsics.rs` split into eight per-family modules (`intrinsics_byteshift`,
+- `intrinsics.rs` split into nine per-family modules (`intrinsics_byteshift`,
   `intrinsics_conv`, `intrinsics_dotprod`, `intrinsics_f16`,
   `intrinsics_lane`, `intrinsics_memory`, `intrinsics_neon`,
   `intrinsics_pack`, `intrinsics_simd`) to keep each under the 500-line
@@ -96,13 +99,16 @@
   `simd_byteshift`, `simd_conv`, `simd_dotprod`, `simd_exp_poly`,
   `simd_fp16`, `simd_lane`, `simd_pack`, `simd_pack_unsigned`,
   `simd_saturating`, `simd_util`, `simd_wmul`, `simd_x86_dotprod`).
+- `--dotprod` flag-handler refactored into the shared `append_feature`
+  helper alongside `--fp16`/`--i8mm` (behavior unchanged; flag still
+  ARM-only).
 - NEON `gather()` error message rewritten to point at the new
   `f32x{4,8}_from_scalars` compose primitives and
   `docs/idioms/neon-gather.md`, instead of "use a scalar loop on ARM".
 - Type-checker error messages improved for SIMD width / element-type
   mismatches across many intrinsics.
-- `main.rs` slimmed (146 → far fewer lines) by extracting the
-  `ea bind` command into `src/bind_handler.rs`.
+- `main.rs` slimmed (498 → 400 lines) by extracting the `ea bind`
+  command into `src/bind_handler.rs` (115 lines).
 
 ### Fixed
 
