@@ -4,7 +4,7 @@ Write compute kernels in explicit, portable syntax. Compile to shared libraries.
 
 No runtime. No garbage collector. No glue code.
 
-Targets x86-64 (AVX2, AVX-512) and AArch64 (NEON).
+Targets x86-64 (AVX2, AVX-512) and AArch64 (NEON, FP16, dot-product, I8MM).
 
 ## The Performance Story
 
@@ -124,20 +124,23 @@ cargo test --features=llvm
 
 ## SIMD types and operations
 
-`f32x4`, `f32x8`, `f32x16`¹, `f64x2`, `f64x4`, `i32x4`, `i32x8`, `i32x16`¹, `i8x16`, `i8x32`, `u8x16`, `i16x8`, `i16x16`
+`f32x4`, `f32x8`, `f32x16`¹, `f64x2`, `f64x4`, `i32x4`, `i32x8`, `i32x16`¹, `i8x16`, `i8x32`, `u8x16`, `i16x8`, `i16x16`, `f16x4`², `f16x8`²
 
-`load`, `store`, `splat`, `fma`, `shuffle`, `select`, `load_masked`, `store_masked`, `gather`, `scatter`¹, `prefetch`
+`load`, `store`, `splat`, `fma`, `shuffle`, `select`, `load_masked`, `store_masked`, `gather`³, `scatter`¹, `prefetch`
 
 `reduce_add`, `reduce_max`, `reduce_min`, `min`, `max`
 
-`maddubs_i16(u8x16, i8x16) -> i16x8` — SSSE3 pmaddubsw, 16 pairs/cycle
-`maddubs_i32(u8x16, i8x16) -> i32x4` — pmaddubsw+pmaddwd, safe i32 accumulation
+`maddubs_i16(u8x16, i8x16) -> i16x8` — SSSE3 pmaddubsw. Chain with `madd_i16` for i32 accumulation.
+`madd_i16(i16xN, i16xN) -> i32x(N/2)` — SSE2/AVX2/AVX-512 pmaddwd (x86-only; ARM error points at `wmul_i32 + addp_i32`).
+`vdot_i32`, `vdot_lane_i32` (ARM `--dotprod`); `smmla_i32`, `ummla_i32`, `usmmla_i32` (ARM `--i8mm`).
+`exp_poly_f32(f32xN) -> f32xN` — polynomial vector exp on `[-50, 50]`, ~10× scalar `exp()` on Pi 5 NEON, no libm scalarization.
 
-`widen_u8_f32x4`, `widen_i8_f32x4`, `widen_u8_f32x8`, `widen_i8_f32x8`, `widen_u8_f32x16`¹, `widen_i8_f32x16`¹, `widen_u8_i32x4`, `widen_u8_i32x8`, `widen_u8_i32x16`¹, `narrow_f32x4_i8`, `sqrt`, `rsqrt`, `exp`, `to_f32`, `to_i32`, `to_f64`, `to_i64`
+`widen_u8_f32x4`, `widen_i8_f32x4`, `widen_u8_f32x8`, `widen_i8_f32x8`, `widen_u8_f32x16`¹, `widen_i8_f32x16`¹, `widen_u8_i32x4`, `widen_u8_i32x8`, `widen_u8_i32x16`¹, `widen_u8_u16`, `narrow_f32x4_i8`, `pack_sat_*`, `pack_usat_*`, `round_f32x{4,8}_i32x{4,8}`, `sat_add`, `sat_sub`, `sqrt`, `rsqrt`, `exp`, `to_f32`, `to_i32`, `to_f64`, `to_i64`, `to_f16`²,
+`to_i16`, `cvt_f16_f32`, `cvt_f32_f16`.
 
-Bitwise: `.&`, `.|`, `.^`, `.<<`, `.>>` on integer vectors. Restrict pointers: `*restrict T`, `*mut restrict T`.
+Bitwise: `.&`, `.|`, `.^`, `.<<`, `.>>` on integer vectors; `&`, `|`, `^`, `<<`, `>>` on integer scalars. Restrict pointers: `*restrict T`, `*mut restrict T`.
 
-¹ Requires `--avx512`
+¹ Requires `--avx512`. ² Requires `--fp16` (ARM-only). ³ x86-only; ARM users compose via `f32x{4,8}_from_scalars` — see [`docs/idioms/neon-gather.md`](docs/idioms/neon-gather.md).
 
 ## Kernel constructs
 

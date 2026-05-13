@@ -81,8 +81,8 @@ Key design: the `kernel` construct is **syntactic sugar** — `desugar.rs` trans
 | `parser/` | Recursive descent parser → `Vec<Stmt>`. Split: `statements.rs`, `expressions.rs`, `loops.rs` |
 | `ast/` | AST types: `Stmt`, `Expr`, `TypeAnnotation`, `BinaryOp`, `TailStrategy` |
 | `desugar.rs` | Kernel → function transformation |
-| `typeck/` | Type checker. Split: `types.rs`, `check.rs`, `expr_check.rs`, `intrinsics.rs`, `intrinsics_conv.rs`, `intrinsics_simd.rs`, `intrinsics_memory.rs`, `const_eval.rs` |
-| `codegen/` | LLVM IR generation. Split: `statements.rs`, `expressions.rs`, `comparisons.rs`, `builtins.rs`, `simd.rs`, `simd_arithmetic.rs`, `simd_math.rs`, `simd_memory.rs`, `simd_masked.rs`, `structs.rs`, `simd_conv.rs` (conversions: to_f32 / to_f64 / to_i32 / to_f16), `simd_fp16.rs` (native f16 codegen: splat, load, store, fma, reductions) |
+| `typeck/` | Type checker. Split: `types.rs`, `check.rs`, `expr_check.rs`, `intrinsics.rs`, `intrinsics_conv.rs`, `intrinsics_simd.rs`, `intrinsics_memory.rs`, `intrinsics_byteshift.rs`, `intrinsics_dotprod.rs`, `intrinsics_f16.rs`, `intrinsics_lane.rs`, `intrinsics_neon.rs`, `intrinsics_pack.rs`, `const_eval.rs` |
+| `codegen/` | LLVM IR generation. Split: `statements.rs`, `statements_select.rs`, `expressions.rs`, `comparisons.rs`, `builtins.rs`, `structs.rs`, `simd.rs` (dispatcher), `simd_util.rs` (shared helpers), `simd_arithmetic.rs`, `simd_math.rs`, `simd_memory.rs`, `simd_masked.rs`, `simd_conv.rs` (to_f32 / to_f64 / to_i32 / to_f16), `simd_fp16.rs` (native f16 splat/load/store/fma/reductions), `simd_byteshift.rs` (bsrli/bslli), `simd_dotprod.rs` (ARM sdot/i8mm), `simd_x86_dotprod.rs` (madd_i16/hadd_i16), `simd_exp_poly.rs` (polynomial vector exp), `simd_lane.rs` (concat/lo/hi/shuffle/blend/f32x{4,8}_from_scalars), `simd_pack.rs` (pack_sat/round/bitcast/cvt_f16), `simd_pack_unsigned.rs` (pack_usat), `simd_saturating.rs` (sat_add/sat_sub/abs_diff), `simd_wmul.rs` (NEON wmul/addp) |
 | `inspect.rs` | `ea inspect` — post-optimization instruction mix, loops, vector width, register analysis |
 | `target.rs` | LLVM target machine creation, optimization passes, object/assembly file writing |
 | `error.rs` | Error types with source-context caret formatting |
@@ -164,7 +164,9 @@ Compiler status output goes to stderr so `--emit-llvm` stdout is uncontaminated.
 - **Length collapsing**: binding generators auto-detect length params (`n`/`len`/`length`/`count`/`size`/`num` after a pointer arg) and fill them from host-language array sizes.
 - **Output annotations**: `out name: *mut T [cap: expr, count: path]` marks parameters that bindings auto-allocate and return.
 - **C ABI everywhere**: every `export func` uses C calling convention. The entire FFI story depends on this.
-- **Targets**: x86-64 (AVX2 default, AVX-512 via `--avx512`), AArch64/NEON (via `--target=aarch64`).
+- **Targets**: x86-64 (AVX2 default, AVX-512 via `--avx512`), AArch64/NEON (via `--target=aarch64`), AArch64 FEAT_FP16 (`--fp16`, ARM-only), AArch64 dot-product (`--dotprod`), AArch64 I8MM (`--i8mm`). FP16 and I8MM are opt-in because they require ARMv8.2+/ARMv8.6+ silicon (Pi 5 has both).
+- **Polynomial transcendentals**: `exp_poly_f32(f32xN) -> f32xN` is a degree-5 minimax polynomial vector exp defined on `[-50, 50]`, ~7-8 FMAs per lane, no libm call, no scalarization. Use it in softmax / GELU / attention hot paths where the existing `exp()` (which calls libm) would scalarize the SIMD register.
+- **NEON gather workaround**: `gather()` is x86-only; on ARM the compiler errors and points at `f32x{4,8}_from_scalars` + `docs/idioms/neon-gather.md`. Build the vector from explicit scalar loads — the cost stays visible.
 - **`println` is the only output primitive**: accepts integers, floats, bools, string literals. No format strings. Lowers to `printf`.
 
 ## Files Near the 500-Line Limit
@@ -173,9 +175,17 @@ These files need splitting before adding code to them:
 
 | File | Lines |
 |---|---|
-| `src/codegen/statements.rs` | **503** (over limit — needs split) |
 | `src/parser/expressions.rs` | 495 |
+| `src/typeck/intrinsics.rs` | 473 |
+| `src/bind_python.rs` | 464 |
 | `src/parser/statements.rs` | 463 |
+| `src/codegen/mod.rs` | 449 |
+| `src/ast/mod.rs` | 440 |
+| `src/codegen/simd_pack.rs` | 436 |
+| `src/typeck/expr_check.rs` | 435 |
+
+(`src/codegen/statements.rs` was 503 in v1.10; the v1.11.0 select-statement
+extraction into `statements_select.rs` brought it down to 407.)
 
 ## CI
 
