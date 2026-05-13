@@ -154,7 +154,5 @@ roughly the same per-instruction shape as a hand-written
 
 ## See also
 
-- v1.11.0 intrinsic catalog: [`docs/release/v1.11.0/intrinsic-catalog.md`](../../release/v1.11.0/intrinsic-catalog.md)
 - End-to-end test fixture: `tests/data/rmsnorm_f16.ea`
 - ARM FP16 test suite: `tests/phase14_arm_fp16.rs`
-- Pi 5 NEON spec: `docs/superpowers/specs/2026-04-27-pi5-neon-enablement-design.md`

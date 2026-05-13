@@ -113,17 +113,14 @@ syntax that masks slowdown.
 
 If your ARM target is Apple M4, Graviton 3+, or Snapdragon X, SVE2 *does*
 have a real gather (`ld1w` with a scatter-gather addressing mode). Eä's
-SVE2 codegen is deferred — see `docs/release/v1.11.0/audit-findings.md`
-for the v1.12.0 follow-on plan. Until then, the compose pattern is the
-universal AArch64 workaround: it works on Pi 5 today, and it stays
-correct on M4 / Graviton even after a hardware-gather lowering lands
-(it just gets superseded by the better path on that target).
+SVE2 codegen is deferred to a future release. Until then, the compose
+pattern is the universal AArch64 workaround: it works on Pi 5 today, and
+it stays correct on M4 / Graviton even after a hardware-gather lowering
+lands (it just gets superseded by the better path on that target).
 
 ## See also
 
-- v1.11.0 intrinsic catalog: [`docs/release/v1.11.0/intrinsic-catalog.md`](../../release/v1.11.0/intrinsic-catalog.md)
 - Terse reference idiom: [`docs/idioms/neon-gather.md`](../../idioms/neon-gather.md)
 - Test coverage: `tests/phase14_arm_neon.rs`
   (`test_f32x4_from_scalars`, `test_f32x8_from_scalars`,
   `test_gather_on_arm_points_to_compose`)
-- Pi 5 NEON spec: `docs/superpowers/specs/2026-04-27-pi5-neon-enablement-design.md`
