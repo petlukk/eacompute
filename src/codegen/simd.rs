@@ -282,16 +282,16 @@ impl<'ctx> CodeGenerator<'ctx> {
             "wmul_u16" => self.compile_wmul_u16(args, function),
             "wmul_i32" => self.compile_wmul_i32(args, function),
             "wmul_u32" => self.compile_wmul_u32(args, function),
-            "round_f32x8_i32x8" => self.compile_round_f32x8_i32x8(args, function),
-            "pack_sat_i32x8" => self.compile_pack_sat_i32x8(args, function),
-            "pack_sat_i16x16" => self.compile_pack_sat_i16x16(args, function),
             "round_f32x4_i32x4" => self.compile_round_f32x4_i32x4(args, function),
-            "pack_sat_i32x4" => self.compile_pack_sat_i32x4(args, function),
+            "round_f32x8_i32x8" => self.compile_round_f32x8_i32x8(args, function),
             "pack_sat_i16x8" => self.compile_pack_sat_i16x8(args, function),
-            "pack_usat_i32x8" => self.compile_pack_usat_i32x8(args, function),
+            "pack_sat_i16x16" => self.compile_pack_sat_i16x16(args, function),
+            "pack_sat_i32x4" => self.compile_pack_sat_i32x4(args, function),
+            "pack_sat_i32x8" => self.compile_pack_sat_i32x8(args, function),
+            "pack_usat_i16x8" => self.compile_pack_usat_i16x8(args, function),
             "pack_usat_i16x16" => self.compile_pack_usat_i16x16(args, function),
             "pack_usat_i32x4" => self.compile_pack_usat_i32x4(args, function),
-            "pack_usat_i16x8" => self.compile_pack_usat_i16x8(args, function),
+            "pack_usat_i32x8" => self.compile_pack_usat_i32x8(args, function),
             "bsrli_i8x16" => {
                 let imm = Self::extract_imm8(&args[1])?;
                 self.compile_bsrli_i8x16(args, function, imm)
@@ -316,27 +316,27 @@ impl<'ctx> CodeGenerator<'ctx> {
             "bitcast_i32x8" => self.compile_bitcast(args, function, Type::I32, 8),
             "widen_u8_u16" => self.compile_widen_u8_u16(args, function),
             "concat_i8x16" | "concat_u8x16" | "concat_i8x32" | "concat_u8x32" | "concat_i32x8"
-            | "concat_f32x8" => self.emit_concat(args, function),
+            | "concat_f32x8" => self.compile_concat(args, function),
             "lo128_i8x32" | "lo128_u8x32" | "lo256_i8x64" | "lo256_u8x64" | "lo256_i32x16"
-            | "lo256_f32x16" => self.emit_lo_extract(args, function),
+            | "lo256_f32x16" => self.compile_lo_extract(args, function),
             "hi128_i8x32" | "hi128_u8x32" | "hi256_i8x64" | "hi256_u8x64" | "hi256_i32x16"
-            | "hi256_f32x16" => self.emit_hi_extract(args, function),
+            | "hi256_f32x16" => self.compile_hi_extract(args, function),
             "shuffle_i32x8" | "shuffle_i32x16" => {
                 let imm = Self::extract_imm8(&args[1])?;
-                self.emit_shuffle_i32(args, function, imm)
+                self.compile_shuffle_i32(args, function, imm)
             }
             "blend_i32" => {
                 let imm = Self::extract_imm8(&args[2])?;
-                self.emit_blend_i32(args, function, imm)
+                self.compile_blend_i32(args, function, imm)
             }
             "bcast_even_pairs_i32x8" | "bcast_even_pairs_i32x16" => {
-                self.emit_bcast_pairs(args, function, false)
+                self.compile_bcast_pairs(args, function, false)
             }
             "bcast_odd_pairs_i32x8" | "bcast_odd_pairs_i32x16" => {
-                self.emit_bcast_pairs(args, function, true)
+                self.compile_bcast_pairs(args, function, true)
             }
-            "f32x4_from_scalars" => self.emit_f32_from_scalars(args, function, 4),
-            "f32x8_from_scalars" => self.emit_f32_from_scalars(args, function, 8),
+            "f32x4_from_scalars" => self.compile_f32_from_scalars(args, function, 4),
+            "f32x8_from_scalars" => self.compile_f32_from_scalars(args, function, 8),
             _ if typeck_types::parse_typed_load(name).is_some() => {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)

@@ -55,7 +55,8 @@ correction.
   a major-version bump alongside `exp()` and the other documented exceptions
   (per eabrain's "deferred to v1.12.0" note).
 - **Disposition:** Deferred to v1.12.0 (breaking change; queued behind the
-  `exp()` monomorphization).
+  `exp()` monomorphization). Phase 7 explicitly did NOT touch this — the
+  rename would break every caller of `sat_add` / `sat_sub`.
 
 ### F-02. `abs_diff` is polymorphic across 6 element-type combinations
 
@@ -69,7 +70,8 @@ correction.
   the ARM-only block.
 - **Recommended fix:** rename to `abs_diff_i8x16` / `abs_diff_u8x16` /
   `abs_diff_i16x8` / … in v1.12.0. Same rationale as F-01.
-- **Disposition:** Deferred to v1.12.0.
+- **Disposition:** Deferred to v1.12.0. Phase 7 explicitly did NOT touch
+  this — the rename would break every caller of `abs_diff`.
 
 ### F-03. `widen_u8_u16` lane-discard behavior is not in the name
 
@@ -88,9 +90,11 @@ correction.
   (`widen_u8_u16_lo` keeps current behavior; add `widen_u8_u16_hi` for the
   upper half) in v1.12.0. Or document the "low-8" default in the doc
   comment on `check_widen_u8_u16` so callers see it during IDE hover.
-- **Disposition:** Deferred to Phase 7 (doc-comment improvement) + v1.12.0
-  (additive sibling intrinsic). The doc-comment fix is non-breaking and
-  cheap; the `_hi` variant is a follow-on feature.
+- **Disposition:** Doc-comment fix LANDED in Phase 7 — added an explicit
+  doc-comment to `check_widen_u8_u16` in `src/typeck/intrinsics_conv.rs`
+  noting the low-8-lane semantics and pointing users at the manual shuffle
+  if they need the upper half. The `_hi` sibling intrinsic remains deferred
+  to v1.12.0 as an additive feature.
 
 ### F-04. `cvt_f16_f32` accepts 3 widths but `cvt_f32_f16` accepts only 2
 
@@ -109,7 +113,9 @@ correction.
   the round-trip is symmetric. Alternatively, document the asymmetry in
   both intrinsic doc comments so callers see it during IDE hover.
 - **Disposition:** Deferred to v1.12.0 (additive feature; round-tripping
-  16-wide is a real need for `cvt_f16_f32(i16x16)` callers).
+  16-wide is a real need for `cvt_f16_f32(i16x16)` callers). Phase 7
+  explicitly did NOT touch this — adding the AVX-512 width-16 form is a
+  new-intrinsic feature outside Phase 7 scope.
 
 ### F-05. `maddubs_i16` ARM rejection didn't suggest an alternative
 
@@ -178,9 +184,14 @@ correction.
   a `lo*_i16x8` / `hi*_i16x8` extractor (the `lo_extract` / `hi_extract`
   family is wired for i8/u8/i32/f32 widths only). Callers following
   this recipe must manually compose i16x4 halves via scalar indexing
-  or a similar pattern. Flagged as a Minor follow-up for Phase 7
-  (consider exposing `lo_i16x8` / `hi_i16x8` for symmetry with the
-  rest of the lane family).
+  or a similar pattern.
+
+  **Phase 7 disposition:** deferred to v1.12.0. Adding `lo_i16x8` /
+  `hi_i16x8` is a new-intrinsic feature outside Phase 7 scope (the rule
+  is no new public surface in a follow-up cleanup phase). The recipe in
+  the F-06 error text remains accurate: callers can compose halves with
+  the existing scalar-extract / `f32x4_from_scalars`-style pattern until
+  v1.12.0 ships the dedicated extractors.
 
 ### F-07. `hadd_i16` ARM rejection didn't suggest an alternative
 
@@ -216,7 +227,10 @@ correction.
 - **Recommended fix:** rename `emit_*` to `compile_*` in `simd_lane.rs`
   (and the corresponding `simd.rs` call sites). Touches ~7 internal
   identifiers; no public surface affected.
-- **Disposition:** Deferred to Phase 7.
+- **Disposition:** Fixed in Phase 7. Renamed all seven `emit_*` helpers
+  in `src/codegen/simd_lane.rs` to `compile_*` and updated the matching
+  call sites in `src/codegen/simd.rs`. No public surface changes; all
+  778 tests still pass.
 
 ### F-09. `compile_simd_call` dispatch arms not strictly alphabetical
 
@@ -233,7 +247,17 @@ correction.
 - **Recommended fix:** within each family block, sort arms alphabetically;
   keep family groupings separated by a blank line. Mirror the layout in
   `src/typeck/intrinsics.rs::check_intrinsic_call` to match.
-- **Disposition:** Deferred to Phase 7.
+- **Disposition:** Partially fixed in Phase 7. The
+  `round_*` / `pack_sat_*` / `pack_usat_*` block was the most visibly
+  out-of-order (round_f32x8 landed between wmul and pack_sat, with the
+  smaller-width siblings further down). Reordered to: `round_f32x4_i32x4`
+  then `round_f32x8_i32x8`; `pack_sat_i16x8 / i16x16 / i32x4 / i32x8` in
+  ascending width; same for `pack_usat_*`. Mirrored in
+  `src/typeck/intrinsics.rs::check_intrinsic_call`. The rest of the
+  dispatch was judged acceptable as-is (the widen family is already
+  grouped by signedness × output type × offset, the byte-shift family
+  is grouped sr/sl × width, etc.). A more aggressive resort would create
+  diff churn without aiding readability.
 
 ### F-10. `--avx512` and `--i8mm` arch validation only at CLI, not at library API
 
@@ -266,8 +290,13 @@ correction.
   for explicit-name intrinsics; only type-driven gates need
   library-layer mirroring") in the inventory's "Concerns / Notes"
   section.
-- **Disposition:** Deferred to Phase 7. The behavior is not broken (no
-  silent fallback path exists) — this is purely about symmetry.
+- **Disposition:** Documented in Phase 7. Rather than mirroring the
+  `--fp16` library-API guard for `--avx512` / `--i8mm`, we documented the
+  design rationale ("per-intrinsic guards are sufficient for
+  explicit-name intrinsics; only type-driven gates like f16 arithmetic
+  need library-layer mirroring") in `docs/release/v1.11.0/inventory.md`
+  under "Concerns / Notes". The behavior is correct; adding the helpers
+  would be code without a corresponding bug to fix.
 
 ## Items NOT flagged (sample of patterns checked and accepted)
 
@@ -344,8 +373,12 @@ The branch is **ready for Phase 4** (test-coverage audit).
   `src/codegen/simd_x86_dotprod.rs` — fixed in this phase. The new
   messages follow the canonical "what failed + what to do instead"
   pattern set by the NEON gather error.
-- 7 Minor findings, all deferred to Phase 7 (cleanup) or v1.12.0
-  (breaking changes). None block the v1.11.0 → main merge.
+- 7 Minor findings: 4 addressed in Phase 7 (F-03 doc-comment, F-08
+  dispatch rename, F-09 partial dispatch reorder, F-10 design-rationale
+  documentation), and 3 deferred to v1.12.0 as additive or breaking
+  changes (F-01, F-02 polymorphic-name renames; F-04 `cvt_f32_f16`
+  width-16 form; plus the F-06 caveat about `lo_i16x8` / `hi_i16x8`
+  extractors). None block the v1.11.0 → main merge.
 
 The arch-safety surface is solid: every new arch-only or
 feature-gated intrinsic emits a per-call compile-time error on the

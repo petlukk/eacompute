@@ -30,7 +30,7 @@ impl<'ctx> CodeGenerator<'ctx> {
     /// Emit a concat shufflevector: result = [a_lanes..., b_lanes...].
     /// Works for any vector type; the LLVM shufflevector mask is a linear
     /// sequence 0..2N which LLVM 18 lowers to vinserti128 or vinserti32x8.
-    pub(super) fn emit_concat(
+    pub(super) fn compile_concat(
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,
@@ -51,7 +51,7 @@ impl<'ctx> CodeGenerator<'ctx> {
     }
 
     /// Emit a low-half extract: result[i] = input[i] for i in 0..N/2.
-    pub(super) fn emit_lo_extract(
+    pub(super) fn compile_lo_extract(
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,
@@ -72,7 +72,7 @@ impl<'ctx> CodeGenerator<'ctx> {
     }
 
     /// Emit a high-half extract: result[i] = input[i + N/2] for i in 0..N/2.
-    pub(super) fn emit_hi_extract(
+    pub(super) fn compile_hi_extract(
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,
@@ -96,7 +96,7 @@ impl<'ctx> CodeGenerator<'ctx> {
     /// `imm` is an 8-bit value with four 2-bit selectors: bits [1:0] control
     /// lane 0, [3:2] control lane 1, [5:4] control lane 2, [7:6] control lane 3.
     /// The pattern repeats per 128-bit sublane.
-    pub(super) fn emit_shuffle_i32(
+    pub(super) fn compile_shuffle_i32(
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,
@@ -129,7 +129,7 @@ impl<'ctx> CodeGenerator<'ctx> {
 
     /// Emit a per-element blend from two i32x8 vectors with immediate mask.
     /// Bit N of `imm` selects b[N], else a[N]. Maps to vpblendd.
-    pub(super) fn emit_blend_i32(
+    pub(super) fn compile_blend_i32(
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,
@@ -155,7 +155,7 @@ impl<'ctx> CodeGenerator<'ctx> {
 
     /// Emit a vector built from N scalar values via `insertelement` chain.
     /// LLVM 18 folds this to `ins v.s[i], wn` on NEON and `vinsertps` on x86.
-    pub(super) fn emit_f32_from_scalars(
+    pub(super) fn compile_f32_from_scalars(
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,
@@ -181,7 +181,7 @@ impl<'ctx> CodeGenerator<'ctx> {
     /// Emit a per-sublane 32-bit broadcast shufflevector.
     /// `odd = false` produces [l0, l0, l2, l2] per 4-lane sublane (lowers to vpshufd imm=0xA0).
     /// `odd = true`  produces [l1, l1, l3, l3] per 4-lane sublane (lowers to vpshufd imm=0xF5).
-    pub(super) fn emit_bcast_pairs(
+    pub(super) fn compile_bcast_pairs(
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,

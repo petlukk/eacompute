@@ -12,7 +12,11 @@ Written in Rust (~11,100 lines), targeting LLVM 18. The binary is `ea`, the libr
 
 These are inviolable. Every change must respect them.
 
-1. **No file exceeds 500 lines.** Split before you hit the limit.
+1. **No `src/` file exceeds 500 lines.** Split before you hit the limit.
+   This cap applies to compiler source files in `src/`. Test files in
+   `tests/` are exempt: they accumulate dense per-intrinsic coverage that
+   reads more clearly grouped by family in one file than scattered across
+   many. The largest test files are tracked but not subject to the cap.
 2. **Every feature proven by end-to-end test.** If it's not tested, it doesn't exist.
 3. **No fake functions. No stubs.** No `// TODO`, `// HACK`, `// for now`, `// hardcoded`, `// placeholder`, `// temporary`. If it does not compile and pass tests, it is not code.
 4. **No premature features.** Don't build what isn't needed yet.

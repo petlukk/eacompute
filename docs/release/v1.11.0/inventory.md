@@ -237,9 +237,10 @@ ARM-safety / dotprod surfaces split out as the suite grew.
 test coverage matrix in Phase 4 covers modifications as well as additions.
 
 Two test files exceed 500 lines (`phase14_arm_fp16.rs` at 642 and
-`phase_b_avx512_lane.rs` at 589). The 500-line rule applies to source
-files; these are tests but worth a Phase 2 split if the project policy
-extends to tests.
+`phase_b_avx512_lane.rs` at 589). The 500-line rule applies to `src/`
+files only — `CLAUDE.md` was updated in Phase 7 to clarify the exemption
+for `tests/`. Dense per-intrinsic coverage reads more clearly grouped by
+family in one file than scattered across many; the files stay as-is.
 
 ## Notable Bug Fixes
 
@@ -316,3 +317,16 @@ fixed in this audit:
 - **Scalar bitwise operators** (`&`, `|`, `^`, `<<`, `>>` on integer
   scalars) are also language additions, not intrinsics. Coverage:
   `tests/phase14_bitwise.rs`.
+- **`--avx512` and `--i8mm` are CLI-only flag gates, by design (F-10).**
+  Unlike `--fp16`, which mirrors its flag validation into `compile_with_options`,
+  `compile_to_ir_with_options`, and `inspect_source` in `src/lib.rs`, the
+  `--avx512`-on-ARM and `--i8mm`-on-x86 checks live only in `src/main.rs`.
+  This is intentional: every avx512-only intrinsic (`scatter`, the `_512`
+  forms, etc.) and every i8mm intrinsic (`smmla_i32`, `ummla_i32`,
+  `usmmla_i32`) has a per-call `if !self.is_arm` / `if !self.avx512` guard
+  in codegen that emits a clean `CompileError::codegen_error` before any
+  LLVM IR is generated. A library-API consumer who sets the wrong feature
+  flag will not silently fall back; they will hit the per-intrinsic gate.
+  `--fp16` needs library-layer mirroring because f16 vector arithmetic
+  uses plain `.+`/`.-`/`.*`/`./` operators with no per-intrinsic guard to
+  catch them — there is no equivalent surface for avx512 / i8mm.
