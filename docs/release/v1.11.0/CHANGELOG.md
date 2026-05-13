@@ -118,13 +118,18 @@
   Olorin cross-building 39 SIMD kernels and loading them on Windows
   via `libloading`.
 
-### Removed
+### Removed (breaking)
 
-- `maddubs_i32` intrinsic — had no consumer. `maddubs_i16` (the AVX2
-  `pmaddubsw` form) is retained.
-- `tests/phase_b.rs` (142 lines) — replaced by the broader `phase_b_*`
-  family (avx2, avx512_dotprod, avx512_lane, avx512_arm_safety, dotprod,
-  ext).
+- `maddubs_i32` intrinsic — replaced with `madd_i16` per commit
+  `89130cb`. The old name hid a 2-instruction chain (`pmaddubsw + pmaddwd`)
+  behind one symbol, violating Eä's "programmer sees the cost" philosophy.
+  **Migration:** rewrite `let r: i32x4 = maddubs_i32(a_u8, b_i8)` as the
+  explicit chain:
+  ```
+  let t: i16x8 = maddubs_i16(a_u8, b_i8)
+  let r: i32x4 = madd_i16(t, ones_i16x8)
+  ```
+  `maddubs_i16` is retained.
 
 ### Performance
 

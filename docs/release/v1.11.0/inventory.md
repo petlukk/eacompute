@@ -206,9 +206,10 @@ All new source files are ≤ 500 lines (per the hard rule). The largest is
 | `tests/phase_b_ext.rs` | 125 | `bitcast_*` extension tests, `vdot_lane_i32` |
 | `tests/vector_literal_tests.rs` | 181 | Vector literal annotation form (`let v: i32x4 = [1,2,3,4]`) |
 
-`tests/phase_b.rs` (142 lines) was deleted; its content was split into
-`tests/phase_b_avx2.rs` (now 460 lines, +335 net) and the new
-`phase_b_*` test files above.
+`tests/phase_b.rs` itself was retained (still present at HEAD) but
+heavily refactored alongside the `phase_b_*` family expansion. The new
+`phase_b_*` test files above are net-additions covering AVX2 / AVX-512 /
+ARM-safety / dotprod / ext surfaces split out as the suite grew.
 
 Two test files exceed 500 lines (`phase14_arm_fp16.rs` at 642 and
 `phase_b_avx512_lane.rs` at 589). The 500-line rule applies to source
@@ -231,9 +232,12 @@ extends to tests.
   kernels into PE DLLs that load via `libloading::Library::new` on
   Windows. (`src/lib.rs`, +39/−39.)
 
-- **`maddubs_i32` removal.** The pre-existing `maddubs_i32` intrinsic
-  was removed; only `maddubs_i16` remains. (Not a fix per se — a
-  pruning, since `maddubs_i32` had no consumer.)
+- **`maddubs_i32` → `madd_i16` replacement** (commit `89130cb`,
+  breaking change). The old single intrinsic hid a 2-instruction chain
+  (`pmaddubsw + pmaddwd`) behind one name, violating the "programmer
+  sees the cost" philosophy. The chain is now explicit: callers write
+  `let t: i16x8 = maddubs_i16(a, b); let r: i32x4 = madd_i16(t, ones)`.
+  This is the only breaking change in v1.11.0.
 
 - **NEON `gather()` error rewrite.** `src/codegen/simd_masked.rs:211`
   now points the user at `f32x{4,8}_from_scalars` + `docs/idioms/neon-gather.md`
