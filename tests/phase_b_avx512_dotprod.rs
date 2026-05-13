@@ -3,7 +3,7 @@
 //!
 //! These tests compile to LLVM IR and assert that the correct LLVM intrinsics
 //! and types appear, rather than running the binary (AVX-512 hardware may not
-//! be available on dev/CI machines). This mirrors the pattern in phase_b_ext.rs.
+//! be available on dev/CI machines).
 
 #[cfg(all(feature = "llvm", target_arch = "x86_64"))]
 mod tests {

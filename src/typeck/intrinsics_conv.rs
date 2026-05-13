@@ -167,10 +167,8 @@ impl TypeChecker {
 
     /// widen_u8_u16(u8x16) -> u16x8: zero-extend the LOW 8 lanes of a u8x16
     /// vector to a u16x8. The upper 8 lanes of the input are silently discarded.
-    /// Lowers to vpmovzxbw on x86 and umull/ushll on ARM. There is no `_hi`
-    /// sibling in v1.11.0; manually shuffle the upper half to the low lanes
-    /// (via `shuffle` or a hi128/lo128 extractor) before calling if you need
-    /// the upper half. See F-03 in the v1.11.0 audit findings.
+    /// Lowers to vpmovzxbw on x86 and umull/ushll on ARM. To widen the upper
+    /// half, shuffle it to the low lanes first (via `shuffle` or `hi128_*`).
     pub(super) fn check_widen_u8_u16(
         &self,
         args: &[Expr],

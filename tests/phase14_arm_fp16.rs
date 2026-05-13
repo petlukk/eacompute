@@ -1,5 +1,5 @@
-// Lexer/parser recognition tests for f16, f16x4, f16x8 tokens (B4).
-// B5: codegen gate — f16 vector types require --fp16 flag.
+// Lexer/parser/codegen tests for f16, f16x4, f16x8.
+// f16 vector types require the --fp16 flag at codegen time.
 
 #[cfg(feature = "llvm")]
 mod tests {
@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn test_f16_parses_as_type() {
         // The parser should accept f16 as a named type in a function signature.
-        // We stop at parse (no type-check) to avoid B5+ concerns.
+        // Stop at parse (no type-check) so the --fp16 codegen gate doesn't fire.
         let src = "func foo(x: f16) {}";
         let tokens = ea_compiler::tokenize(src).expect("tokenize failed");
         ea_compiler::parse(tokens).expect("parse failed — f16 not recognized as type");

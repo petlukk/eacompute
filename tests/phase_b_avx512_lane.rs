@@ -1,8 +1,6 @@
 //! AVX-512 lane-movement intrinsic tests: concat, lo/hi extractors,
-//! per-sublane 32-bit broadcasts. IR-based verification following the
-//! pattern established in tests/phase_b_avx512_dotprod.rs.
-//!
-//! Tests added incrementally by Tasks 2-4 of the lane intrinsics plan.
+//! per-sublane 32-bit broadcasts. IR-based verification (AVX-512
+//! hardware is not assumed on dev/CI machines).
 
 #[cfg(all(feature = "llvm", target_arch = "x86_64"))]
 mod tests {

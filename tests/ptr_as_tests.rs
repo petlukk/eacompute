@@ -2,13 +2,10 @@
 //!
 //! `ptr_as_<T>(p)` is a zero-cost reinterpret of one pointer as another typed
 //! pointer (same value, different element type). Codegen reuses the underlying
-//! pointer value verbatim (`src/codegen/expressions.rs:188`); the only real
-//! work happens in `src/typeck/intrinsics.rs::check_ptr_as`, which preserves
-//! `mutable` and `restrict` and rewrites the inner element type.
-//!
-//! Phase 4 of the v1.11.0 audit identified the entire `ptr_as_*` family as
-//! untested. Each typed variant gets one round-trip E2E test, plus negative
-//! tests for the typeck signature.
+//! pointer value verbatim; the only real work happens in
+//! `check_ptr_as`, which preserves `mutable` and `restrict` and rewrites the
+//! inner element type. One round-trip E2E test per typed variant, plus
+//! negative tests for the typeck signature.
 
 #[cfg(feature = "llvm")]
 mod common;
