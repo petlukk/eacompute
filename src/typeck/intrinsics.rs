@@ -121,6 +121,8 @@ impl TypeChecker {
             "wmul_u16" => Some(self.check_wmul_u16(args, locals, span)),
             "wmul_i32" => Some(self.check_wmul_i32(args, locals, span)),
             "wmul_u32" => Some(self.check_wmul_u32(args, locals, span)),
+            "wmul_u64_lo" => Some(self.check_wmul_u64_lo(args, locals, span)),
+            "wmul_u64_hi" => Some(self.check_wmul_u64_hi(args, locals, span)),
             "prefetch" => Some(self.check_prefetch(args, locals, span)),
             "gather" => Some(self.check_gather(args, locals, span)),
             "scatter" => Some(self.check_scatter(args, locals, span)),

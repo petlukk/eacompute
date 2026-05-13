@@ -1,3 +1,4 @@
+use inkwell::types::VectorType;
 use inkwell::values::{BasicValueEnum, FunctionValue};
 
 use crate::ast::Expr;
@@ -206,5 +207,114 @@ impl<'ctx> CodeGenerator<'ctx> {
             .basic()
             .ok_or_else(|| CompileError::codegen_error("wmul_u32 did not return a value"))?;
         Ok(result)
+    }
+
+    /// wmul_u64_lo(a: u32x4, b: u32x4) -> u64x2 — widening multiply of the
+    /// low half (logical lanes 0,1) of each input. Cross-platform.
+    pub(super) fn compile_wmul_u64_lo(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        self.compile_wmul_u64_half(args, function, true)
+    }
+
+    /// wmul_u64_hi(a: u32x4, b: u32x4) -> u64x2 — widening multiply of the
+    /// high half (logical lanes 2,3) of each input. Cross-platform.
+    pub(super) fn compile_wmul_u64_hi(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        self.compile_wmul_u64_half(args, function, false)
+    }
+
+    fn compile_wmul_u64_half(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+        is_lo: bool,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let a = self.compile_expr(&args[0], function)?.into_vector_value();
+        let b = self.compile_expr(&args[1], function)?.into_vector_value();
+        let name = if is_lo { "wmul_u64_lo" } else { "wmul_u64_hi" };
+        let i32_ty = self.context.i32_type();
+
+        if self.is_arm {
+            // ARM: shuffle u32x4 -> u32x2 (low: [0,1], high: [2,3]) then
+            // call llvm.aarch64.neon.umull.v2i64. For the high half LLVM 18
+            // pattern-matches the extract+umull sequence to a single
+            // `umull2 v.2d, v.4s, v.4s` instruction.
+            let mask_vals: Vec<_> = if is_lo {
+                vec![i32_ty.const_int(0, false), i32_ty.const_int(1, false)]
+            } else {
+                vec![i32_ty.const_int(2, false), i32_ty.const_int(3, false)]
+            };
+            let mask = VectorType::const_vector(&mask_vals);
+            let undef = a.get_type().get_undef();
+            let a_half = self
+                .builder
+                .build_shuffle_vector(a, undef, mask, &format!("{name}_a_half"))
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let b_half = self
+                .builder
+                .build_shuffle_vector(b, undef, mask, &format!("{name}_b_half"))
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let u32x2_ty = self.context.i32_type().vec_type(2);
+            let u64x2_ty = self.context.i64_type().vec_type(2);
+            let fn_type = u64x2_ty.fn_type(&[u32x2_ty.into(), u32x2_ty.into()], false);
+            let intrinsic = self
+                .module
+                .get_function("llvm.aarch64.neon.umull.v2i64")
+                .unwrap_or_else(|| {
+                    self.module
+                        .add_function("llvm.aarch64.neon.umull.v2i64", fn_type, None)
+                });
+            let result = self
+                .builder
+                .build_call(intrinsic, &[a_half.into(), b_half.into()], name)
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                .try_as_basic_value()
+                .basic()
+                .ok_or_else(|| {
+                    CompileError::codegen_error(format!("{name} did not return a value"))
+                })?;
+            Ok(result)
+        } else {
+            // x86: use the canonical IR pattern `mul(zext, zext)`. LLVM 7+
+            // removed `llvm.x86.sse2.pmulu.dq` because it's representable
+            // this way; the x86 backend pattern-matches the pattern to a
+            // single `pmuludq` (or `vpmuludq` with AVX2). Same shape as
+            // the ARM path: shuffle u32x4 → u32x2 for the appropriate half.
+            let mask_vals: Vec<_> = if is_lo {
+                vec![i32_ty.const_int(0, false), i32_ty.const_int(1, false)]
+            } else {
+                vec![i32_ty.const_int(2, false), i32_ty.const_int(3, false)]
+            };
+            let mask = VectorType::const_vector(&mask_vals);
+            let undef = a.get_type().get_undef();
+            let a_half = self
+                .builder
+                .build_shuffle_vector(a, undef, mask, &format!("{name}_a_half"))
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let b_half = self
+                .builder
+                .build_shuffle_vector(b, undef, mask, &format!("{name}_b_half"))
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let u64x2_ty = self.context.i64_type().vec_type(2);
+            let a_64 = self
+                .builder
+                .build_int_z_extend(a_half, u64x2_ty, &format!("{name}_a_zext"))
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let b_64 = self
+                .builder
+                .build_int_z_extend(b_half, u64x2_ty, &format!("{name}_b_zext"))
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            let result = self
+                .builder
+                .build_int_mul(a_64, b_64, name)
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            Ok(BasicValueEnum::VectorValue(result))
+        }
     }
 }

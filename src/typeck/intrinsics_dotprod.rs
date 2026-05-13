@@ -387,4 +387,69 @@ impl TypeChecker {
             )),
         }
     }
+
+    /// wmul_u64_lo(a: u32x4, b: u32x4) -> u64x2
+    ///
+    /// Unsigned widening multiply of the **low** half (logical lanes 0,1) of
+    /// each input. Output lane i = u64(a[i]) * u64(b[i]) for i in 0..2.
+    ///
+    /// Lowers to ARM `umull v.2d, v.2s, v.2s` (single instruction) or x86
+    /// `pmuludq` after a lane-prep `pshufd`. Sibling of `wmul_u64_hi` which
+    /// handles the high half (lanes 2,3). Pair them to widen all four lanes.
+    pub(super) fn check_wmul_u64_lo(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        self.check_wmul_u64_half("wmul_u64_lo", args, locals, span)
+    }
+
+    /// wmul_u64_hi(a: u32x4, b: u32x4) -> u64x2
+    ///
+    /// Unsigned widening multiply of the **high** half (logical lanes 2,3) of
+    /// each input. Output lane i = u64(a[i+2]) * u64(b[i+2]) for i in 0..2.
+    ///
+    /// Lowers to ARM `umull2 v.2d, v.4s, v.4s` (single instruction via the
+    /// upper-half shufflevector pattern) or x86 `pmuludq` after a lane-prep
+    /// `pshufd`. Sibling of `wmul_u64_lo`.
+    pub(super) fn check_wmul_u64_hi(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        self.check_wmul_u64_half("wmul_u64_hi", args, locals, span)
+    }
+
+    fn check_wmul_u64_half(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 2 arguments: (u32x4, u32x4)"),
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (Type::Vector { elem: ea, width: 4 }, Type::Vector { elem: eb, width: 4 })
+                if matches!(ea.as_ref(), Type::U32) && matches!(eb.as_ref(), Type::U32) =>
+            {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::U64),
+                    width: 2,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("{name} expects (u32x4, u32x4), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
 }
