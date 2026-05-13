@@ -55,6 +55,9 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Install nightly toolchain (needed for rustdoc JSON)
+        run: rustup toolchain install nightly --profile minimal --no-self-update
+
       - name: Install cargo-public-api
         run: cargo install --locked --version 0.51.0 cargo-public-api
 
