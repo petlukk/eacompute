@@ -118,8 +118,8 @@ python -c "import kernel; print(kernel.vscale([1.0, 2.0, 3.0], 10.0))"
 # Run a demo
 cd demo/eastat && python run.py
 
-# Tests (475+ passing)
-cargo test --features=llvm
+# Tests
+cargo test --tests --features=llvm
 ```
 
 ## SIMD types and operations
@@ -133,7 +133,7 @@ cargo test --features=llvm
 `maddubs_i16(u8x16, i8x16) -> i16x8` — SSSE3 pmaddubsw. Chain with `madd_i16` for i32 accumulation.
 `madd_i16(i16xN, i16xN) -> i32x(N/2)` — SSE2/AVX2/AVX-512 pmaddwd (x86-only; ARM error points at `wmul_i32 + addp_i32`).
 `vdot_i32`, `vdot_lane_i32` (ARM `--dotprod`); `smmla_i32`, `ummla_i32`, `usmmla_i32` (ARM `--i8mm`).
-`exp_poly_f32(f32xN) -> f32xN` — polynomial vector exp on `[-50, 50]`, ~10× scalar `exp()` on Pi 5 NEON, no libm scalarization.
+`exp_poly_f32(f32xN) -> f32xN` — polynomial vector exp on `[-50, 50]`, no libm scalarization. Measured 2.93× isolated vs scalar `exp()` on AMD Zen 4 + glibc 2.42; 2.23× in real `gemma4_gelu` on Pi 5 Cortex-A76 (other ops in GELU are Amdahl-capped). See [`docs/release/v1.11.0/perf-results.md`](docs/release/v1.11.0/perf-results.md).
 
 `widen_u8_f32x4`, `widen_i8_f32x4`, `widen_u8_f32x8`, `widen_i8_f32x8`, `widen_u8_f32x16`¹, `widen_i8_f32x16`¹, `widen_u8_i32x4`, `widen_u8_i32x8`, `widen_u8_i32x16`¹, `widen_u8_u16`, `narrow_f32x4_i8`, `pack_sat_*`, `pack_usat_*`, `round_f32x{4,8}_i32x{4,8}`, `sat_add`, `sat_sub`, `sqrt`, `rsqrt`, `exp`, `to_f32`, `to_i32`, `to_f64`, `to_i64`, `to_f16`²,
 `to_i16`, `cvt_f16_f32`, `cvt_f32_f16`.
@@ -176,9 +176,9 @@ Explicit over implicit. SIMD width, loop stepping, and memory access are program
                                                                       -> .ea.json -> ea bind
 ```
 
-~12,000 lines of Rust. 475+ tests covering SIMD ops, C interop, structs, kernel constructs, tail strategies, binding generation, error suggestions, ARM targets. CI on x86-64, AArch64, Windows.
+~17,000 lines of Rust. 778 tests covering SIMD ops, C interop, structs, kernel constructs, tail strategies, binding generation, error suggestions, ARM targets. CI on x86-64, AArch64, Windows.
 
-[`BENCHMARKS.md`](BENCHMARKS.md) — performance tables. [`CHANGELOG.md`](CHANGELOG.md) — version history. [`1.6.md`](1.6.md) — language specification.
+[`BENCHMARKS.md`](BENCHMARKS.md) — performance tables. [`CHANGELOG.md`](CHANGELOG.md) — version history. [`Specification.md`](Specification.md) — language specification.
 
 ## License
 
