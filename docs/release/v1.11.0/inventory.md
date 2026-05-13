@@ -2,9 +2,9 @@
 
 Branch: `feat/i8mm-intrinsics` → `main` (audit before merge)
 Diff base: `origin/main`
-HEAD: `7c6a9c0` (fix(codegen): SharedLib linker dispatches on opts.target_triple)
-Commits in branch: 99
-Files changed: 76, +11,766 / −1,189
+HEAD: `6267b6f` (docs: v1.11.0 inventory — correct maddubs_i32 + phase_b.rs entries)
+Commits in branch: 101
+Files changed: 78, +12,192 / −1,189
 
 The branch combines three logical layers:
 
@@ -28,8 +28,9 @@ Plus the head commit `7c6a9c0` (Windows cross-compile linker fix).
 |---|---|---|
 | `--fp16` | Appends `+fullfp16` to LLVM target features; enables native f16 SIMD codegen (splat/load/store/fma/reductions) | ARM only — rejected with `--fp16 is incompatible with non-ARM target` on x86 |
 | `--i8mm` | Appends `+i8mm` to LLVM target features; required for `smmla_i32` / `ummla_i32` / `usmmla_i32` | ARM only — rejected with `error: --i8mm is only valid for AArch64 targets` on x86 |
+| `--dotprod` | Appends `+dotprod` to LLVM target features (refactored via `append_feature` helper alongside `--fp16`/`--i8mm`) | ARM only — pre-existed in `origin/main`, but the dispatch arm was rewritten in this branch |
 
-`--avx512` and `--dotprod` already existed in `origin/main`.
+`--avx512` already existed in `origin/main` and is unchanged.
 
 ## New Types
 
@@ -159,7 +160,6 @@ f32x4 forms are cross-platform.
 | `src/bind_handler.rs` | 115 | C/Rust/Python/PyTorch/CMake binding-emit handler (extracted from `main.rs`) |
 | `src/codegen/simd_byteshift.rs` | 133 | `bslli_i8x{16,32}` / `bsrli_i8x{16,32}` codegen |
 | `src/codegen/simd_conv.rs` | 228 | Conversion-intrinsic codegen helpers |
-| `src/codegen/simd_dotprod.rs` | 333 | `vdot_i32`, `vdot_lane_i32`, `smmla_i32`, `ummla_i32`, `usmmla_i32` (extracted from `simd.rs`) |
 | `src/codegen/simd_exp_poly.rs` | 196 | `exp_poly_f32` polynomial codegen |
 | `src/codegen/simd_fp16.rs` | 195 | Native f16 splat/load/store/fma/reductions, gated on `--fp16` |
 | `src/codegen/simd_lane.rs` | 220 | AVX-512 lane intrinsics: `concat_*`, `lo*_*`, `hi*_*`, `shuffle_i32x{8,16}`, `blend_i32`, `bcast_*_pairs_*`, `f32x{4,8}_from_scalars` |
@@ -175,17 +175,21 @@ f32x4 forms are cross-platform.
 | `src/typeck/intrinsics_lane.rs` | 236 | typeck for AVX-512 lane intrinsics (`concat`, `lo/hi_extract`, `shuffle_i32`, `blend_i32`, `bcast_pairs`) |
 | `src/typeck/intrinsics_neon.rs` | 240 | typeck for ARM NEON intrinsics (`abs_diff`, `addp_i{16,32}`, `wmul_{i,u}{16,32}`) |
 | `src/typeck/intrinsics_pack.rs` | 339 | typeck for pack/round intrinsics |
-| `src/typeck/intrinsics_simd.rs` | 273 (added 33) | New entries `check_f32_from_scalars`, `check_exp_poly_f32`, `check_widen_u8_u16` |
 
 All new source files are ≤ 500 lines (per the hard rule). The largest is
 `src/codegen/simd_pack.rs` at 436 lines.
+
+**Substantially modified (not net-new) source files** include
+`src/codegen/simd_dotprod.rs` (275 → 333 lines, +58 net) and
+`src/typeck/intrinsics_simd.rs` (+33 lines of new check entries). The
+file-size audit in Phase 2 covers modified files; this Phase 1 catalog
+lists only net-new additions.
 
 ## New Test Files
 
 | File | Lines | Coverage |
 |---|---|---|
 | `tests/abs_tests.rs` | 184 | Scalar / vector `abs` intrinsic |
-| `tests/common/mod.rs` | 2 | Shared test helpers (very small stub) |
 | `tests/data/rmsnorm_f16.ea` | 29 | f16 RMSNorm end-to-end fixture |
 | `tests/lex_wide_vec_types.rs` | 28 | New SIMD vector type tokens (i8x64, u8x64, etc.) |
 | `tests/phase14_arm_ext.rs` | 141 | `cvt_f16_f32` / `cvt_f32_f16` on ARM |
@@ -203,13 +207,17 @@ All new source files are ≤ 500 lines (per the hard rule). The largest is
 | `tests/phase_b_avx512_dotprod.rs` | 208 | AVX-512 `madd_i16` (32-wide) |
 | `tests/phase_b_avx512_lane.rs` | 589 | AVX-512 lane intrinsics: `concat_*`, `lo/hi_*`, `shuffle_i32x{8,16}`, `blend_i32`, `bcast_*_pairs_*` |
 | `tests/phase_b_dotprod.rs` | 272 | AVX2 `madd_i16`, `hadd_i16`, `to_i16` |
-| `tests/phase_b_ext.rs` | 125 | `bitcast_*` extension tests, `vdot_lane_i32` |
 | `tests/vector_literal_tests.rs` | 181 | Vector literal annotation form (`let v: i32x4 = [1,2,3,4]`) |
 
 `tests/phase_b.rs` itself was retained (still present at HEAD) but
 heavily refactored alongside the `phase_b_*` family expansion. The new
 `phase_b_*` test files above are net-additions covering AVX2 / AVX-512 /
-ARM-safety / dotprod / ext surfaces split out as the suite grew.
+ARM-safety / dotprod surfaces split out as the suite grew.
+
+**Substantially modified (not net-new) test files** include
+`tests/phase_b_ext.rs` (180 → 305 lines, +125 net) and `tests/common/mod.rs`
+(132 → 134 lines, two `#[allow(dead_code)]` additions). The branch-touched
+test coverage matrix in Phase 4 covers modifications as well as additions.
 
 Two test files exceed 500 lines (`phase14_arm_fp16.rs` at 642 and
 `phase_b_avx512_lane.rs` at 589). The 500-line rule applies to source
@@ -243,6 +251,27 @@ extends to tests.
   now points the user at `f32x{4,8}_from_scalars` + `docs/idioms/neon-gather.md`
   instead of saying "use a scalar loop on ARM". Covered by
   `tests/phase14_arm_neon.rs` negative tests.
+
+- **LLVM Machine Outliner disabled** (commits `38fd50e` + `f33ab3d`).
+  Outliner produced `bl` call sequences inside hot SIMD loops; flag is
+  now set in `create_target_machine()` so it actually takes effect.
+
+- **`--emit-llvm` honors `--opt-level`** (commit `e455383`). Was
+  always emitting pre-opt IR; now runs the optimization pipeline first.
+
+- **`vpermq 0xD8` lane fixup** (commit `6291514`). Numerical
+  correctness fix for AVX2 `vpackssdw`/`vpacksswb` pack chains —
+  output is now in sequential element order instead of per-lane
+  interleaved.
+
+- **`pack_sat_i16x16` ARM codegen** (commit `4658431`). The
+  split-concat ARM path was missing; now present for all three
+  `pack_sat_*` 256-bit forms.
+
+- **`--fp16` gate covers all entry points and unused params** (commits
+  `a53c983` + `c5ed9d8`). The gate now runs at `declare_function`
+  time on every param + return type, and mirrors into `inspect_source`
+  + `compile_to_ir_with_options` so the library API can't bypass it.
 
 ## Phase 4 Gaps Noted Here
 

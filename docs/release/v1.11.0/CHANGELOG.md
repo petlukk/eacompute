@@ -117,6 +117,38 @@
   `WINDOWS_CC`); else falls back to `cc -shared -lm`. Validated by
   Olorin cross-building 39 SIMD kernels and loading them on Windows
   via `libloading`.
+- **LLVM Machine Outliner disabled in hot loops.** Commits `f33ab3d` +
+  `38fd50e`: the outliner extracted repeated instruction sequences into
+  subroutines, producing `bl` calls that caused register spills and
+  broke scheduling inside compute kernels (e.g. mins accumulation in
+  Q4_K dot product). Global flag `-enable-machine-outliner=never` is
+  now set inside `create_target_machine()` before the machine is
+  constructed (the previous flag-setting path in `optimize_module()` ran
+  too late to take effect).
+- **`--emit-llvm` now runs optimization passes before dumping IR.**
+  Commit `e455383`: previously `--emit-llvm` always printed unoptimized
+  IR regardless of `--opt-level`, making it impossible to verify
+  `alwaysinline` and other attributes. The IR dump now honors the
+  optimization level.
+- **`vpermq 0xD8` lane fixup after `vpackssdw`/`vpacksswb`.** Commit
+  `6291514`: AVX2 pack instructions operate per 128-bit lane and
+  produce interleaved output. A `vpermq` shuffle `[0,2,1,3]` is now
+  emitted after each pack so callers see sequential element order
+  (numerical correctness fix for AVX2 pack chains).
+- **`pack_sat_i16x16` ARM codegen.** Commit `4658431`: the ARM
+  split-concat implementation was missing; all three `pack_sat_*`
+  intrinsics now have full cross-platform codegen.
+- **`--fp16` gate fires for declared-but-unused f16 vector params.**
+  Commit `a53c983`: `validate_type_for_target` previously only ran on
+  params actually used in the function body, so declared-but-unused
+  `f16x8` params bypassed the gate and panicked in `llvm_type()` on
+  non-FP16 targets. The validator now runs on each param and on the
+  return type at `declare_function` time.
+- **`--fp16` cross-arch guard extended to `inspect_source` +
+  `compile_to_ir`.** Commit `c5ed9d8`: the initial guard (`a53c983`)
+  only covered `compile_with_options`, so `ea inspect --fp16` on x86
+  bypassed it. The guard is now mirrored in `inspect_source` and
+  `compile_to_ir_with_options` for full library-API coverage.
 
 ### Removed (breaking)
 
