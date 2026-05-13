@@ -39,7 +39,9 @@ impl TypeChecker {
         }
     }
 
-    /// cvt_f32_f16(f32x4) -> i16x4, cvt_f32_f16(f32x8) -> i16x8
+    /// cvt_f32_f16(f32x4) -> i16x4 (cross-platform via F16C / NEON fcvtn),
+    /// cvt_f32_f16(f32x8) -> i16x8 (x86 AVX2 with F16C),
+    /// cvt_f32_f16(f32x16) -> i16x16 (x86 AVX-512, vcvtps2ph zmm form).
     pub(super) fn check_cvt_f32_f16(
         &self,
         args: &[Expr],
@@ -48,14 +50,15 @@ impl TypeChecker {
     ) -> crate::error::Result<Type> {
         if args.len() != 1 {
             return Err(CompileError::type_error(
-                "cvt_f32_f16 expects 1 argument: f32x4 or f32x8",
+                "cvt_f32_f16 expects 1 argument: f32x4, f32x8 or f32x16",
                 span.clone(),
             ));
         }
         let arg = self.check_expr(&args[0], locals)?;
         match &arg {
             Type::Vector { elem, width }
-                if matches!(elem.as_ref(), Type::F32) && (*width == 4 || *width == 8) =>
+                if matches!(elem.as_ref(), Type::F32)
+                    && (*width == 4 || *width == 8 || *width == 16) =>
             {
                 Ok(Type::Vector {
                     elem: Box::new(Type::I16),
@@ -63,7 +66,7 @@ impl TypeChecker {
                 })
             }
             _ => Err(CompileError::type_error(
-                format!("cvt_f32_f16 expects f32x4 or f32x8, got {arg}"),
+                format!("cvt_f32_f16 expects f32x4, f32x8 or f32x16, got {arg}"),
                 args[0].span().clone(),
             )),
         }

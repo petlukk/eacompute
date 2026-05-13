@@ -4,6 +4,12 @@
 
 ### Added
 
+#### `cvt_f32_f16(f32x16) -> i16x16` (AVX-512 width-16 form)
+- Closes the asymmetry: `cvt_f16_f32` already accepted widths `{4, 8, 16}`; `cvt_f32_f16` was capped at `{4, 8}`. The pair now supports the same width set in both directions.
+- Lowers via the existing `compile_cvt_f32_f16` (`fptrunc <16 x float> to <16 x half>` + bitcast); LLVM 18's x86 backend emits a single `vcvtps2ph` zmm-form instruction with `--avx512`.
+- Typeck-only change — codegen already handled the generic width. Updated the error message: `cvt_f32_f16 expects f32x4, f32x8 or f32x16, got ...`.
+- ARM rejection happens at the vector-type validation site (`f32x16 requires AVX-512; use f32x4 on ARM`) — caught before the cvt intrinsic runs.
+
 #### Widening intrinsic (closes the u8→u16 high-half asymmetry)
 - `widen_u8_u16_hi(u8x16) -> u16x8` — zero-extend the **high** 8 lanes of a `u8x16` to a `u16x8`. Sibling of `widen_u8_u16` (which handles the low half). Pair them to widen all 16 lanes of a `u8x16` without a manual shuffle step.
   - **ARM**: `ushll2 v.8h, v.16b, #0` — single instruction. (Low half: `ushll`.)
