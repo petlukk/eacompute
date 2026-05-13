@@ -4,10 +4,15 @@
 
 ### Added
 
+#### Cross-platform intrinsics
+- `wmul_u64_lo(u32x4, u32x4) -> u64x2` and `wmul_u64_hi(u32x4, u32x4) -> u64x2` — unsigned widening multiply, u32×u32 → u64. `_lo` widens logical lanes 0,1; `_hi` widens logical lanes 2,3. Pair them to widen all four u32 lanes. **First cross-platform `wmul_*` family member** — every other `wmul_*` is ARM-only.
+  - **ARM**: `umull v.2d, v.2s, v.2s` (lo) / `umull2 v.2d, v.4s, v.4s` (hi) — single instruction each via `llvm.aarch64.neon.umull.v2i64` with the appropriate shufflevector pattern (LLVM 18 pattern-matches the high-half extract+umull to `umull2`).
+  - **x86**: lowers via the canonical IR pattern `mul(zext, zext)`; backend emits `vpmuludq` after `vpmovzxdq` (lo) or `vpshufd` (hi). No reliance on the deprecated `llvm.x86.sse2.pmulu.dq` intrinsic (removed in LLVM 7+).
+  - **Motivating use case**: Poly1305 5-limb radix-2^26 accumulator (25 widening multiplies per block).
+
 #### Types
 - `u64x2` (128-bit, both platforms), `u64x4` (256-bit, x86 with AVX2), `u64x8` (512-bit, x86 with AVX-512). Vector types over `u64`; mirror the existing `f64x{2,4}` plumbing. ARM rejects `u64x4` / `u64x8` at the type-validation site with a narrowing hint ("u64xN requires AVX-512/AVX2; use u64x2 on ARM"), consistent with `f64x4` / `i32x8` etc.
 - New lexer tokens: `TokenKind::U64x2`, `U64x4`, `U64x8`. Additive — no rename of existing tokens.
-- Prerequisite for the upcoming `wmul_u64_lo` / `wmul_u64_hi` intrinsics (u32×u32 → u64 widening multiply landing in a follow-up PR; Poly1305 unblocker).
 
 #### Deprecation-warning infrastructure
 - `src/typeck/deprecations.rs`: `DeprecationInfo`, `DeprecationWarning`, and a `DEPRECATED_INTRINSICS` table. Calling an intrinsic listed in the table records a warning on the active `TypeChecker` (the intrinsic still compiles normally).
