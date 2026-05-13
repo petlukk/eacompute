@@ -2,6 +2,14 @@
 
 ## [Unreleased] — v1.12.0-dev
 
+### Added
+
+#### Lane-extractor intrinsics (fills the i16/u16 gap)
+- `lo128_i16x16(i16x16) -> i16x8`, `hi128_i16x16(i16x16) -> i16x8` — 256→128-bit halve for i16. AVX2 input (x86); ARM rejects with the standard 256-bit-NEON-narrowing hint.
+- `lo128_u16x16(u16x16) -> u16x8`, `hi128_u16x16(u16x16) -> u16x8` — same for u16.
+- `lo256_i16x32(i16x32) -> i16x16`, `hi256_i16x32(i16x32) -> i16x16` — 512→256-bit halve for i16 (AVX-512BW input). No u16x32 sibling because the `u16x32` type itself doesn't exist yet; add if a consumer asks.
+- Closes the asymmetry where the lo*/hi* family covered i8/u8/i32/f32 but skipped i16/u16. Makes the `madd_i16` ARM-recipe (which had to walk around the gap) ergonomic. No new codegen — these dispatch into the existing generic `compile_lo_extract` / `compile_hi_extract`.
+
 ### Deprecated
 
 - **Polymorphic `sat_add` / `sat_sub` / `abs_diff` — use the typed spellings.** The polymorphic forms continue to compile but emit a deprecation warning at each call site, pointing at the typed replacement. Removal scheduled for v2.0.0. Typed spellings:

@@ -139,6 +139,12 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "hi256_i32x16"
                 | "lo256_f32x16"
                 | "hi256_f32x16"
+                | "lo128_i16x16"
+                | "hi128_i16x16"
+                | "lo128_u16x16"
+                | "hi128_u16x16"
+                | "lo256_i16x32"
+                | "hi256_i16x32"
                 | "bcast_even_pairs_i32x8"
                 | "bcast_odd_pairs_i32x8"
                 | "bcast_even_pairs_i32x16"
@@ -343,9 +349,13 @@ impl<'ctx> CodeGenerator<'ctx> {
             "concat_i8x16" | "concat_u8x16" | "concat_i8x32" | "concat_u8x32" | "concat_i32x8"
             | "concat_f32x8" => self.compile_concat(args, function),
             "lo128_i8x32" | "lo128_u8x32" | "lo256_i8x64" | "lo256_u8x64" | "lo256_i32x16"
-            | "lo256_f32x16" => self.compile_lo_extract(args, function),
+            | "lo256_f32x16" | "lo128_i16x16" | "lo128_u16x16" | "lo256_i16x32" => {
+                self.compile_lo_extract(args, function)
+            }
             "hi128_i8x32" | "hi128_u8x32" | "hi256_i8x64" | "hi256_u8x64" | "hi256_i32x16"
-            | "hi256_f32x16" => self.compile_hi_extract(args, function),
+            | "hi256_f32x16" | "hi128_i16x16" | "hi128_u16x16" | "hi256_i16x32" => {
+                self.compile_hi_extract(args, function)
+            }
             "shuffle_i32x8" | "shuffle_i32x16" => {
                 let imm = Self::extract_imm8(&args[1])?;
                 self.compile_shuffle_i32(args, function, imm)
