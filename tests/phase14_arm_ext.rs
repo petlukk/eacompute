@@ -111,6 +111,12 @@ mod tests {
         )
         .unwrap_err();
         let msg = format!("{err}");
+        // The return type `f32x8` is validated against the ARM target *before*
+        // cvt_f16_f32's own per-arg gate runs, so the error path can legitimately
+        // surface as either "cvt_f16_f32 ... x86-only (256-bit)" (per-intrinsic
+        // gate) or "f32x8 requires AVX2; use f32x4 on ARM" (type-level gate).
+        // Both messages are correct and equally useful to the caller — accept
+        // any of the three discriminating tokens.
         assert!(
             msg.contains("x86-only") || msg.contains("256-bit") || msg.contains("AVX2"),
             "got: {msg}"
