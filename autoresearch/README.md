@@ -209,8 +209,6 @@ The orchestrator has a hardcoded `FEATURE_REQUEST` and `SOURCE_FILES` array. To 
 
 ## Design
 
-See `docs/superpowers/specs/2026-03-13-autoresearch-design.md` for the full spec.
-
 - **Loop B**: Agent optimizes `.ea` kernel code (22 benchmarks across float, int8, fusion, stencil, hash table patterns)
 - **Loop A**: Agent optimizes compiler internals, using Loop B benchmarks as regression gate (infrastructure complete)
 - **Loop C** (future): Agent explores language design

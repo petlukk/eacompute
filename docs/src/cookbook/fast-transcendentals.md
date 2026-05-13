@@ -22,10 +22,9 @@ The throughput win depends on the baseline:
   the gap widens — the spec's original "~10×" headline holds against
   the slowest baselines but does not match every modern glibc.
 
-See [`docs/release/v1.11.0/perf-results.md`](../../release/v1.11.0/perf-results.md)
-for the methodology, full numbers, and a discussion of why glibc 2.42's
-`expf` is faster than the spec assumed. The win is real on every baseline
-we measured; the magnitude is environment-sensitive.
+The win is real on every baseline measured; the magnitude is
+environment-sensitive (glibc 2.42's `expf` is faster than the spec
+assumed, which compresses the headline).
 
 ## The contract
 
@@ -169,9 +168,5 @@ Keep `exp()` (which calls libm) for:
   required.
 
 ## See also
-
-- v1.11.0 intrinsic catalog: [`docs/release/v1.11.0/intrinsic-catalog.md`](../../release/v1.11.0/intrinsic-catalog.md)
-- Spec (algorithm, error analysis, minimax coefficients):
-  `docs/superpowers/specs/2026-04-27-exp-poly-f32-design.md`
 - Test fixtures (accuracy, range, softmax integration):
   `tests/phase14_exp_poly.rs`
