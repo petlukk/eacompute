@@ -20,14 +20,17 @@ Inputs read:
 | Category | Findings | Critical | Important | Minor |
 |---|---|---|---|---|
 | Naming convention | 4 | 0 | 0 | 4 |
-| Error messages | 3 | 0 | 3 | 0 |
+| Error messages | 3 | 1 | 2 | 0 |
 | Dispatch pattern | 2 | 0 | 0 | 2 |
 | Cross-arch behavior | 1 | 0 | 0 | 1 |
-| **Total** | **10** | **0** | **3** | **7** |
+| **Total** | **10** | **1** | **2** | **7** |
 
-All three Important findings were error-message rewrites in the same file
+All three error-message findings were rewrites in the same file
 (`src/codegen/simd_x86_dotprod.rs`) and have been fixed in this phase.
-No Critical findings were uncovered.
+F-05 was promoted to Critical in a review round after the first fix
+attempt shipped a semantically incorrect `wmul_i16`-based recipe (signed
+multiply applied to unsigned operands); see F-05 below for the recipe
+correction.
 
 ## Findings
 
@@ -110,7 +113,8 @@ No Critical findings were uncovered.
 
 ### F-05. `maddubs_i16` ARM rejection didn't suggest an alternative
 
-- **Severity:** Important (FIXED in this phase)
+- **Severity:** Critical (FIXED in this phase, recipe corrected in
+  review round 2)
 - **Category:** Errors
 - **Location:** `src/codegen/simd_x86_dotprod.rs:18` (was: "no NEON
   equivalent")
@@ -118,21 +122,37 @@ No Critical findings were uncovered.
   is "what you did wrong + what to do instead + pointer to canonical
   doc/idiom." `maddubs_i16` on ARM was failing with just
   `"maddubs_i16 is x86-only (SSSE3/AVX2 pmaddubsw); no NEON equivalent"`,
-  which tells the user the failure but offers no fix path. ARM has at
-  least two reasonable substitutions:
-    - `usmmla_i32` (when `--i8mm` is available — exact mixed-sign 8-bit
-      semantics rolled into one matmul, the inventory's documented
-      replacement chain)
-    - `wmul_i16` (split halves) + `addp_i16` (fuse pairs) for the slow
-      portable path
-- **Recommended fix:** rewrite the error to name both alternatives and
-  call out the `--i8mm` gate for `usmmla_i32`.
+  which tells the user the failure but offers no fix path. `maddubs_i16`
+  is *mixed-sign* (`u8 * i8`); the only single-instruction ARM equivalent
+  is `usmmla_i32` (requires `--i8mm`). Without `--i8mm`, callers must
+  manually zero-extend the u8 side, sign-extend the i8 side, then do a
+  portable signed multiply + `addp_i16` — there is no single-call
+  portable recipe.
+- **Severity escalation:** the initial Phase 3 fix suggested a
+  `wmul_i16(i8x8 lo, i8x8 lo) + wmul_i16(i8x8 hi, i8x8 hi) + addp_i16`
+  recipe in the error text. The review round caught that this is
+  *semantically incorrect*: `wmul_i16` is `(i8x8, i8x8) -> i16x8`
+  signed×signed (lowers to `smull.v8i16`). For `u8 >= 128` lanes,
+  sign-extending the unsigned operand produces wrong negative values
+  and silently wrong products. Shipping that as a user-facing error
+  recipe would have actively misled callers into numerically broken
+  kernels. Promoted from Important → Critical because of the
+  user-action-misleading nature.
+- **Final fix:** rewrite to (1) name `usmmla_i32` as the canonical ARM
+  alternative with the `--i8mm` gate, (2) describe the portable manual
+  recipe (zero-extend u8, sign-extend i8, multiply, `addp_i16`), and
+  (3) explicitly warn that `wmul_i16` alone is signed-only and unsafe
+  for `u8 >= 128`.
 - **Disposition:** Fixed in this phase. New text:
 
-  > `maddubs_i16 is x86-only (SSSE3/AVX2 pmaddubsw); on ARM, use
-  > wmul_i16(i8x8 lo, i8x8 lo) + wmul_i16(i8x8 hi, i8x8 hi) + addp_i16
-  > to fuse the adjacent pairs, or use usmmla_i32 for the mixed-sign 8-bit
-  > dot product (--i8mm required)`
+  > `maddubs_i16 is x86-only (SSSE3/AVX2 pmaddubsw, mixed-sign u8*i8
+  > multiply-add). On ARM, use usmmla_i32 for the canonical mixed-sign
+  > 8-bit dot product (requires --i8mm). Without i8mm, there is no
+  > single-instruction equivalent: u8 and i8 lanes must be widened to
+  > i16 separately (zero-extend the u8 side, sign-extend the i8 side)
+  > before a portable signed multiply + addp_i16; wmul_i16 is
+  > signed*signed only and will produce wrong results for u8 values
+  > >= 128`
 
   Existing rejection test (`tests/phase14_arm.rs:92`) only asserts
   `.contains("x86")` so the new text is compatible.
@@ -143,8 +163,8 @@ No Critical findings were uncovered.
 - **Category:** Errors
 - **Location:** `src/codegen/simd_x86_dotprod.rs:106`
 - **Issue:** Same pattern as F-05. Error was `"madd_i16 is x86-only
-  (SSE2/AVX2 pmaddwd); no NEON equivalent"`. The ARM equivalent
-  decomposition is `wmul_i32 + addp_i32`.
+  (SSE2/AVX2 pmaddwd); no NEON equivalent"`. `madd_i16` is signed × signed
+  (`(i16x8, i16x8) -> i32x4`); `wmul_i32 + addp_i32` is sign-correct.
 - **Recommended fix:** name the decomposition explicitly.
 - **Disposition:** Fixed in this phase. New text:
 
@@ -153,6 +173,14 @@ No Critical findings were uncovered.
   > addp_i32 to fuse adjacent products into the i32 result`
 
   Test `tests/phase14_arm.rs:107` (`.contains("x86")`) unaffected.
+
+  **Caveat surfaced by review:** the project does not currently expose
+  a `lo*_i16x8` / `hi*_i16x8` extractor (the `lo_extract` / `hi_extract`
+  family is wired for i8/u8/i32/f32 widths only). Callers following
+  this recipe must manually compose i16x4 halves via scalar indexing
+  or a similar pattern. Flagged as a Minor follow-up for Phase 7
+  (consider exposing `lo_i16x8` / `hi_i16x8` for symmetry with the
+  rest of the lane family).
 
 ### F-07. `hadd_i16` ARM rejection didn't suggest an alternative
 

@@ -16,10 +16,14 @@ impl<'ctx> CodeGenerator<'ctx> {
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         if self.is_arm {
             return Err(CompileError::codegen_error(
-                "maddubs_i16 is x86-only (SSSE3/AVX2 pmaddubsw); on ARM, use \
-                 wmul_i16(i8x8 lo, i8x8 lo) + wmul_i16(i8x8 hi, i8x8 hi) + \
-                 addp_i16 to fuse the adjacent pairs, or use usmmla_i32 for \
-                 the mixed-sign 8-bit dot product (--i8mm required)",
+                "maddubs_i16 is x86-only (SSSE3/AVX2 pmaddubsw, mixed-sign \
+                 u8*i8 multiply-add). On ARM, use usmmla_i32 for the canonical \
+                 mixed-sign 8-bit dot product (requires --i8mm). Without i8mm, \
+                 there is no single-instruction equivalent: u8 and i8 lanes \
+                 must be widened to i16 separately (zero-extend the u8 side, \
+                 sign-extend the i8 side) before a portable signed multiply \
+                 + addp_i16; wmul_i16 is signed*signed only and will produce \
+                 wrong results for u8 values >= 128",
             ));
         }
         let a = self.compile_expr(&args[0], function)?.into_vector_value();
