@@ -163,14 +163,19 @@ impl<'ctx> CodeGenerator<'ctx> {
         args: &[Expr],
         unsigned: bool,
         output_width: u32,
+        byte_offset: u32,
         function: FunctionValue<'ctx>,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         let vec16 = self.compile_expr(&args[0], function)?.into_vector_value();
 
-        // Extract lower N bytes via shufflevector: <16 x i8> → <N x i8>
+        // Extract N bytes starting at byte_offset via shufflevector: <16 x i8> → <N x i8>
         let undef16 = vec16.get_type().get_undef();
         let mask_vals: Vec<_> = (0u64..output_width as u64)
-            .map(|i| self.context.i32_type().const_int(i, false))
+            .map(|i| {
+                self.context
+                    .i32_type()
+                    .const_int(byte_offset as u64 + i, false)
+            })
             .collect();
         let mask = VectorType::const_vector(&mask_vals);
         let lower_n = self
@@ -205,14 +210,19 @@ impl<'ctx> CodeGenerator<'ctx> {
         &mut self,
         args: &[Expr],
         output_width: u32,
+        byte_offset: u32,
         function: FunctionValue<'ctx>,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         let vec16 = self.compile_expr(&args[0], function)?.into_vector_value();
 
-        // Extract lower N bytes via shufflevector: <16 x i8> → <N x i8>
+        // Extract N bytes starting at byte_offset via shufflevector: <16 x i8> → <N x i8>
         let undef16 = vec16.get_type().get_undef();
         let mask_vals: Vec<_> = (0u64..output_width as u64)
-            .map(|i| self.context.i32_type().const_int(i, false))
+            .map(|i| {
+                self.context
+                    .i32_type()
+                    .const_int(byte_offset as u64 + i, false)
+            })
             .collect();
         let mask = VectorType::const_vector(&mask_vals);
         let lower_n = self
@@ -316,5 +326,32 @@ impl<'ctx> CodeGenerator<'ctx> {
             .ok_or_else(|| CompileError::codegen_error("movemask did not return a value"))?;
 
         Ok(result)
+    }
+
+    /// Zero-extend lower 8 bytes of u8x16 to u16x8.
+    pub(super) fn compile_widen_u8_u16(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let vec16 = self.compile_expr(&args[0], function)?.into_vector_value();
+
+        // Extract lower 8 bytes via shufflevector: <16 x i8> -> <8 x i8>
+        let undef16 = vec16.get_type().get_undef();
+        let mask_vals: Vec<_> = (0u64..8)
+            .map(|i| self.context.i32_type().const_int(i, false))
+            .collect();
+        let mask = VectorType::const_vector(&mask_vals);
+        let lower8 = self
+            .builder
+            .build_shuffle_vector(vec16, undef16, mask, "widen_lower8")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+
+        let u16x8_ty = self.context.i16_type().vec_type(8);
+        let widened = self
+            .builder
+            .build_int_z_extend(lower8, u16x8_ty, "widen_u8_u16")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+        Ok(BasicValueEnum::VectorValue(widened))
     }
 }

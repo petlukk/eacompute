@@ -200,6 +200,39 @@ impl TypeChecker {
         }
     }
 
+    /// Type-check an `f32x{N}_from_scalars(...)` call. Validates arity (matches
+    /// width) and that all args are f32. Returns `Vector { elem: F32, width }`.
+    pub(super) fn check_f32_from_scalars(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+        width: usize,
+    ) -> crate::error::Result<Type> {
+        if args.len() != width {
+            return Err(CompileError::type_error(
+                format!(
+                    "f32x{width}_from_scalars expects {width} args, got {}",
+                    args.len()
+                ),
+                span.clone(),
+            ));
+        }
+        for (i, a) in args.iter().enumerate() {
+            let t = self.check_expr(a, locals)?;
+            if !types::types_compatible(&t, &Type::F32) {
+                return Err(CompileError::type_error(
+                    format!("f32x{width}_from_scalars arg {i}: expected f32, got {t}"),
+                    span.clone(),
+                ));
+            }
+        }
+        Ok(Type::Vector {
+            elem: Box::new(Type::F32),
+            width,
+        })
+    }
+
     pub(super) fn check_movemask(
         &self,
         args: &[Expr],

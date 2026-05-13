@@ -121,6 +121,8 @@ pub enum TokenKind {
     I32,
     #[token("i64")]
     I64,
+    #[token("f16")]
+    F16,
     #[token("f32")]
     F32,
     #[token("f64")]
@@ -129,20 +131,38 @@ pub enum TokenKind {
     Bool,
     #[token("i8x4")]
     I8x4,
+    #[token("i8x8")]
+    I8x8,
     #[token("i8x16")]
     I8x16,
     #[token("i8x32")]
     I8x32,
+    #[token("u8x8")]
+    U8x8,
     #[token("u8x16")]
     U8x16,
     #[token("u8x32")]
     U8x32,
+    #[token("i16x4")]
+    I16x4,
     #[token("i16x8")]
     I16x8,
     #[token("i16x16")]
     I16x16,
+    #[token("u16x4")]
+    U16x4,
+    #[token("u16x8")]
+    U16x8,
+    #[token("u16x16")]
+    U16x16,
+    #[token("f16x4")]
+    F16x4,
+    #[token("f16x8")]
+    F16x8,
     #[token("f32x4")]
     F32x4,
+    #[token("i32x2")]
+    I32x2,
     #[token("i32x4")]
     I32x4,
     #[token("f32x8")]
@@ -153,6 +173,14 @@ pub enum TokenKind {
     I32x16,
     #[token("f32x16")]
     F32x16,
+    #[token("u8x64")]
+    U8x64,
+    #[token("i8x64")]
+    I8x64,
+    #[token("i16x32")]
+    I16x32,
+    #[token("u32x4")]
+    U32x4,
     #[token("f64x2")]
     F64x2,
     #[token("f64x4")]
@@ -245,6 +273,16 @@ pub enum TokenKind {
     DotDot,
     #[token(".")]
     Dot,
+    #[token("<<")]
+    ShiftLeft,
+    #[token(">>")]
+    ShiftRight,
+    #[token("&")]
+    Amp,
+    #[token("|")]
+    Pipe,
+    #[token("^")]
+    Caret,
     #[token("&&")]
     AmpAmp,
     #[token("||")]

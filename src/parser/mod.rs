@@ -9,11 +9,16 @@ use crate::lexer::{Position, Span, Token, TokenKind};
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    let_type_hint: Option<TypeAnnotation>,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+        Self {
+            tokens,
+            current: 0,
+            let_type_hint: None,
+        }
     }
 
     pub fn parse_program(&mut self) -> crate::error::Result<Vec<Stmt>> {
@@ -206,6 +211,7 @@ impl Parser {
             TokenKind::U16,
             TokenKind::I32,
             TokenKind::I64,
+            TokenKind::F16,
             TokenKind::F32,
             TokenKind::F64,
             TokenKind::Bool,
@@ -214,18 +220,31 @@ impl Parser {
         // Vector type tokens — single token like f32x4 gets one span
         let vec_types: &[(TokenKind, &str, usize)] = &[
             (TokenKind::I8x4, "i8", 4),
+            (TokenKind::I8x8, "i8", 8),
             (TokenKind::I8x16, "i8", 16),
             (TokenKind::I8x32, "i8", 32),
+            (TokenKind::U8x8, "u8", 8),
             (TokenKind::U8x16, "u8", 16),
             (TokenKind::U8x32, "u8", 32),
+            (TokenKind::I16x4, "i16", 4),
             (TokenKind::I16x8, "i16", 8),
             (TokenKind::I16x16, "i16", 16),
+            (TokenKind::U16x4, "u16", 4),
+            (TokenKind::U16x8, "u16", 8),
+            (TokenKind::U16x16, "u16", 16),
+            (TokenKind::F16x4, "f16", 4),
+            (TokenKind::F16x8, "f16", 8),
             (TokenKind::F32x4, "f32", 4),
+            (TokenKind::I32x2, "i32", 2),
             (TokenKind::I32x4, "i32", 4),
             (TokenKind::F32x8, "f32", 8),
             (TokenKind::I32x8, "i32", 8),
             (TokenKind::I32x16, "i32", 16),
             (TokenKind::F32x16, "f32", 16),
+            (TokenKind::U8x64, "u8", 64),
+            (TokenKind::I8x64, "i8", 64),
+            (TokenKind::I16x32, "i16", 32),
+            (TokenKind::U32x4, "u32", 4),
             (TokenKind::F64x2, "f64", 2),
             (TokenKind::F64x4, "f64", 4),
         ];
@@ -272,8 +291,10 @@ impl Parser {
     }
 
     pub(super) fn parse_args(&mut self) -> crate::error::Result<Vec<crate::ast::Expr>> {
+        let saved_hint = self.let_type_hint.take();
         let mut args = Vec::new();
         if self.check(TokenKind::RightParen) {
+            self.let_type_hint = saved_hint;
             return Ok(args);
         }
         loop {
@@ -283,6 +304,7 @@ impl Parser {
             }
             self.advance();
         }
+        self.let_type_hint = saved_hint;
         Ok(args)
     }
 

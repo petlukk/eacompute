@@ -3,6 +3,7 @@ mod common;
 
 #[cfg(feature = "llvm")]
 mod tests {
+    #[allow(unused_imports)]
     use super::common::*;
 
     #[test]

@@ -8,6 +8,21 @@ use crate::typeck::types::is_unsigned;
 use super::CodeGenerator;
 
 impl<'ctx> CodeGenerator<'ctx> {
+    fn set_load_alignment(val: BasicValueEnum<'ctx>, align: u32) {
+        let inst = match val {
+            BasicValueEnum::IntValue(v) => v.as_instruction(),
+            BasicValueEnum::FloatValue(v) => v.as_instruction(),
+            BasicValueEnum::PointerValue(v) => v.as_instruction(),
+            BasicValueEnum::VectorValue(v) => v.as_instruction(),
+            BasicValueEnum::StructValue(v) => v.as_instruction(),
+            BasicValueEnum::ArrayValue(v) => v.as_instruction(),
+            _ => None,
+        };
+        if let Some(inst) = inst {
+            let _ = inst.set_alignment(align);
+        }
+    }
+
     pub(crate) fn compile_expr(
         &mut self,
         expr: &Expr,
@@ -127,6 +142,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     .builder
                     .build_load(pointee_ty, *ptr, name)
                     .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+                Self::set_load_alignment(val, Self::type_alignment(ty));
                 Ok(val)
             }
             Expr::Index { object, index, .. } => {
@@ -156,6 +172,11 @@ impl<'ctx> CodeGenerator<'ctx> {
                         .builder
                         .build_load(inner_type, elem_ptr, "elem")
                         .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+                    if let Expr::Variable(name, _) = object.as_ref()
+                        && let Some((_, Type::Pointer { inner, .. })) = self.variables.get(name)
+                    {
+                        Self::set_load_alignment(val, Self::type_alignment(inner));
+                    }
                     Ok(val)
                 }
             }
@@ -164,7 +185,10 @@ impl<'ctx> CodeGenerator<'ctx> {
                 if name == "println" {
                     return self.compile_println(&args[0], function);
                 }
-                if Self::is_simd_intrinsic(name) {
+                if name.starts_with("ptr_as_") {
+                    return self.compile_expr(&args[0], function);
+                }
+                if Self::is_simd_intrinsic(name) && !self.functions.contains_key(name) {
                     return self.compile_simd_call(name, args, type_hint, function);
                 }
 
@@ -223,6 +247,14 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
 
         let hint = self.infer_binary_hint(lhs, rhs, type_hint);
+        if !self.fp16
+            && let Some(Type::Vector { elem, .. }) = hint.as_ref()
+            && matches!(**elem, Type::F16)
+        {
+            return Err(CompileError::codegen_error(
+                "f16 vector types require --fp16; use cvt_f16_f32 to compute through f32 instead",
+            ));
+        }
         let unsigned = hint.as_ref().map(is_unsigned).unwrap_or(false);
         let left = self.compile_expr_typed(lhs, hint.as_ref(), function)?;
         let right = self.compile_expr_typed(rhs, hint.as_ref(), function)?;
@@ -242,9 +274,16 @@ impl<'ctx> CodeGenerator<'ctx> {
         match (&left, &right) {
             (BasicValueEnum::IntValue(l), BasicValueEnum::IntValue(r)) => {
                 let result = match op {
-                    BinaryOp::Add => self.builder.build_int_add(*l, *r, "add"),
-                    BinaryOp::Subtract => self.builder.build_int_sub(*l, *r, "sub"),
-                    BinaryOp::Multiply => self.builder.build_int_mul(*l, *r, "mul"),
+                    BinaryOp::Add if !unsigned => self.builder.build_int_nsw_add(*l, *r, "add"),
+                    BinaryOp::Add => self.builder.build_int_nuw_add(*l, *r, "add"),
+                    BinaryOp::Subtract if !unsigned => {
+                        self.builder.build_int_nsw_sub(*l, *r, "sub")
+                    }
+                    BinaryOp::Subtract => self.builder.build_int_nuw_sub(*l, *r, "sub"),
+                    BinaryOp::Multiply if !unsigned => {
+                        self.builder.build_int_nsw_mul(*l, *r, "mul")
+                    }
+                    BinaryOp::Multiply => self.builder.build_int_nuw_mul(*l, *r, "mul"),
                     BinaryOp::Divide if unsigned => {
                         self.builder.build_int_unsigned_div(*l, *r, "div")
                     }
@@ -253,6 +292,13 @@ impl<'ctx> CodeGenerator<'ctx> {
                         self.builder.build_int_unsigned_rem(*l, *r, "rem")
                     }
                     BinaryOp::Modulo => self.builder.build_int_signed_rem(*l, *r, "rem"),
+                    BinaryOp::BitAnd => self.builder.build_and(*l, *r, "and"),
+                    BinaryOp::BitOr => self.builder.build_or(*l, *r, "or"),
+                    BinaryOp::BitXor => self.builder.build_xor(*l, *r, "xor"),
+                    BinaryOp::ShiftLeft => self.builder.build_left_shift(*l, *r, "shl"),
+                    BinaryOp::ShiftRight => {
+                        self.builder.build_right_shift(*l, *r, !unsigned, "shr")
+                    }
                     _ => unreachable!(),
                 }
                 .map_err(|e| CompileError::codegen_error(e.to_string()))?;
@@ -336,6 +382,13 @@ impl<'ctx> CodeGenerator<'ctx> {
             if let Some((ty, _)) = self.constants.get(name) {
                 return ty.is_unsigned_integer();
             }
+        }
+        if let Expr::Index { object, .. } = expr
+            && let Expr::Variable(name, _) = object.as_ref()
+            && let Some((_, ty)) = self.variables.get(name)
+            && let crate::typeck::Type::Vector { elem, .. } = ty
+        {
+            return elem.is_unsigned_integer();
         }
         false
     }

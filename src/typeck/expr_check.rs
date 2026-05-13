@@ -132,6 +132,22 @@ impl TypeChecker {
                             Ok(Type::Bool)
                         }
                     }
+                    BinaryOp::BitAnd
+                    | BinaryOp::BitOr
+                    | BinaryOp::BitXor
+                    | BinaryOp::ShiftLeft
+                    | BinaryOp::ShiftRight => {
+                        let result = types::unify_numeric(&lt, &rt, span.clone())?;
+                        if result.is_float() {
+                            return Err(CompileError::type_error(
+                                format!(
+                                    "bitwise operators require integer operands, got {lt} and {rt}"
+                                ),
+                                span.clone(),
+                            ));
+                        }
+                        Ok(result)
+                    }
                     BinaryOp::And | BinaryOp::Or => {
                         if !lt.is_bool() || !rt.is_bool() {
                             return Err(CompileError::type_error(
@@ -333,6 +349,7 @@ impl TypeChecker {
                         "exp",
                         "to_f32",
                         "to_f64",
+                        "to_i16",
                         "to_i32",
                         "to_i64",
                         "reduce_add",
@@ -351,8 +368,12 @@ impl TypeChecker {
                         "min",
                         "max",
                         "maddubs_i16",
-                        "maddubs_i32",
+                        "madd_i16",
+                        "hadd_i16",
                         "narrow_f32x4_i8",
+                        "cvt_f16_f32",
+                        "cvt_f32_f16",
+                        "widen_u8_u16",
                     ];
                     let candidates = self
                         .functions

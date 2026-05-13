@@ -93,7 +93,7 @@ impl TypeChecker {
         }
     }
 
-    pub(super) fn check_maddubs_i16(
+    pub(super) fn check_sat_add(
         &self,
         args: &[Expr],
         locals: &HashMap<String, (Type, bool)>,
@@ -101,36 +101,35 @@ impl TypeChecker {
     ) -> crate::error::Result<Type> {
         if args.len() != 2 {
             return Err(CompileError::type_error(
-                "maddubs_i16 expects 2 arguments: (u8x16, i8x16)",
+                "sat_add expects 2 arguments",
                 span.clone(),
             ));
         }
         let a = self.check_expr(&args[0], locals)?;
         let b = self.check_expr(&args[1], locals)?;
-        match (&a, &b) {
-            (
-                Type::Vector {
-                    elem: ea,
-                    width: 16,
-                },
-                Type::Vector {
-                    elem: eb,
-                    width: 16,
-                },
-            ) if matches!(ea.as_ref(), Type::U8) && matches!(eb.as_ref(), Type::I8) => {
-                Ok(Type::Vector {
-                    elem: Box::new(Type::I16),
-                    width: 8,
-                })
+        if a != b {
+            return Err(CompileError::type_error(
+                format!("sat_add arguments must have the same type, got ({a}, {b})"),
+                span.clone(),
+            ));
+        }
+        match &a {
+            Type::Vector { elem, width }
+                if matches!(
+                    (elem.as_ref(), *width),
+                    (Type::I8, 16) | (Type::U8, 16) | (Type::I16, 8) | (Type::U16, 8)
+                ) =>
+            {
+                Ok(a)
             }
             _ => Err(CompileError::type_error(
-                format!("maddubs_i16 expects (u8x16, i8x16), got ({a}, {b})"),
+                format!("sat_add supports i8x16, u8x16, i16x8, u16x8; got {a}"),
                 span.clone(),
             )),
         }
     }
 
-    pub(super) fn check_maddubs_i32(
+    pub(super) fn check_sat_sub(
         &self,
         args: &[Expr],
         locals: &HashMap<String, (Type, bool)>,
@@ -138,7 +137,120 @@ impl TypeChecker {
     ) -> crate::error::Result<Type> {
         if args.len() != 2 {
             return Err(CompileError::type_error(
-                "maddubs_i32 expects 2 arguments: (u8xN, i8xN) where N=16 or 32",
+                "sat_sub expects 2 arguments",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        if a != b {
+            return Err(CompileError::type_error(
+                format!("sat_sub arguments must have the same type, got ({a}, {b})"),
+                span.clone(),
+            ));
+        }
+        match &a {
+            Type::Vector { elem, width }
+                if matches!(
+                    (elem.as_ref(), *width),
+                    (Type::I8, 16) | (Type::U8, 16) | (Type::I16, 8) | (Type::U16, 8)
+                ) =>
+            {
+                Ok(a)
+            }
+            _ => Err(CompileError::type_error(
+                format!("sat_sub supports i8x16, u8x16, i16x8, u16x8; got {a}"),
+                span.clone(),
+            )),
+        }
+    }
+
+    /// widen_u8_u16(u8x16) -> u16x8: zero-extend the LOW 8 lanes of a u8x16
+    /// vector to a u16x8. The upper 8 lanes of the input are silently discarded.
+    /// Lowers to vpmovzxbw on x86 and umull/ushll on ARM. To widen the upper
+    /// half, shuffle it to the low lanes first (via `shuffle` or `hi128_*`).
+    pub(super) fn check_widen_u8_u16(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                "widen_u8_u16 expects 1 argument (u8x16 vector)",
+                span.clone(),
+            ));
+        }
+        let arg_type = self.check_expr(&args[0], locals)?;
+        match &arg_type {
+            Type::Vector { elem, width: 16 } if matches!(elem.as_ref(), Type::U8) => {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::U16),
+                    width: 8,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("widen_u8_u16 expects u8x16, got {arg_type}"),
+                args[0].span().clone(),
+            )),
+        }
+    }
+
+    /// bitcast_T(vec) -> TxN: reinterpret bits as a different vector type.
+    /// Both sides must have the same total bit width.
+    /// Zero-cost: emits a single LLVM bitcast (no instruction).
+    pub(super) fn check_bitcast(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+        target_elem: Type,
+        target_width: usize,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                "bitcast expects 1 argument",
+                span.clone(),
+            ));
+        }
+        let arg_type = self.check_expr(&args[0], locals)?;
+        let target_bits = target_elem.size_bits() * target_width;
+        match &arg_type {
+            Type::Vector { elem, width } => {
+                let src_bits = elem.size_bits() * width;
+                if src_bits != target_bits {
+                    return Err(CompileError::type_error(
+                        format!(
+                            "bitcast requires matching bit widths: source {arg_type} is {src_bits} bits, target is {target_bits} bits"
+                        ),
+                        args[0].span().clone(),
+                    ));
+                }
+                Ok(Type::Vector {
+                    elem: Box::new(target_elem),
+                    width: target_width,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("bitcast expects a vector argument, got {arg_type}"),
+                args[0].span().clone(),
+            )),
+        }
+    }
+
+    /// shuffle_bytes({u8,i8}x16, u8x16) -> {u8,i8}x16  (SSSE3 pshufb / NEON tbl)
+    /// shuffle_bytes({u8,i8}x32, u8x32) -> {u8,i8}x32  (AVX2 vpshufb, x86-only)
+    /// Data argument may be signed or unsigned; indices are always u8.
+    /// vpshufb is sign-agnostic.
+    pub(super) fn check_shuffle_bytes(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "shuffle_bytes expects 2 arguments: ({u8,i8}xN, u8xN) where N=16 or 32",
                 span.clone(),
             ));
         }
@@ -154,97 +266,20 @@ impl TypeChecker {
                     elem: eb,
                     width: wb,
                 },
-            ) if matches!(ea.as_ref(), Type::U8)
-                && matches!(eb.as_ref(), Type::I8)
+            ) if matches!(ea.as_ref(), Type::U8 | Type::I8)
+                && matches!(eb.as_ref(), Type::U8)
                 && wa == wb
                 && (*wa == 16 || *wa == 32) =>
             {
-                // u8x16,i8x16 → i32x4 (SSE)
-                // u8x32,i8x32 → i32x8 (AVX2)
                 Ok(Type::Vector {
-                    elem: Box::new(Type::I32),
-                    width: wa / 4,
+                    elem: ea.clone(),
+                    width: *wa,
                 })
             }
             _ => Err(CompileError::type_error(
                 format!(
-                    "maddubs_i32 expects (u8x16, i8x16) or (u8x32, i8x32), \
-                     got ({a}, {b})"
+                    "shuffle_bytes expects ({{u8,i8}}xN, u8xN) where N=16 or 32, got ({a}, {b})"
                 ),
-                span.clone(),
-            )),
-        }
-    }
-
-    pub(super) fn check_vdot_i32(
-        &self,
-        args: &[Expr],
-        locals: &HashMap<String, (Type, bool)>,
-        span: &Span,
-    ) -> crate::error::Result<Type> {
-        if args.len() != 2 {
-            return Err(CompileError::type_error(
-                "vdot_i32 expects 2 arguments: (i8x16, i8x16)",
-                span.clone(),
-            ));
-        }
-        let a = self.check_expr(&args[0], locals)?;
-        let b = self.check_expr(&args[1], locals)?;
-        match (&a, &b) {
-            (
-                Type::Vector {
-                    elem: ea,
-                    width: 16,
-                },
-                Type::Vector {
-                    elem: eb,
-                    width: 16,
-                },
-            ) if matches!(ea.as_ref(), Type::I8) && matches!(eb.as_ref(), Type::I8) => {
-                Ok(Type::Vector {
-                    elem: Box::new(Type::I32),
-                    width: 4,
-                })
-            }
-            _ => Err(CompileError::type_error(
-                format!("vdot_i32 expects (i8x16, i8x16), got ({a}, {b})"),
-                span.clone(),
-            )),
-        }
-    }
-
-    pub(super) fn check_shuffle_bytes(
-        &self,
-        args: &[Expr],
-        locals: &HashMap<String, (Type, bool)>,
-        span: &Span,
-    ) -> crate::error::Result<Type> {
-        if args.len() != 2 {
-            return Err(CompileError::type_error(
-                "shuffle_bytes expects 2 arguments: (u8x16, u8x16)",
-                span.clone(),
-            ));
-        }
-        let a = self.check_expr(&args[0], locals)?;
-        let b = self.check_expr(&args[1], locals)?;
-        match (&a, &b) {
-            (
-                Type::Vector {
-                    elem: ea,
-                    width: 16,
-                },
-                Type::Vector {
-                    elem: eb,
-                    width: 16,
-                },
-            ) if matches!(ea.as_ref(), Type::U8) && matches!(eb.as_ref(), Type::U8) => {
-                Ok(Type::Vector {
-                    elem: Box::new(Type::U8),
-                    width: 16,
-                })
-            }
-            _ => Err(CompileError::type_error(
-                format!("shuffle_bytes expects (u8x16, u8x16), got ({a}, {b})"),
                 span.clone(),
             )),
         }

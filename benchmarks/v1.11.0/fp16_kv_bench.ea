@@ -1,0 +1,101 @@
+// fp16_kv_bench.ea — KV-cache read benchmark for v1.11.0 Phase 6 perf audit.
+//
+// Two variants of the same RMSNorm-then-attention-dot pattern from an
+// LLM KV cache read:
+//
+// kv_roundtrip: storage is f16 (addressed as i16), each load goes through
+//   cvt_f16_f32 to land in f32 SIMD, all compute is f32, results are
+//   cvt_f32_f16'd back to f16. This is the portable path that works on
+//   any AArch64 without --fp16.
+//
+// kv_native: storage is f16, loads land directly in f16x8 registers via
+//   *f16 pointers, compute stays in <8 x half> via fmla v.8h etc. Compiled
+//   with --target-triple=aarch64-unknown-linux-gnu --fp16.
+//
+// Both compute:
+//   rms_norm(x) = x / sqrt(sum(x^2)/N + eps) * scale,   over n / 8 lanes
+//   followed by   acc = fma(qv, kv, acc)   loop                          // for the dot
+//
+// Spec claim: "~1.5-2x speedup on the KV path" on Pi 5 Cortex-A76 with
+// FEAT_FP16. Reference: Olorin eabrain 2026-04-27 entry on Pi 5 NEON
+// enablement design.
+//
+// THIS FILE MUST BE BUILT FOR ARM:
+//   ea fp16_kv_bench.ea --lib --fp16 --target-triple=aarch64-unknown-linux-gnu
+//
+// The x86 host cannot run this kernel (no native f16x8 hardware path).
+// Cross-compile + scp to Pi 5 to measure.
+
+// ----------------------------------------------------------------
+// Variant A: f16 storage, f32 compute, cvt on every load.
+// ----------------------------------------------------------------
+//
+// f16 values are bit-aliased as i16 here because the cvt_f16_f32 entry
+// point predates the native f16 type. This is the portable shape that
+// works on any AArch64.
+export func kv_roundtrip(x: *i16, scale: f32, out: *mut i16, n: i32) {
+    let mut sum_v: f32x4 = splat(0.0)
+    let mut i: i32 = 0
+
+    // Pass 1: sum of squares (f32 accumulator).
+    while i + 4 <= n {
+        let v_h: i16x4 = load(x, i)
+        let v: f32x4 = cvt_f16_f32(v_h)
+        sum_v = fma(v, v, sum_v)
+        i = i + 4
+    }
+    let sumsq: f32 = reduce_add(sum_v)
+    let mean: f32 = sumsq / to_f32(n)
+    let eps: f32 = 0.000001
+    let inv: f32 = 1.0 / sqrt(mean + eps)
+    let scale_inv: f32 = inv * scale
+    let inv_v: f32x4 = splat(scale_inv)
+
+    // Pass 2: scale.
+    i = 0
+    while i + 4 <= n {
+        let v_h: i16x4 = load(x, i)
+        let v: f32x4 = cvt_f16_f32(v_h)
+        let r: f32x4 = v .* inv_v
+        let r_h: i16x4 = cvt_f32_f16(r)
+        store(out, i, r_h)
+        i = i + 4
+    }
+}
+
+// ----------------------------------------------------------------
+// Variant B: f16 storage + f16 compute, no cvt on element path.
+// ----------------------------------------------------------------
+//
+// Requires --fp16. Single scalar sqrt still goes through f32 because
+// Cortex-A76 has no useful f16 scalar sqrt instruction — but that's one
+// round-trip per call, not N.
+export func kv_native(x: *f16, scale: f16, out: *mut f16, n: i32) {
+    let mut sum_v: f16x8 = splat(to_f16(0.0))
+    let mut i: i32 = 0
+
+    // Pass 1: sum of squares (f16 accumulator).
+    while i + 8 <= n {
+        let v: f16x8 = load(x, i)
+        sum_v = fma(v, v, sum_v)
+        i = i + 8
+    }
+    let sumsq_h: f16 = reduce_add(sum_v)
+    let n_h: f16 = to_f16(to_f32(n))   // f16 hits int->float cleanly via f32 hop
+    let mean_h: f16 = sumsq_h / n_h
+    let mean_f: f32 = to_f32(mean_h)
+    let eps: f32 = 0.000001
+    let inv_f: f32 = 1.0 / sqrt(mean_f + eps)
+    let scale_inv_f: f32 = inv_f * to_f32(scale)
+    let inv_h: f16 = to_f16(scale_inv_f)
+    let inv_v: f16x8 = splat(inv_h)
+
+    // Pass 2: scale — stays in f16x8 registers, no cvt per element.
+    i = 0
+    while i + 8 <= n {
+        let v: f16x8 = load(x, i)
+        let r: f16x8 = v .* inv_v
+        store(out, i, r)
+        i = i + 8
+    }
+}

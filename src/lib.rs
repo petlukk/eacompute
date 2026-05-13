@@ -55,7 +55,7 @@ pub enum OutputMode {
 pub struct CompileOptions {
     pub opt_level: u8,
     pub target_cpu: Option<String>,
-    /// Extra target features, e.g. "+avx512f" for AVX-512.
+    /// Extra target features, e.g. "+avx512f" for AVX-512, "+fullfp16" for ARM FP16 compute.
     pub extra_features: String,
     /// Cross-compilation target triple, e.g. "aarch64-unknown-linux-gnu".
     pub target_triple: Option<String>,
@@ -103,6 +103,16 @@ fn init_llvm() {
 }
 
 #[cfg(feature = "llvm")]
+fn validate_fp16_compatibility(opts: &CompileOptions) -> error::Result<()> {
+    if !opts.is_arm() && opts.extra_features.contains("fullfp16") {
+        return Err(error::CompileError::codegen_error(
+            "--fp16 is incompatible with non-ARM target",
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(feature = "llvm")]
 pub fn compile(source: &str, output_path: &std::path::Path, mode: OutputMode) -> error::Result<()> {
     compile_with_options(source, output_path, mode, &CompileOptions::default())
 }
@@ -113,6 +123,7 @@ pub fn compile_with_options(
     mode: OutputMode,
     opts: &CompileOptions,
 ) -> error::Result<()> {
+    validate_fp16_compatibility(opts)?;
     init_llvm();
 
     let tokens = tokenize(source)?;
@@ -156,12 +167,17 @@ pub fn compile_with_options(
         OutputMode::SharedLib(ref lib_name) => {
             target::write_object_file(cg.module(), output_path, opts)?;
 
-            #[cfg(target_os = "windows")]
-            {
-                // On Windows use lld-link.exe (ships with LLVM 18).
-                // lld-link handles /NODEFAULTLIB cleanly for pure SIMD kernels
-                // and provides __chkstk / compiler-rt intrinsics internally,
-                // so the resulting DLL has zero external dependencies.
+            // Pick the linker by *target*, not host. A windows triple
+            // means we need a PE DLL even when we're on Linux.
+            let target_is_windows = opts
+                .target_triple
+                .as_deref()
+                .map(|t| t.contains("windows"))
+                .unwrap_or(cfg!(target_os = "windows"));
+            let host_is_windows = cfg!(target_os = "windows");
+
+            if target_is_windows && host_is_windows {
+                // Native Windows: lld-link.exe (ships with LLVM 18).
                 let out_flag = format!("/OUT:{}", lib_name);
                 let output = std::process::Command::new("lld-link.exe")
                     .arg("/DLL")
@@ -176,9 +192,7 @@ pub fn compile_with_options(
                             "failed to invoke lld-link: {e}"
                         ))
                     })?;
-
                 let _ = std::fs::remove_file(output_path);
-
                 if !output.status.success() {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -188,10 +202,31 @@ pub fn compile_with_options(
                         detail.trim()
                     )));
                 }
-            }
-
-            #[cfg(not(target_os = "windows"))]
-            {
+            } else if target_is_windows {
+                // Cross from non-Windows host: mingw-w64. Override with
+                // WINDOWS_CC env if a different cross-gcc is needed.
+                let cc = std::env::var("WINDOWS_CC")
+                    .unwrap_or_else(|_| "x86_64-w64-mingw32-gcc".to_string());
+                let status = std::process::Command::new(&cc)
+                    // mingw provides DllMainCRTStartup, msvcrt math
+                    // (fmaf/expf), and libgcc compiler-rt (__extendhfsf2).
+                    // -static-libgcc avoids a runtime libgcc_s_seh-1.dll dep.
+                    .arg("-shared")
+                    .arg("-static-libgcc")
+                    .arg(output_path)
+                    .arg("-o")
+                    .arg(lib_name)
+                    .status()
+                    .map_err(|e| {
+                        error::CompileError::codegen_error(format!("failed to invoke {cc}: {e}"))
+                    })?;
+                let _ = std::fs::remove_file(output_path);
+                if !status.success() {
+                    return Err(error::CompileError::codegen_error(
+                        "shared library linking failed (mingw-w64)",
+                    ));
+                }
+            } else {
                 let cc = std::env::var("CC").unwrap_or_else(|_| "cc".to_string());
                 let status = std::process::Command::new(&cc)
                     .arg("-shared")
@@ -203,9 +238,7 @@ pub fn compile_with_options(
                     .map_err(|e| {
                         error::CompileError::codegen_error(format!("failed to invoke linker: {e}"))
                     })?;
-
                 let _ = std::fs::remove_file(output_path);
-
                 if !status.success() {
                     return Err(error::CompileError::codegen_error(
                         "shared library linking failed",
@@ -214,6 +247,10 @@ pub fn compile_with_options(
             }
         }
         OutputMode::LlvmIr => {
+            if opts.opt_level > 0 {
+                let machine = target::create_target_machine(opts)?;
+                target::optimize_module(cg.module(), &machine, opts.opt_level)?;
+            }
             let ir = cg.print_ir();
             std::fs::write(output_path, ir).map_err(|e| {
                 error::CompileError::codegen_error(format!("failed to write IR: {e}"))
@@ -234,6 +271,7 @@ pub fn compile_to_ir(source: &str) -> error::Result<String> {
 
 #[cfg(feature = "llvm")]
 pub fn compile_to_ir_with_options(source: &str, opts: CompileOptions) -> error::Result<String> {
+    validate_fp16_compatibility(&opts)?;
     init_llvm();
 
     let tokens = tokenize(source)?;
@@ -254,6 +292,7 @@ pub fn inspect_source(
     source: &str,
     opts: &CompileOptions,
 ) -> error::Result<inspect::InspectReport> {
+    validate_fp16_compatibility(opts)?;
     init_llvm();
 
     let tokens = tokenize(source)?;

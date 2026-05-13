@@ -106,6 +106,88 @@ export func cosine_similarity(a: *f32, b: *f32, out: *mut f32, n: i32) {
 
 Three FMAs per loop iteration, all operating on the same loaded vectors. The data passes through cache once. NumPy would need `np.dot(a, b)`, `np.linalg.norm(a)`, and `np.linalg.norm(b)` -- three separate passes.
 
+## Int8 quantized inference (ARM)
+
+For quantized ML models using int8 weights, ARM provides dedicated matrix multiply instructions. On ARM with `--i8mm` (ARMv8.6-A, Cortex-A78+, Apple M1+):
+
+```
+export func matmul_i8_block(
+    acc: *mut i32, activations: *i8, weights: *i8, n: i32
+) {
+    let mut a: i32x4 = splat(0)
+    let mut i: i32 = 0
+    while i < n {
+        let act: i8x16 = load(activations, i)
+        let wgt: i8x16 = load(weights, i)
+        a = smmla_i32(a, act, wgt)
+        i = i + 16
+    }
+    store(acc, 0, a)
+}
+```
+
+`smmla_i32` performs a 2x8 x 8x2 signed matrix multiply-accumulate in one instruction. Also available: `ummla_i32` (unsigned x unsigned) and `usmmla_i32` (unsigned activations x signed weights, the most common ML pattern).
+
+For older ARM chips without I8MM, use `vdot_i32` (requires `--dotprod`, ARMv8.2-A) for 4-way dot products, or `wmul_i16`/`wmul_i32` for widening multiplies.
+
+## Fused Quantization Pipeline
+
+Convert 32 float activations to int8 in 7 instructions, then feed directly to `maddubs_i32`:
+
+```
+kernel quantize_dot(activations: *const f32, weights: *const u8, out: *mut i32, inv_scale: f32, n: i32) {
+    let f0: f32x8 = load(activations, i * 32);
+    let f1: f32x8 = load(activations, i * 32 + 8);
+    let f2: f32x8 = load(activations, i * 32 + 16);
+    let f3: f32x8 = load(activations, i * 32 + 24);
+
+    let scale: f32x8 = splat(inv_scale);
+    let i0: i32x8 = round_f32x8_i32x8(f0 .* scale);
+    let i1: i32x8 = round_f32x8_i32x8(f1 .* scale);
+    let i2: i32x8 = round_f32x8_i32x8(f2 .* scale);
+    let i3: i32x8 = round_f32x8_i32x8(f3 .* scale);
+
+    let s01: i16x16 = pack_sat_i32x8(i0, i1);
+    let s23: i16x16 = pack_sat_i32x8(i2, i3);
+    let quant: i8x32 = pack_sat_i16x16(s01, s23);
+
+    let w: u8x32 = load(weights, i * 32);
+    let dot: i32x8 = maddubs_i32(w, quant);
+    store(out, i * 8, dot);
+}
+```
+
+Pipeline: 4x round + 2x pack_i32 + 1x pack_i16 = 7 instructions for 32 floats to 32 int8. Then 1x maddubs_i32 = 8 total.
+
+## Fused Quantization Pipeline (ARM)
+
+The 256-bit intrinsics above are x86-only. On ARM, use the 128-bit cross-platform variants to process 16 floats at a time:
+
+```
+kernel quantize_dot_arm(activations: *const f32, weights: *const i8, out: *mut i32, inv_scale: f32, n: i32) {
+    let f0: f32x4 = load(activations, i * 16);
+    let f1: f32x4 = load(activations, i * 16 + 4);
+    let f2: f32x4 = load(activations, i * 16 + 8);
+    let f3: f32x4 = load(activations, i * 16 + 12);
+
+    let scale: f32x4 = splat(inv_scale);
+    let i0: i32x4 = round_f32x4_i32x4(f0 .* scale);
+    let i1: i32x4 = round_f32x4_i32x4(f1 .* scale);
+    let i2: i32x4 = round_f32x4_i32x4(f2 .* scale);
+    let i3: i32x4 = round_f32x4_i32x4(f3 .* scale);
+
+    let s01: i16x8 = pack_sat_i32x4(i0, i1);
+    let s23: i16x8 = pack_sat_i32x4(i2, i3);
+    let quant: i8x16 = pack_sat_i16x8(s01, s23);
+
+    let w: i8x16 = load(weights, i * 16);
+    let dot: i32x4 = vdot_i32(splat(0), quant, w);
+    store(out, i * 4, dot);
+}
+```
+
+Compile with `--dotprod` for `vdot_i32`. The `round_f32x4_i32x4`, `pack_sat_i32x4`, and `pack_sat_i16x8` intrinsics are cross-platform and require no extra flags.
+
 ## Batch operations
 
 For ML workloads, you often apply the same operation to many rows. The Python side handles the loop over rows, calling the Eä kernel for each:

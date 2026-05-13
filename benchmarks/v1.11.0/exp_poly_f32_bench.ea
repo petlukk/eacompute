@@ -1,0 +1,171 @@
+// exp_poly_f32_bench.ea — softmax microbench for v1.11.0 Phase 6 perf audit.
+//
+// Two kernels, identical semantics modulo the polynomial's 2^-18 relative
+// error: numerically-stable softmax over a contiguous f32 vector.
+//
+// softmax_libm: uses exp() which lowers to llvm.exp.v8f32, which LLVM has
+//   no hardware lowering for on any current ISA, so it scalarizes to eight
+//   sequential libm expf calls per loop iteration. This is the baseline
+//   the "10x faster" claim is measured against.
+//
+// softmax_poly: uses exp_poly_f32(f32x8), which stays in the SIMD pipeline
+//   end-to-end (Cody-Waite range reduction + degree-5 minimax Horner +
+//   ldexp via integer bit-add, ~8 FMAs/lane).
+//
+// Both kernels share the same numerically-stable softmax recipe from
+// docs/src/cookbook/fast-transcendentals.md: pass 1 finds reduce_max, pass
+// 2 subtracts max & accumulates exp, pass 3 divides by the sum. The
+// difference is purely the exp call.
+//
+// The harness drives n = 8192 (>> any L1 footprint, large enough that
+// per-call overhead is negligible vs the inner loop).
+
+// ============================================================
+// Isolated exp() benchmarks — primary claim ("~10x faster")
+//
+// These are the cleanest comparison: just exp() in a loop, no surrounding
+// passes. softmax adds 2 extra normalize-style passes (find max, sum,
+// divide) over the same data, which amortizes the exp cost. To verify
+// the spec's "exp_poly_f32 is ~10x faster than scalar libm expf in tight
+// loops" claim you measure the exp call itself, not a softmax.
+// ============================================================
+
+// Baseline: out[i] = exp(x[i]) using libm path that scalarizes.
+export func exp_only_libm(x: *f32, out: *mut f32, n: i32) {
+    let mut i: i32 = 0
+    while i + 8 <= n {
+        let v: f32x8 = load(x, i)
+        let r: f32x8 = exp(v)
+        store(out, i, r)
+        i = i + 8
+    }
+    while i < n {
+        out[i] = exp(x[i])
+        i = i + 1
+    }
+}
+
+// Polynomial: out[i] = exp_poly_f32(x[i]) — SIMD throughout.
+export func exp_only_poly(x: *f32, out: *mut f32, n: i32) {
+    let mut i: i32 = 0
+    while i + 8 <= n {
+        let v: f32x8 = load(x, i)
+        let r: f32x8 = exp_poly_f32(v)
+        store(out, i, r)
+        i = i + 8
+    }
+    // Scalar tail uses libm exp() — exp_poly_f32 is vector-only by typeck.
+    while i < n {
+        out[i] = exp(x[i])
+        i = i + 1
+    }
+}
+
+// ============================================================
+// Softmax benchmarks — real-world shape, secondary check
+// ============================================================
+
+// Pass 1: reduce_max across the whole vector. Used by both kernels.
+func vec_max(x: *f32, n: i32) -> f32 {
+    let mut acc: f32x8 = load(x, 0)
+    let mut i: i32 = 8
+    while i + 8 <= n {
+        let v: f32x8 = load(x, i)
+        acc = max(acc, v)
+        i = i + 8
+    }
+    let mut s: f32 = reduce_max(acc)
+    while i < n {
+        if x[i] > s {
+            s = x[i]
+        }
+        i = i + 1
+    }
+    return s
+}
+
+// Baseline: exp() scalarizes — eight sequential expf calls per f32x8.
+export func softmax_libm(x: *f32, out: *mut f32, n: i32) {
+    let mx: f32 = vec_max(x, n)
+    let mxv: f32x8 = splat(mx)
+
+    // Pass 2: shifted exp, accumulate sum.
+    let mut sum_v: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+    while i + 8 <= n {
+        let v: f32x8 = load(x, i)
+        let shifted: f32x8 = v .- mxv
+        let ev: f32x8 = exp(shifted)
+        store(out, i, ev)
+        sum_v = sum_v .+ ev
+        i = i + 8
+    }
+    let mut tail_sum: f32 = 0.0
+    while i < n {
+        let s: f32 = x[i] - mx
+        let e: f32 = exp(s)
+        out[i] = e
+        tail_sum = tail_sum + e
+        i = i + 1
+    }
+    let total: f32 = reduce_add(sum_v) + tail_sum
+    let inv: f32 = 1.0 / total
+    let invv: f32x8 = splat(inv)
+
+    // Pass 3: normalize.
+    i = 0
+    while i + 8 <= n {
+        let e: f32x8 = load(out, i)
+        store(out, i, e .* invv)
+        i = i + 8
+    }
+    while i < n {
+        out[i] = out[i] * inv
+        i = i + 1
+    }
+}
+
+// Polynomial path: exp_poly_f32 stays in SIMD.
+export func softmax_poly(x: *f32, out: *mut f32, n: i32) {
+    let mx: f32 = vec_max(x, n)
+    let mxv: f32x8 = splat(mx)
+
+    // After subtracting the max, every shifted value is in [-(max-min), 0].
+    // For the harness's inputs in [-10, 10] the shifted range is at worst
+    // [-20, 0] — well inside exp_poly_f32's [-50, 50] safe range, so no
+    // clamp needed.
+    let mut sum_v: f32x8 = splat(0.0)
+    let mut i: i32 = 0
+    while i + 8 <= n {
+        let v: f32x8 = load(x, i)
+        let shifted: f32x8 = v .- mxv
+        let ev: f32x8 = exp_poly_f32(shifted)
+        store(out, i, ev)
+        sum_v = sum_v .+ ev
+        i = i + 8
+    }
+    // Scalar tail still uses libm exp() — exp_poly_f32 is vector-only by
+    // typeck rule. For n=8192 the tail is empty.
+    let mut tail_sum: f32 = 0.0
+    while i < n {
+        let s: f32 = x[i] - mx
+        let e: f32 = exp(s)
+        out[i] = e
+        tail_sum = tail_sum + e
+        i = i + 1
+    }
+    let total: f32 = reduce_add(sum_v) + tail_sum
+    let inv: f32 = 1.0 / total
+    let invv: f32x8 = splat(inv)
+
+    i = 0
+    while i + 8 <= n {
+        let e: f32x8 = load(out, i)
+        store(out, i, e .* invv)
+        i = i + 8
+    }
+    while i < n {
+        out[i] = out[i] * inv
+        i = i + 1
+    }
+}

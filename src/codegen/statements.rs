@@ -175,6 +175,16 @@ impl<'ctx> CodeGenerator<'ctx> {
                 else_body,
                 ..
             } => {
+                // Detect simple if/else that can lower to `select` instead of
+                // branches.  This keeps both sides in one basic block, which
+                // lets LLVM's SelectionDAG see constant shifts through the
+                // condition (e.g. ubfx for (x >> const) & mask).
+                if let Some(lowered) =
+                    self.try_compile_select(condition, then_body, else_body, function)?
+                {
+                    return Ok(lowered);
+                }
+
                 let cond_val = self.compile_expr(condition, function)?;
                 let cond_int = cond_val.into_int_value();
 

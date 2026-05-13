@@ -1,0 +1,80 @@
+// gather_compose_bench.ea — v1.11.0 Phase 6 perf audit.
+//
+// LUT dequant kernel comparing three ways to fetch 4 (or 8) f32 values
+// from a lookup table indexed by a per-lane integer index array:
+//
+//   scalar_loop:  pure scalar — read four floats, write four floats.
+//                 The fallback that f32x4_from_scalars must beat (or at
+//                 least tie) on ARM. On x86 this is the baseline against
+//                 which AVX2 vgatherdps measures its win.
+//
+//   compose_x4:   f32x4_from_scalars(load0, load1, load2, load3). Goal:
+//                 LLVM folds the insertelement chain into NEON ins lanes
+//                 on ARM, or vbroadcastss/vinsertps on x86. Speed should
+//                 be at least as fast as scalar_loop because the four
+//                 element loads are exactly the same — the difference is
+//                 a single SIMD store at the end instead of four scalar
+//                 stores.
+//
+//   gather_x86:   AVX2 vgatherdps. **x86-only.** On ARM this kernel
+//                 errors at codegen with a pointer to f32x4_from_scalars
+//                 and docs/idioms/neon-gather.md.
+//
+// Workload: 16 384-entry LUT, 65 536 outputs in groups of 4 (32 768 of
+// length 8 for the x8 variants).
+//
+// The spec target is "NEON gather compose at least as fast as a scalar
+// loop fallback would be." The other claim — that AVX2 gather is faster
+// than a scalar loop — is well-established and isn't the point of this
+// release; we measure it on x86 as a sanity check that the compose
+// pattern isn't accidentally faster than a true hardware gather (which
+// would suggest the gather code path is broken).
+
+// ----------------------------------------------------------------
+// Scalar baseline: portable, builds on any target.
+// ----------------------------------------------------------------
+export func scalar_loop(lut: *f32, indices: *i32, out: *mut f32, n: i32) {
+    let mut i: i32 = 0
+    while i < n {
+        let v0: f32 = lut[indices[i]]
+        let v1: f32 = lut[indices[i + 1]]
+        let v2: f32 = lut[indices[i + 2]]
+        let v3: f32 = lut[indices[i + 3]]
+        out[i] = v0
+        out[i + 1] = v1
+        out[i + 2] = v2
+        out[i + 3] = v3
+        i = i + 4
+    }
+}
+
+// ----------------------------------------------------------------
+// Compose: f32x4_from_scalars. Builds on any target (this is the canonical
+// NEON gather workaround). On x86 it lowers to vinsertps; on ARM, to ins.
+// ----------------------------------------------------------------
+export func compose_x4(lut: *f32, indices: *i32, out: *mut f32, n: i32) {
+    let mut i: i32 = 0
+    while i < n {
+        let v0: f32 = lut[indices[i]]
+        let v1: f32 = lut[indices[i + 1]]
+        let v2: f32 = lut[indices[i + 2]]
+        let v3: f32 = lut[indices[i + 3]]
+        let v: f32x4 = f32x4_from_scalars(v0, v1, v2, v3)
+        store(out, i, v)
+        i = i + 4
+    }
+}
+
+// ----------------------------------------------------------------
+// AVX2 gather: x86-only. ARM compile errors here at codegen with the
+// pointer to f32x{4,8}_from_scalars and docs/idioms/neon-gather.md.
+// ----------------------------------------------------------------
+export func gather_x86(lut: *f32, indices: *i32, out: *mut f32, n: i32) {
+    let mut i: i32 = 0
+    while i < n {
+        let idx: i32x4 = load(indices, i)
+        let v: f32x4 = gather(lut, idx)
+        store(out, i, v)
+        i = i + 4
+    }
+}

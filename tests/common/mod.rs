@@ -38,6 +38,7 @@ pub fn compile_and_run(source: &str) -> TestOutput {
     }
 }
 
+#[allow(dead_code)]
 pub fn compile_and_link_with_c(ea_source: &str, c_source: &str) -> TestOutput {
     let dir = TempDir::new().expect("failed to create temp dir");
     let obj_path = dir.path().join("kernel.o");
@@ -83,6 +84,7 @@ pub fn assert_output_lines(source: &str, expected: &[&str]) {
     assert_eq!(lines, expected);
 }
 
+#[allow(dead_code)]
 pub fn assert_c_interop(ea_source: &str, c_source: &str, expected: &str) {
     let result = compile_and_link_with_c(ea_source, c_source);
     assert_eq!(result.stdout.trim(), expected);

@@ -30,6 +30,9 @@
 - [Image Processing](cookbook/image-processing.md)
 - [Text Processing](cookbook/text-processing.md)
 - [ML Preprocessing](cookbook/ml-preprocessing.md)
+- [Native f16 Inference (NEW)](cookbook/fp16-inference.md)
+- [Fast Transcendentals: exp_poly_f32 (NEW)](cookbook/fast-transcendentals.md)
+- [NEON Gather Workaround (NEW)](cookbook/neon-gather-workaround.md)
 
 # Examples
 

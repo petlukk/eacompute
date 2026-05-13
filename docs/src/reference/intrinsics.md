@@ -260,11 +260,39 @@ Widen narrow integer lanes to wider float or integer lanes. Only the first N lan
 | `widen_u8_f32x4(v)` | `u8x16` | `f32x4` |
 | `widen_i8_f32x8(v)` | `i8x16` | `f32x8` |
 | `widen_u8_f32x8(v)` | `u8x16` | `f32x8` |
+| `widen_i8_f32x16(v)` | `i8x16` | `f32x16` |
+| `widen_u8_f32x16(v)` | `u8x16` | `f32x16` |
 | `widen_u8_i32x4(v)` | `u8x16` | `i32x4` |
 | `widen_u8_i32x8(v)` | `u8x16` | `i32x8` |
+| `widen_u8_i32x16(v)` | `u8x16` | `i32x16` |
 
 ```
 let pixels: f32x8 = widen_u8_f32x8(raw_bytes);
+```
+
+#### Lane-offset variants
+
+The `_4`, `_8`, `_12` suffixes select which 4 bytes of the input to widen, eliminating the need for a shuffle before widening:
+
+| Intrinsic | Input | Output | Bytes used |
+|-----------|-------|--------|------------|
+| `widen_u8_f32x4_4(v)` | `u8x16` | `f32x4` | 4-7 |
+| `widen_u8_f32x4_8(v)` | `u8x16` | `f32x4` | 8-11 |
+| `widen_u8_f32x4_12(v)` | `u8x16` | `f32x4` | 12-15 |
+| `widen_i8_f32x4_4(v)` | `i8x16` | `f32x4` | 4-7 |
+| `widen_i8_f32x4_8(v)` | `i8x16` | `f32x4` | 8-11 |
+| `widen_i8_f32x4_12(v)` | `i8x16` | `f32x4` | 12-15 |
+| `widen_u8_i32x4_4(v)` | `u8x16` | `i32x4` | 4-7 |
+| `widen_u8_i32x4_8(v)` | `u8x16` | `i32x4` | 8-11 |
+| `widen_u8_i32x4_12(v)` | `u8x16` | `i32x4` | 12-15 |
+
+Process all 16 bytes of a u8x16 as 4 groups of f32x4 without any shuffles:
+
+```
+let f0: f32x4 = widen_u8_f32x4(v)      // bytes 0-3
+let f1: f32x4 = widen_u8_f32x4_4(v)    // bytes 4-7
+let f2: f32x4 = widen_u8_f32x4_8(v)    // bytes 8-11
+let f3: f32x4 = widen_u8_f32x4_12(v)   // bytes 12-15
 ```
 
 ### Narrowing Conversions
@@ -304,6 +332,68 @@ acc = acc .+ vdot_i32(a, b);  // accumulate explicitly
 | Signature | `(i8x16, i8x16) -> i32x4` |
 |-----------|---------------------------|
 
+### I8MM Matrix Multiply
+
+Matrix multiply-accumulate on int8 data. **ARM only** -- requires `--i8mm` flag (ARMv8.6-A I8MM extension). Available on Cortex-A78+, Apple M1+.
+
+| Intrinsic | Signature | Description |
+|-----------|-----------|-------------|
+| `smmla_i32(acc, a, b)` | `(i32x4, i8x16, i8x16) -> i32x4` | Signed x signed |
+| `ummla_i32(acc, a, b)` | `(i32x4, u8x16, u8x16) -> i32x4` | Unsigned x unsigned |
+| `usmmla_i32(acc, a, b)` | `(i32x4, u8x16, i8x16) -> i32x4` | Unsigned x signed |
+
+The accumulator is the first argument. Each instruction performs a 2x8 x 8x2 matrix multiply and adds the result to the accumulator. Use `splat(0)` as accumulator for the first iteration.
+
+```
+let zero: i32x4 = splat(0);
+let result: i32x4 = smmla_i32(zero, activations, weights);
+// accumulate over multiple chunks:
+acc = smmla_i32(acc, next_a, next_b);
+```
+
+### Widening Multiply
+
+Multiply narrow integer lanes and produce wider output. **ARM only** (base NEON). Input types are 64-bit NEON vectors.
+
+| Intrinsic | Signature | Description |
+|-----------|-----------|-------------|
+| `wmul_i16(a, b)` | `(i8x8, i8x8) -> i16x8` | Signed 8-bit to 16-bit |
+| `wmul_u16(a, b)` | `(u8x8, u8x8) -> u16x8` | Unsigned 8-bit to 16-bit |
+| `wmul_i32(a, b)` | `(i16x4, i16x4) -> i32x4` | Signed 16-bit to 32-bit |
+| `wmul_u32(a, b)` | `(u16x4, u16x4) -> u32x4` | Unsigned 16-bit to 32-bit |
+
+```
+let wide: i16x8 = wmul_i16(bytes_a, bytes_b);
+```
+
+### Absolute Difference
+
+Element-wise `|a - b|`. **ARM only** (base NEON). Maps to a single instruction (`sabd`/`uabd`).
+
+| Intrinsic | Supported Types |
+|-----------|----------------|
+| `abs_diff(a, b)` | `i8x16`, `u8x16`, `i16x8`, `u16x8`, `i32x4`, `u32x4` |
+
+```
+let diff: u8x16 = abs_diff(frame_a, frame_b);
+```
+
+### Saturating Arithmetic
+
+Addition and subtraction that clamp to the type's min/max instead of wrapping on overflow. **Cross-platform** (ARM NEON + x86 SSE2).
+
+| Intrinsic | Supported Types |
+|-----------|----------------|
+| `sat_add(a, b)` | `i8x16`, `u8x16`, `i16x8`, `u16x8` |
+| `sat_sub(a, b)` | `i8x16`, `u8x16`, `i16x8`, `u16x8` |
+
+Signed vs unsigned saturation is determined by the element type. Both arguments must have the same type.
+
+```
+let bright: u8x16 = sat_add(pixels, boost);    // clamps at 255, never wraps
+let dark: u8x16 = sat_sub(pixels, reduce);     // clamps at 0, never wraps
+```
+
 ### shuffle_bytes
 
 Byte-level table lookup: each byte in `indices` selects a byte from `table`. Cross-platform. x86: SSSE3 `pshufb`. ARM: NEON `tbl`. Out-of-range indices (>15) zero the lane on both platforms.
@@ -314,6 +404,19 @@ let result: u8x16 = shuffle_bytes(table, indices);
 
 | Signature | `(u8x16, u8x16) -> u8x16` |
 |-----------|---------------------------|
+
+### Rounding & Packing
+
+| Intrinsic | Signature | Description | Platform |
+|---|---|---|---|
+| `round_f32x4_i32x4` | `(f32x4) -> i32x4` | Round-to-nearest-even. x86: `cvtps2dq`. ARM: `fcvtns`. | cross-platform |
+| `pack_sat_i32x4` | `(i32x4, i32x4) -> i16x8` | Saturating narrow. x86: `packssdw`. ARM: `sqxtn`. | cross-platform |
+| `pack_sat_i16x8` | `(i16x8, i16x8) -> i8x16` | Saturating narrow. x86: `packsswb`. ARM: `sqxtn`. | cross-platform |
+| `round_f32x8_i32x8` | `(f32x8) -> i32x8` | Round-to-nearest-even float to integer. x86: `vcvtps2dq` (AVX2). | x86-only |
+| `pack_sat_i32x8` | `(i32x8, i32x8) -> i16x16` | Saturating narrow two i32x8 into i16x16. x86: `vpackssdw` (AVX2). | x86-only |
+| `pack_sat_i16x16` | `(i16x16, i16x16) -> i8x32` | Saturating narrow two i16x16 into i8x32. x86: `vpacksswb` (AVX2). | x86-only |
+
+> `pack_sat_i32x8` and `pack_sat_i16x16` emit a `vpermq` fixup after the AVX2 pack to produce sequential output `[a0..a7, b0..b7]`, matching what the 128-bit variants produce.
 
 ## Debug
 

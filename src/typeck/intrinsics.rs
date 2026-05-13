@@ -23,9 +23,17 @@ impl TypeChecker {
             "load" => Some(self.check_load(args, locals, type_hint, span)),
             "store" => Some(self.check_store(args, locals, span)),
             "fma" => Some(self.check_fma(args, locals, span)),
+            "abs" if !self.functions.contains_key("abs") => {
+                Some(self.check_abs(args, locals, span))
+            }
             "sqrt" | "rsqrt" | "exp" => Some(self.check_sqrt(name, args, locals, span)),
-            "to_f32" | "to_f64" | "to_i32" | "to_i64" => {
+            "exp_poly_f32" => Some(self.check_exp_poly_f32(args, locals, span)),
+            "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" => {
                 Some(self.check_conversion(name, args, locals, span))
+            }
+            "ptr_as_i8" | "ptr_as_u8" | "ptr_as_i16" | "ptr_as_u16" | "ptr_as_i32"
+            | "ptr_as_u32" | "ptr_as_i64" | "ptr_as_u64" | "ptr_as_f32" | "ptr_as_f64" => {
+                Some(self.check_ptr_as(name, args, locals, span))
             }
             "reduce_add" | "reduce_max" | "reduce_min" => {
                 Some(self.check_reduction(name, args, locals, span))
@@ -45,11 +53,57 @@ impl TypeChecker {
             "widen_u8_i32x4" => Some(self.check_widen_u8_i32(name, args, locals, span, 4)),
             "widen_u8_i32x8" => Some(self.check_widen_u8_i32(name, args, locals, span, 8)),
             "widen_u8_i32x16" => Some(self.check_widen_u8_i32(name, args, locals, span, 16)),
+            "widen_u8_f32x4_4" | "widen_u8_f32x4_8" | "widen_u8_f32x4_12" => {
+                Some(self.check_widen_i8_f32(name, args, locals, span, 4))
+            }
+            "widen_i8_f32x4_4" | "widen_i8_f32x4_8" | "widen_i8_f32x4_12" => {
+                Some(self.check_widen_i8_f32(name, args, locals, span, 4))
+            }
+            "widen_u8_i32x4_4" | "widen_u8_i32x4_8" | "widen_u8_i32x4_12" => {
+                Some(self.check_widen_u8_i32(name, args, locals, span, 4))
+            }
+            "widen_u8_u16" => Some(self.check_widen_u8_u16(args, locals, span)),
             "narrow_f32x4_i8" => Some(self.check_narrow_f32x4_i8(args, locals, span)),
             "maddubs_i16" => Some(self.check_maddubs_i16(args, locals, span)),
-            "maddubs_i32" => Some(self.check_maddubs_i32(args, locals, span)),
+            "madd_i16" => Some(self.check_madd_i16(args, locals, span)),
+            "hadd_i16" => Some(self.check_hadd_i16(args, locals, span)),
             "vdot_i32" => Some(self.check_vdot_i32(args, locals, span)),
+            "vdot_lane_i32" => Some(self.check_vdot_lane_i32(args, locals, span)),
+            "smmla_i32" => Some(self.check_smmla_i32(args, locals, span)),
+            "ummla_i32" => Some(self.check_ummla_i32(args, locals, span)),
+            "usmmla_i32" => Some(self.check_usmmla_i32(args, locals, span)),
             "shuffle_bytes" => Some(self.check_shuffle_bytes(args, locals, span)),
+            "cvt_f16_f32" => Some(self.check_cvt_f16_f32(args, locals, span)),
+            "cvt_f32_f16" => Some(self.check_cvt_f32_f16(args, locals, span)),
+            "f32x4_from_scalars" => Some(self.check_f32_from_scalars(args, locals, span, 4)),
+            "f32x8_from_scalars" => Some(self.check_f32_from_scalars(args, locals, span, 8)),
+            "bitcast_i8x16" => Some(self.check_bitcast(args, locals, span, Type::I8, 16)),
+            "bitcast_i8x32" => Some(self.check_bitcast(args, locals, span, Type::I8, 32)),
+            "bitcast_i32x4" => Some(self.check_bitcast(args, locals, span, Type::I32, 4)),
+            "bitcast_i32x8" => Some(self.check_bitcast(args, locals, span, Type::I32, 8)),
+            "sat_add" => Some(self.check_sat_add(args, locals, span)),
+            "sat_sub" => Some(self.check_sat_sub(args, locals, span)),
+            "abs_diff" => Some(self.check_abs_diff(args, locals, span)),
+            "round_f32x4_i32x4" => Some(self.check_round_f32x4_i32x4(args, locals, span)),
+            "round_f32x8_i32x8" => Some(self.check_round_f32x8_i32x8(args, locals, span)),
+            "pack_sat_i16x8" => Some(self.check_pack_sat_i16x8(args, locals, span)),
+            "pack_sat_i16x16" => Some(self.check_pack_sat_i16x16(args, locals, span)),
+            "pack_sat_i32x4" => Some(self.check_pack_sat_i32x4(args, locals, span)),
+            "pack_sat_i32x8" => Some(self.check_pack_sat_i32x8(args, locals, span)),
+            "pack_usat_i16x8" => Some(self.check_pack_usat_i16x8(args, locals, span)),
+            "pack_usat_i16x16" => Some(self.check_pack_usat_i16x16(args, locals, span)),
+            "pack_usat_i32x4" => Some(self.check_pack_usat_i32x4(args, locals, span)),
+            "pack_usat_i32x8" => Some(self.check_pack_usat_i32x8(args, locals, span)),
+            "bsrli_i8x16" => Some(self.check_bsrli_i8x16(args, locals, span)),
+            "bsrli_i8x32" => Some(self.check_bsrli_i8x32(args, locals, span)),
+            "bslli_i8x16" => Some(self.check_bslli_i8x16(args, locals, span)),
+            "bslli_i8x32" => Some(self.check_bslli_i8x32(args, locals, span)),
+            "addp_i32" => Some(self.check_addp_i32(args, locals, span)),
+            "addp_i16" => Some(self.check_addp_i16(args, locals, span)),
+            "wmul_i16" => Some(self.check_wmul_i16(args, locals, span)),
+            "wmul_u16" => Some(self.check_wmul_u16(args, locals, span)),
+            "wmul_i32" => Some(self.check_wmul_i32(args, locals, span)),
+            "wmul_u32" => Some(self.check_wmul_u32(args, locals, span)),
             "prefetch" => Some(self.check_prefetch(args, locals, span)),
             "gather" => Some(self.check_gather(args, locals, span)),
             "scatter" => Some(self.check_scatter(args, locals, span)),
@@ -58,6 +112,31 @@ impl TypeChecker {
             "store_masked" => Some(self.check_store_masked(args, locals, span)),
             "movemask" => Some(self.check_movemask(args, locals, span)),
             "min" | "max" => Some(self.check_min_max(name, args, locals, span)),
+            "concat_i8x16" => Some(self.check_concat(name, args, locals, span, Type::I8, 16)),
+            "concat_u8x16" => Some(self.check_concat(name, args, locals, span, Type::U8, 16)),
+            "concat_i8x32" => Some(self.check_concat(name, args, locals, span, Type::I8, 32)),
+            "concat_u8x32" => Some(self.check_concat(name, args, locals, span, Type::U8, 32)),
+            "concat_i32x8" => Some(self.check_concat(name, args, locals, span, Type::I32, 8)),
+            "concat_f32x8" => Some(self.check_concat(name, args, locals, span, Type::F32, 8)),
+            "lo128_i8x32" => Some(self.check_lo_extract(name, args, locals, span, Type::I8, 32)),
+            "hi128_i8x32" => Some(self.check_hi_extract(name, args, locals, span, Type::I8, 32)),
+            "lo128_u8x32" => Some(self.check_lo_extract(name, args, locals, span, Type::U8, 32)),
+            "hi128_u8x32" => Some(self.check_hi_extract(name, args, locals, span, Type::U8, 32)),
+            "lo256_i8x64" => Some(self.check_lo_extract(name, args, locals, span, Type::I8, 64)),
+            "hi256_i8x64" => Some(self.check_hi_extract(name, args, locals, span, Type::I8, 64)),
+            "lo256_u8x64" => Some(self.check_lo_extract(name, args, locals, span, Type::U8, 64)),
+            "hi256_u8x64" => Some(self.check_hi_extract(name, args, locals, span, Type::U8, 64)),
+            "lo256_i32x16" => Some(self.check_lo_extract(name, args, locals, span, Type::I32, 16)),
+            "hi256_i32x16" => Some(self.check_hi_extract(name, args, locals, span, Type::I32, 16)),
+            "lo256_f32x16" => Some(self.check_lo_extract(name, args, locals, span, Type::F32, 16)),
+            "hi256_f32x16" => Some(self.check_hi_extract(name, args, locals, span, Type::F32, 16)),
+            "shuffle_i32x8" => Some(self.check_shuffle_i32(name, args, locals, span, 8)),
+            "shuffle_i32x16" => Some(self.check_shuffle_i32(name, args, locals, span, 16)),
+            "blend_i32" => Some(self.check_blend_i32(name, args, locals, span)),
+            "bcast_even_pairs_i32x8" => Some(self.check_bcast_pairs(name, args, locals, span, 8)),
+            "bcast_odd_pairs_i32x8" => Some(self.check_bcast_pairs(name, args, locals, span, 8)),
+            "bcast_even_pairs_i32x16" => Some(self.check_bcast_pairs(name, args, locals, span, 16)),
+            "bcast_odd_pairs_i32x16" => Some(self.check_bcast_pairs(name, args, locals, span, 16)),
             _ if types::parse_typed_load(name).is_some() => {
                 let vec_type = types::parse_typed_load(name).unwrap();
                 Some(self.check_load(args, locals, Some(&vec_type), span))
@@ -211,6 +290,40 @@ impl TypeChecker {
         }
     }
 
+    /// Type-check `exp_poly_f32(v: f32xN) -> f32xN`. Restricts to f32-element
+    /// vectors only — scalar f32, f64xN, f16xN, integer vectors all rejected
+    /// at typeck. Codegen retains a defense-in-depth guard.
+    fn check_exp_poly_f32(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                format!("exp_poly_f32 expects 1 argument, got {}", args.len()),
+                span.clone(),
+            ));
+        }
+        let t = self.check_expr(&args[0], locals)?;
+        match &t {
+            Type::Vector { elem, .. } if **elem == Type::F32 => Ok(t),
+            Type::Vector { elem, .. } => Err(CompileError::type_error(
+                format!("exp_poly_f32 expects f32 element type, got {elem}"),
+                span.clone(),
+            )),
+            Type::F32 | Type::FloatLiteral => Err(CompileError::type_error(
+                "exp_poly_f32 expects f32 vector, got scalar; use exp() for scalar libm-precision"
+                    .to_string(),
+                span.clone(),
+            )),
+            _ => Err(CompileError::type_error(
+                format!("exp_poly_f32 expects float vector, got {t}"),
+                span.clone(),
+            )),
+        }
+    }
+
     fn check_prefetch(
         &self,
         args: &[Expr],
@@ -240,6 +353,34 @@ impl TypeChecker {
         Ok(Type::Void)
     }
 
+    fn check_abs(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                "abs expects 1 argument",
+                span.clone(),
+            ));
+        }
+        let arg_type = self.check_expr(&args[0], locals)?;
+        match &arg_type {
+            Type::F32 | Type::F64 | Type::FloatLiteral => Ok(arg_type),
+            Type::Vector { elem, .. } if elem.is_float() => Ok(arg_type),
+            Type::Vector { elem, .. }
+                if matches!(elem.as_ref(), Type::I8 | Type::I16 | Type::I32) =>
+            {
+                Ok(arg_type)
+            }
+            _ => Err(CompileError::type_error(
+                format!("abs expects float or signed integer/vector argument, got {arg_type}"),
+                args[0].span().clone(),
+            )),
+        }
+    }
+
     fn check_conversion(
         &self,
         name: &str,
@@ -254,6 +395,19 @@ impl TypeChecker {
             ));
         }
         let arg_type = self.check_expr(&args[0], locals)?;
+
+        // Vector conversion: only to_f32 on i32 element type is supported.
+        // Result preserves the lane count: i32xN -> f32xN.
+        if name == "to_f32"
+            && let Type::Vector { elem, width } = &arg_type
+            && matches!(elem.as_ref(), Type::I32)
+        {
+            return Ok(Type::Vector {
+                elem: Box::new(Type::F32),
+                width: *width,
+            });
+        }
+
         if !arg_type.is_numeric() {
             return Err(CompileError::type_error(
                 format!("{name} expects numeric argument, got {arg_type}"),
@@ -263,10 +417,57 @@ impl TypeChecker {
         let target = match name {
             "to_f32" => Type::F32,
             "to_f64" => Type::F64,
+            "to_f16" => Type::F16,
+            "to_i16" => Type::I16,
             "to_i32" => Type::I32,
             "to_i64" => Type::I64,
             _ => unreachable!(),
         };
         Ok(target)
+    }
+
+    fn check_ptr_as(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 1 argument"),
+                span.clone(),
+            ));
+        }
+        let arg_type = self.check_expr(&args[0], locals)?;
+        let (mutable, restrict) = match &arg_type {
+            Type::Pointer {
+                mutable, restrict, ..
+            } => (*mutable, *restrict),
+            _ => {
+                return Err(CompileError::type_error(
+                    format!("{name} expects a pointer argument, got {arg_type}"),
+                    args[0].span().clone(),
+                ));
+            }
+        };
+        let inner = match name {
+            "ptr_as_i8" => Type::I8,
+            "ptr_as_u8" => Type::U8,
+            "ptr_as_i16" => Type::I16,
+            "ptr_as_u16" => Type::U16,
+            "ptr_as_i32" => Type::I32,
+            "ptr_as_u32" => Type::U32,
+            "ptr_as_i64" => Type::I64,
+            "ptr_as_u64" => Type::U64,
+            "ptr_as_f32" => Type::F32,
+            "ptr_as_f64" => Type::F64,
+            _ => unreachable!(),
+        };
+        Ok(Type::Pointer {
+            inner: Box::new(inner),
+            mutable,
+            restrict,
+        })
     }
 }

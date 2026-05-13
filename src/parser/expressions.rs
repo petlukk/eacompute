@@ -88,37 +88,29 @@ impl Parser {
         }
     }
 
+    fn additive_op(kind: &TokenKind) -> Option<BinaryOp> {
+        match kind {
+            TokenKind::Plus => Some(BinaryOp::Add),
+            TokenKind::Minus => Some(BinaryOp::Subtract),
+            TokenKind::PlusDot => Some(BinaryOp::AddDot),
+            TokenKind::MinusDot => Some(BinaryOp::SubDot),
+            TokenKind::AmpDot => Some(BinaryOp::AndDot),
+            TokenKind::PipeDot => Some(BinaryOp::OrDot),
+            TokenKind::CaretDot => Some(BinaryOp::XorDot),
+            TokenKind::ShiftLeftDot => Some(BinaryOp::ShiftLeftDot),
+            TokenKind::ShiftRightDot => Some(BinaryOp::ShiftRightDot),
+            TokenKind::Amp => Some(BinaryOp::BitAnd),
+            TokenKind::Pipe => Some(BinaryOp::BitOr),
+            TokenKind::Caret => Some(BinaryOp::BitXor),
+            TokenKind::ShiftLeft => Some(BinaryOp::ShiftLeft),
+            TokenKind::ShiftRight => Some(BinaryOp::ShiftRight),
+            _ => None,
+        }
+    }
+
     fn additive(&mut self) -> crate::error::Result<Expr> {
         let mut left = self.multiplicative()?;
-        while self.check(TokenKind::Plus)
-            || self.check(TokenKind::Minus)
-            || self.check(TokenKind::PlusDot)
-            || self.check(TokenKind::MinusDot)
-            || self.check(TokenKind::AmpDot)
-            || self.check(TokenKind::PipeDot)
-            || self.check(TokenKind::CaretDot)
-            || self.check(TokenKind::ShiftLeftDot)
-            || self.check(TokenKind::ShiftRightDot)
-        {
-            let op = if self.check(TokenKind::Plus) {
-                BinaryOp::Add
-            } else if self.check(TokenKind::Minus) {
-                BinaryOp::Subtract
-            } else if self.check(TokenKind::PlusDot) {
-                BinaryOp::AddDot
-            } else if self.check(TokenKind::MinusDot) {
-                BinaryOp::SubDot
-            } else if self.check(TokenKind::AmpDot) {
-                BinaryOp::AndDot
-            } else if self.check(TokenKind::PipeDot) {
-                BinaryOp::OrDot
-            } else if self.check(TokenKind::CaretDot) {
-                BinaryOp::XorDot
-            } else if self.check(TokenKind::ShiftLeftDot) {
-                BinaryOp::ShiftLeftDot
-            } else {
-                BinaryOp::ShiftRightDot
-            };
+        while let Some(op) = self.peek_kind().and_then(Self::additive_op) {
             let start = left.span().start.clone();
             self.advance();
             let right = self.multiplicative()?;
@@ -442,12 +434,17 @@ impl Parser {
                 (TokenKind::U8x32, "u8", 32),
                 (TokenKind::I16x8, "i16", 8),
                 (TokenKind::I16x16, "i16", 16),
+                (TokenKind::F16x4, "f16", 4),
+                (TokenKind::F16x8, "f16", 8),
                 (TokenKind::F32x4, "f32", 4),
                 (TokenKind::I32x4, "i32", 4),
                 (TokenKind::F32x8, "f32", 8),
                 (TokenKind::I32x8, "i32", 8),
                 (TokenKind::I32x16, "i32", 16),
                 (TokenKind::F32x16, "f32", 16),
+                (TokenKind::U8x64, "u8", 64),
+                (TokenKind::I8x64, "i8", 64),
+                (TokenKind::I16x32, "i16", 32),
             ];
             for (tk, elem_name, width) in vec_suffixes {
                 if self.check(tk.clone()) {
@@ -469,8 +466,17 @@ impl Parser {
                     });
                 }
             }
-            // No type suffix — it's an array literal (used for shuffle masks etc.)
+            // No type suffix — check if let-binding declares a vector type
             let end = self.previous_position();
+            if let Some(ref hint) = self.let_type_hint
+                && matches!(hint, crate::ast::TypeAnnotation::Vector { .. })
+            {
+                return Ok(Expr::Vector {
+                    elements,
+                    ty: hint.clone(),
+                    span: Span::new(start, end),
+                });
+            }
             return Ok(Expr::ArrayLiteral(elements, Span::new(start, end)));
         }
 

@@ -58,6 +58,84 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
+    /// abs(x) — cross-platform absolute value.
+    /// Float: llvm.fabs.{type}. Signed integer vector: llvm.abs.{type}.
+    pub(super) fn compile_abs(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let val = self.compile_expr(&args[0], function)?;
+        match val {
+            BasicValueEnum::FloatValue(fv) => {
+                let float_ty = fv.get_type();
+                let intrinsic_name = if float_ty == self.context.f32_type() {
+                    "llvm.fabs.f32"
+                } else {
+                    "llvm.fabs.f64"
+                };
+                let fn_type = float_ty.fn_type(&[float_ty.into()], false);
+                let intrinsic = self
+                    .module
+                    .get_function(intrinsic_name)
+                    .unwrap_or_else(|| self.module.add_function(intrinsic_name, fn_type, None));
+                let result = self
+                    .builder
+                    .build_call(intrinsic, &[fv.into()], "abs")
+                    .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                    .try_as_basic_value()
+                    .basic()
+                    .ok_or_else(|| CompileError::codegen_error("abs did not return a value"))?;
+                Ok(result)
+            }
+            BasicValueEnum::VectorValue(vv) => {
+                let vec_ty = vv.get_type();
+                let elem = vec_ty.get_element_type();
+                if elem.is_float_type() {
+                    let intrinsic_name = self.llvm_vector_intrinsic_name("llvm.fabs", vec_ty);
+                    let fn_type = vec_ty.fn_type(&[vec_ty.into()], false);
+                    let intrinsic =
+                        self.module
+                            .get_function(&intrinsic_name)
+                            .unwrap_or_else(|| {
+                                self.module.add_function(&intrinsic_name, fn_type, None)
+                            });
+                    let result = self
+                        .builder
+                        .build_call(intrinsic, &[vv.into()], "vfabs")
+                        .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                        .try_as_basic_value()
+                        .basic()
+                        .ok_or_else(|| CompileError::codegen_error("abs did not return a value"))?;
+                    Ok(result)
+                } else {
+                    // Signed integer vector: llvm.abs.v{N}i{bits}
+                    let intrinsic_name = self.llvm_vector_intrinsic_name("llvm.abs", vec_ty);
+                    let i1_false = self.context.bool_type().const_int(0, false);
+                    let fn_type =
+                        vec_ty.fn_type(&[vec_ty.into(), self.context.bool_type().into()], false);
+                    let intrinsic =
+                        self.module
+                            .get_function(&intrinsic_name)
+                            .unwrap_or_else(|| {
+                                self.module.add_function(&intrinsic_name, fn_type, None)
+                            });
+                    let result = self
+                        .builder
+                        .build_call(intrinsic, &[vv.into(), i1_false.into()], "vabs")
+                        .map_err(|e| CompileError::codegen_error(e.to_string()))?
+                        .try_as_basic_value()
+                        .basic()
+                        .ok_or_else(|| CompileError::codegen_error("abs did not return a value"))?;
+                    Ok(result)
+                }
+            }
+            _ => Err(CompileError::codegen_error(
+                "abs expects float or signed integer vector",
+            )),
+        }
+    }
+
     /// exp(x) for scalar f32/f64 and float vectors.
     pub(super) fn compile_exp(
         &mut self,
@@ -229,143 +307,6 @@ impl<'ctx> CodeGenerator<'ctx> {
             _ => Err(CompileError::codegen_error(format!(
                 "{name} expects matching numeric types"
             ))),
-        }
-    }
-
-    /// Type conversion intrinsics: to_f32, to_f64, to_i32, to_i64.
-    pub(super) fn compile_conversion(
-        &mut self,
-        name: &str,
-        args: &[Expr],
-        function: FunctionValue<'ctx>,
-    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
-        let is_unsigned_src = self.arg_is_unsigned(&args[0]);
-        let val = self.compile_expr(&args[0], function)?;
-
-        match name {
-            "to_f32" => {
-                let target = self.context.f32_type();
-                match val {
-                    BasicValueEnum::IntValue(iv) => {
-                        let result = if is_unsigned_src {
-                            self.builder
-                                .build_unsigned_int_to_float(iv, target, "uitofp")
-                        } else {
-                            self.builder.build_signed_int_to_float(iv, target, "sitofp")
-                        }
-                        .map_err(|e| CompileError::codegen_error(e.to_string()))?;
-                        Ok(BasicValueEnum::FloatValue(result))
-                    }
-                    BasicValueEnum::FloatValue(fv) => {
-                        if fv.get_type() == self.context.f64_type() {
-                            let result = self
-                                .builder
-                                .build_float_trunc(fv, target, "fptrunc")
-                                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
-                            Ok(BasicValueEnum::FloatValue(result))
-                        } else {
-                            Ok(val)
-                        }
-                    }
-                    _ => Err(CompileError::codegen_error(
-                        "to_f32: unsupported source type",
-                    )),
-                }
-            }
-            "to_f64" => {
-                let target = self.context.f64_type();
-                match val {
-                    BasicValueEnum::IntValue(iv) => {
-                        let result = if is_unsigned_src {
-                            self.builder
-                                .build_unsigned_int_to_float(iv, target, "uitofp")
-                        } else {
-                            self.builder.build_signed_int_to_float(iv, target, "sitofp")
-                        }
-                        .map_err(|e| CompileError::codegen_error(e.to_string()))?;
-                        Ok(BasicValueEnum::FloatValue(result))
-                    }
-                    BasicValueEnum::FloatValue(fv) => {
-                        if fv.get_type() == self.context.f32_type() {
-                            let result = self
-                                .builder
-                                .build_float_ext(fv, target, "fpext")
-                                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
-                            Ok(BasicValueEnum::FloatValue(result))
-                        } else {
-                            Ok(val)
-                        }
-                    }
-                    _ => Err(CompileError::codegen_error(
-                        "to_f64: unsupported source type",
-                    )),
-                }
-            }
-            "to_i32" => {
-                let target = self.context.i32_type();
-                match val {
-                    BasicValueEnum::FloatValue(fv) => {
-                        let result = self
-                            .builder
-                            .build_float_to_signed_int(fv, target, "fptosi")
-                            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
-                        Ok(BasicValueEnum::IntValue(result))
-                    }
-                    BasicValueEnum::IntValue(iv) => {
-                        let src_width = iv.get_type().get_bit_width();
-                        if src_width > 32 {
-                            let result = self
-                                .builder
-                                .build_int_truncate(iv, target, "trunc")
-                                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
-                            Ok(BasicValueEnum::IntValue(result))
-                        } else if src_width < 32 {
-                            let result = if is_unsigned_src {
-                                self.builder.build_int_z_extend(iv, target, "zext")
-                            } else {
-                                self.builder.build_int_s_extend(iv, target, "sext")
-                            }
-                            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
-                            Ok(BasicValueEnum::IntValue(result))
-                        } else {
-                            Ok(val)
-                        }
-                    }
-                    _ => Err(CompileError::codegen_error(
-                        "to_i32: unsupported source type",
-                    )),
-                }
-            }
-            "to_i64" => {
-                let target = self.context.i64_type();
-                match val {
-                    BasicValueEnum::FloatValue(fv) => {
-                        let result = self
-                            .builder
-                            .build_float_to_signed_int(fv, target, "fptosi")
-                            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
-                        Ok(BasicValueEnum::IntValue(result))
-                    }
-                    BasicValueEnum::IntValue(iv) => {
-                        let src_width = iv.get_type().get_bit_width();
-                        if src_width < 64 {
-                            let result = if is_unsigned_src {
-                                self.builder.build_int_z_extend(iv, target, "zext")
-                            } else {
-                                self.builder.build_int_s_extend(iv, target, "sext")
-                            }
-                            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
-                            Ok(BasicValueEnum::IntValue(result))
-                        } else {
-                            Ok(val)
-                        }
-                    }
-                    _ => Err(CompileError::codegen_error(
-                        "to_i64: unsupported source type",
-                    )),
-                }
-            }
-            _ => unreachable!(),
         }
     }
 }

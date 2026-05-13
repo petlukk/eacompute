@@ -9,7 +9,17 @@ mod simd;
 #[cfg(feature = "llvm")]
 mod simd_arithmetic;
 #[cfg(feature = "llvm")]
+mod simd_byteshift;
+#[cfg(feature = "llvm")]
+mod simd_conv;
+#[cfg(feature = "llvm")]
 mod simd_dotprod;
+#[cfg(feature = "llvm")]
+mod simd_exp_poly;
+#[cfg(feature = "llvm")]
+mod simd_fp16;
+#[cfg(feature = "llvm")]
+mod simd_lane;
 #[cfg(feature = "llvm")]
 mod simd_masked;
 #[cfg(feature = "llvm")]
@@ -17,7 +27,21 @@ mod simd_math;
 #[cfg(feature = "llvm")]
 mod simd_memory;
 #[cfg(feature = "llvm")]
+mod simd_pack;
+#[cfg(feature = "llvm")]
+mod simd_pack_unsigned;
+#[cfg(feature = "llvm")]
+mod simd_saturating;
+#[cfg(feature = "llvm")]
+mod simd_util;
+#[cfg(feature = "llvm")]
+mod simd_wmul;
+#[cfg(feature = "llvm")]
+mod simd_x86_dotprod;
+#[cfg(feature = "llvm")]
 mod statements;
+#[cfg(feature = "llvm")]
+mod statements_select;
 #[cfg(feature = "llvm")]
 mod structs;
 
@@ -58,6 +82,8 @@ pub struct CodeGenerator<'ctx> {
     pub(crate) struct_fields: HashMap<String, Vec<(String, u32, Type)>>,
     pub(crate) avx512: bool,
     pub(crate) dotprod: bool,
+    pub(crate) i8mm: bool,
+    pub(crate) fp16: bool,
     pub(crate) is_arm: bool,
     pub(crate) constants: HashMap<String, (Type, Literal)>,
 }
@@ -96,6 +122,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             struct_fields: HashMap::new(),
             avx512: opts.extra_features.contains("avx512"),
             dotprod: opts.extra_features.contains("dotprod"),
+            i8mm: opts.extra_features.contains("i8mm"),
+            fp16: opts.extra_features.contains("fullfp16"),
             is_arm: opts.is_arm(),
             constants: HashMap::new(),
         }
@@ -189,6 +217,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 BasicTypeEnum::IntType(self.context.i32_type())
             }
             Type::I64 | Type::U64 => BasicTypeEnum::IntType(self.context.i64_type()),
+            Type::F16 => BasicTypeEnum::FloatType(self.context.f16_type()),
             Type::F32 => BasicTypeEnum::FloatType(self.context.f32_type()),
             Type::F64 | Type::FloatLiteral => BasicTypeEnum::FloatType(self.context.f64_type()),
             Type::Bool => BasicTypeEnum::IntType(self.context.bool_type()),
@@ -223,6 +252,16 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
+    pub(crate) fn type_alignment(ty: &Type) -> u32 {
+        match ty {
+            Type::Bool | Type::I8 | Type::U8 => 1,
+            Type::I16 | Type::U16 => 2,
+            Type::I32 | Type::U32 | Type::F32 | Type::IntLiteral => 4,
+            Type::I64 | Type::U64 | Type::F64 | Type::FloatLiteral | Type::Pointer { .. } => 8,
+            _ => 4,
+        }
+    }
+
     pub(crate) fn resolve_annotation(ann: &TypeAnnotation) -> Type {
         match ann {
             TypeAnnotation::Named(name, _) => match name.as_str() {
@@ -234,6 +273,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 "u32" => Type::U32,
                 "i64" => Type::I64,
                 "u64" => Type::U64,
+                "f16" => Type::F16,
                 "f32" => Type::F32,
                 "f64" => Type::F64,
                 "bool" => Type::Bool,
@@ -269,17 +309,20 @@ impl<'ctx> CodeGenerator<'ctx> {
         return_type: Option<&TypeAnnotation>,
         export: bool,
     ) -> crate::error::Result<()> {
-        let param_types: Vec<BasicMetadataTypeEnum> = params
-            .iter()
-            .map(|p| {
+        let param_types: Vec<BasicMetadataTypeEnum> = {
+            let mut out = Vec::with_capacity(params.len());
+            for p in params {
                 let ty = Self::resolve_annotation(&p.ty);
-                self.llvm_type(&ty).into()
-            })
-            .collect();
+                self.validate_type_for_target(&ty)?;
+                out.push(self.llvm_type(&ty).into());
+            }
+            out
+        };
 
         let fn_type = match return_type {
             Some(ann) => {
                 let ret_ty = Self::resolve_annotation(ann);
+                self.validate_type_for_target(&ret_ty)?;
                 let llvm_ret = self.llvm_type(&ret_ty);
                 llvm_ret.fn_type(&param_types, false)
             }
@@ -309,6 +352,19 @@ impl<'ctx> CodeGenerator<'ctx> {
                 .set_dll_storage_class(DLLStorageClass::Export);
         }
 
+        // Eä functions never throw exceptions or unwind the stack.
+        let nounwind_id = inkwell::attributes::Attribute::get_named_enum_kind_id("nounwind");
+        let nounwind = self.context.create_enum_attribute(nounwind_id, 0);
+        function.add_attribute(inkwell::attributes::AttributeLoc::Function, nounwind);
+
+        // Non-exported helpers must always be inlined — Eä has no recursion
+        // and private functions exist solely as helpers within one compilation unit.
+        if !export && name != "main" {
+            let inline_id = inkwell::attributes::Attribute::get_named_enum_kind_id("alwaysinline");
+            let inline_attr = self.context.create_enum_attribute(inline_id, 0);
+            function.add_attribute(inkwell::attributes::AttributeLoc::Function, inline_attr);
+        }
+
         for (i, param) in params.iter().enumerate() {
             if let TypeAnnotation::Pointer { restrict: true, .. } = &param.ty {
                 let kind_id = inkwell::attributes::Attribute::get_named_enum_kind_id("noalias");
@@ -331,8 +387,13 @@ impl<'ctx> CodeGenerator<'ctx> {
     }
 
     pub(crate) fn validate_type_for_target(&self, ty: &Type) -> crate::error::Result<()> {
-        if !self.is_arm {
-            return Ok(());
+        if let Type::Vector { elem, .. } = ty
+            && matches!(**elem, Type::F16)
+            && !self.fp16
+        {
+            return Err(CompileError::codegen_error(
+                "f16 vector types require --fp16; use cvt_f16_f32 to compute through f32 instead",
+            ));
         }
         if let Type::Vector { elem, width } = ty {
             let elem_bits = match elem.as_ref() {
@@ -343,7 +404,21 @@ impl<'ctx> CodeGenerator<'ctx> {
                 _ => return Ok(()),
             };
             let total_bits = elem_bits * width;
-            if total_bits > 128 {
+            if !self.is_arm && total_bits == 64 {
+                let type_name = format!("{ty}");
+                return Err(CompileError::codegen_error(format!(
+                    "{type_name} is a 64-bit NEON type; not available on x86 — use {} or wider",
+                    match elem.as_ref() {
+                        Type::I8 => "i8x16",
+                        Type::U8 => "u8x16",
+                        Type::I16 => "i16x8",
+                        Type::U16 => "u16x8",
+                        Type::I32 => "i32x4",
+                        _ => "a 128-bit vector",
+                    }
+                )));
+            }
+            if self.is_arm && total_bits > 128 {
                 let type_name = format!("{ty}");
                 let hint = match (elem.as_ref(), total_bits) {
                     (Type::F32, 256) => "f32x8 requires AVX2; use f32x4 on ARM",

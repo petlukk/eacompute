@@ -1,0 +1,45 @@
+// gather_compose_bench_arm.ea — ARM variant for v1.11.0 Phase 6 perf audit.
+//
+// Same scalar_loop and compose_x4 kernels as gather_compose_bench.ea but
+// without the gather_x86 export (which errors on ARM codegen). Build with
+// --target-triple=aarch64-unknown-linux-gnu.
+//
+// Goal: verify that f32x4_from_scalars is at least as fast as a scalar
+// store loop on Pi 5 Cortex-A76. On x86 the AVX2 hardware gather is the
+// reference; on ARM, "at least as fast as scalar" is the spec target —
+// any uplift from amortizing scalar stores into a single vector store
+// counts as a win.
+//
+// Cross-compile recipe:
+//   ../../target/release/ea gather_compose_bench_arm.ea \
+//       --target-triple=aarch64-unknown-linux-gnu --lib
+//   (or to .o + manual link with aarch64-linux-gnu-gcc — see fp16_kv_harness.c)
+//   scp .so + harness to Pi, taskset -c 0.
+
+export func scalar_loop(lut: *f32, indices: *i32, out: *mut f32, n: i32) {
+    let mut i: i32 = 0
+    while i < n {
+        let v0: f32 = lut[indices[i]]
+        let v1: f32 = lut[indices[i + 1]]
+        let v2: f32 = lut[indices[i + 2]]
+        let v3: f32 = lut[indices[i + 3]]
+        out[i] = v0
+        out[i + 1] = v1
+        out[i + 2] = v2
+        out[i + 3] = v3
+        i = i + 4
+    }
+}
+
+export func compose_x4(lut: *f32, indices: *i32, out: *mut f32, n: i32) {
+    let mut i: i32 = 0
+    while i < n {
+        let v0: f32 = lut[indices[i]]
+        let v1: f32 = lut[indices[i + 1]]
+        let v2: f32 = lut[indices[i + 2]]
+        let v3: f32 = lut[indices[i + 3]]
+        let v: f32x4 = f32x4_from_scalars(v0, v1, v2, v3)
+        store(out, i, v)
+        i = i + 4
+    }
+}

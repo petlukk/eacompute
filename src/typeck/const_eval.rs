@@ -136,6 +136,11 @@ fn eval_int_binary(
         BinaryOp::GreaterEqual => Ok(ConstValue::Bool(a >= b)),
         BinaryOp::And => Ok(ConstValue::Bool(a != 0 && b != 0)),
         BinaryOp::Or => Ok(ConstValue::Bool(a != 0 || b != 0)),
+        BinaryOp::BitAnd => Ok(ConstValue::Integer(a & b)),
+        BinaryOp::BitOr => Ok(ConstValue::Integer(a | b)),
+        BinaryOp::BitXor => Ok(ConstValue::Integer(a ^ b)),
+        BinaryOp::ShiftLeft => Ok(ConstValue::Integer(a << b)),
+        BinaryOp::ShiftRight => Ok(ConstValue::Integer(a >> b)),
         _ => Err(CompileError::type_error(
             format!("operator {op} not supported in constant expression"),
             span.clone(),

@@ -142,6 +142,17 @@ let bits: i32 = movemask(mask)
 
 Useful for branching on SIMD comparison results or counting matching elements. Each bit in the result corresponds to one vector lane.
 
+## sat_add / sat_sub
+
+Saturating addition and subtraction. Values clamp to the type's min/max instead of wrapping on overflow. Cross-platform (ARM NEON + x86 SSE2):
+
+```
+let bright: u8x16 = sat_add(pixels, boost)    // clamps at 255
+let dark: u8x16 = sat_sub(pixels, reduce)     // clamps at 0
+```
+
+Works with `i8x16`, `u8x16`, `i16x8`, `u16x8`. Signed vs unsigned saturation is determined by the element type. Both arguments must have the same type.
+
 ## Masked memory operations
 
 For tail handling, masked loads and stores read/write only the valid lanes:
@@ -171,4 +182,6 @@ The `rem` parameter specifies how many elements (starting from lane 0) are valid
 | `rsqrt(x)` | scalar/vector | same type | Reciprocal square root |
 | `min(a, b)` | 2 values | same type | Element-wise minimum |
 | `max(a, b)` | 2 values | same type | Element-wise maximum |
+| `sat_add(a, b)` | 2 int vectors | same type | Saturating addition |
+| `sat_sub(a, b)` | 2 int vectors | same type | Saturating subtraction |
 | `movemask(m)` | bool vector | i32 | Extract lane mask to bits |

@@ -12,6 +12,9 @@ Options:
   --target=CPU       Target CPU (default: native)
   --target-triple=T  Cross-compile target (e.g. aarch64-unknown-linux-gnu)
   --avx512           Enable AVX-512 (f32x16)
+  --fp16             Enable ARM FEAT_FP16 native f16 SIMD (ARM only)
+  --dotprod          Enable ARM dot-product (sdot/udot/vdot) (ARM only)
+  --i8mm             Enable ARM I8MM (smmla/ummla/usmmla) (ARM only)
   --emit-llvm        Print LLVM IR
   --emit-asm         Emit assembly (.s file)
   --header           Generate C header (.h)

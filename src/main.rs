@@ -1,3 +1,4 @@
+mod bind_handler;
 mod usage;
 
 use ea_compiler::error::{CompileError, format_with_source};
@@ -25,7 +26,7 @@ fn main() {
             return;
         }
         "bind" => {
-            handle_bind(&args[1..]);
+            bind_handler::handle_bind(&args[1..]);
             return;
         }
         "inspect" => {
@@ -112,11 +113,13 @@ fn main() {
                 extra_features = "+avx512f,+avx512vl,+avx512bw".to_string();
             }
             "--dotprod" => {
-                if extra_features.is_empty() {
-                    extra_features = "+dotprod".to_string();
-                } else {
-                    extra_features = format!("{extra_features},+dotprod");
-                }
+                append_feature(&mut extra_features, "+dotprod");
+            }
+            "--i8mm" => {
+                append_feature(&mut extra_features, "+i8mm");
+            }
+            "--fp16" => {
+                append_feature(&mut extra_features, "+fullfp16");
             }
             other => {
                 eprintln!("error: unknown option '{other}'");
@@ -170,6 +173,11 @@ fn main() {
 
         if opts.is_arm() && opts.extra_features.contains("avx512") {
             eprintln!("error: --avx512 is incompatible with ARM target");
+            process::exit(1);
+        }
+
+        if !opts.is_arm() && opts.extra_features.contains("i8mm") {
+            eprintln!("error: --i8mm is only valid for AArch64 targets");
             process::exit(1);
         }
 
@@ -318,7 +326,7 @@ fn main() {
 
 fn handle_inspect(args: &[String]) {
     if args.is_empty() {
-        eprintln!("Usage: ea inspect <file.ea> [--avx512] [--target=CPU] [--opt-level=N]");
+        eprintln!("Usage: ea inspect <file.ea> [--avx512] [--fp16] [--target=CPU] [--opt-level=N]");
         process::exit(1);
     }
     let input_file = &args[0];
@@ -349,11 +357,11 @@ fn handle_inspect(args: &[String]) {
         } else if arg == "--avx512" {
             extra_features = "+avx512f,+avx512vl,+avx512bw".to_string();
         } else if arg == "--dotprod" {
-            if extra_features.is_empty() {
-                extra_features = "+dotprod".to_string();
-            } else {
-                extra_features = format!("{extra_features},+dotprod");
-            }
+            append_feature(&mut extra_features, "+dotprod");
+        } else if arg == "--i8mm" {
+            append_feature(&mut extra_features, "+i8mm");
+        } else if arg == "--fp16" {
+            append_feature(&mut extra_features, "+fullfp16");
         } else {
             eprintln!("error: unknown inspect option '{arg}'");
             process::exit(1);
@@ -383,116 +391,10 @@ fn handle_inspect(args: &[String]) {
     }
 }
 
-fn handle_bind(args: &[String]) {
-    if args.is_empty() {
-        eprintln!("Usage: ea bind <file.ea> --python [--rust] [--pytorch] [--cmake] [--cpp]");
-        process::exit(1);
-    }
-    let input_file = &args[0];
-    let mut python = false;
-    let mut rust = false;
-    let mut pytorch = false;
-    let mut cmake = false;
-    let mut cpp = false;
-    for arg in &args[1..] {
-        match arg.as_str() {
-            "--python" => python = true,
-            "--rust" => rust = true,
-            "--pytorch" => pytorch = true,
-            "--cmake" => cmake = true,
-            "--cpp" => cpp = true,
-            other => {
-                eprintln!("error: unknown bind option '{other}'");
-                process::exit(1);
-            }
-        }
-    }
-    if !python && !rust && !pytorch && !cmake && !cpp {
-        eprintln!(
-            "error: ea bind requires at least one of --python, --rust, --pytorch, --cmake, --cpp"
-        );
-        process::exit(1);
-    }
-
-    let stem = std::path::Path::new(input_file)
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("output");
-
-    // Read JSON metadata (needed by all generators except --cmake)
-    let json_str = if python || rust || pytorch || cpp {
-        let json_path = format!("{input_file}.json");
-        match std::fs::read_to_string(&json_path) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("error: cannot read '{json_path}': {e}");
-                eprintln!("hint: compile with --lib first to generate JSON metadata");
-                process::exit(1);
-            }
-        }
+fn append_feature(features: &mut String, feat: &str) {
+    if features.is_empty() {
+        *features = feat.to_string();
     } else {
-        String::new()
-    };
-
-    if python {
-        let code = match ea_compiler::bind_python::generate(&json_str, stem) {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("error: failed to generate Python bindings: {e}");
-                process::exit(1);
-            }
-        };
-        let path = format!("{stem}.py");
-        write_or_exit(&path, &code);
+        *features = format!("{features},{feat}");
     }
-
-    if rust {
-        let code = match ea_compiler::bind_rust::generate(&json_str, stem) {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("error: failed to generate Rust bindings: {e}");
-                process::exit(1);
-            }
-        };
-        let path = format!("{stem}.rs");
-        write_or_exit(&path, &code);
-    }
-
-    if pytorch {
-        let code = match ea_compiler::bind_pytorch::generate(&json_str, stem) {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("error: failed to generate PyTorch bindings: {e}");
-                process::exit(1);
-            }
-        };
-        let path = format!("{stem}_torch.py");
-        write_or_exit(&path, &code);
-    }
-
-    if cmake {
-        let (cmakelists, ea_cmake) = ea_compiler::bind_cmake::generate(stem);
-        write_or_exit("CMakeLists.txt", &cmakelists);
-        write_or_exit("EaCompiler.cmake", &ea_cmake);
-    }
-
-    if cpp {
-        let code = match ea_compiler::bind_cpp::generate(&json_str, stem) {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("error: failed to generate C++ bindings: {e}");
-                process::exit(1);
-            }
-        };
-        let path = format!("{stem}.hpp");
-        write_or_exit(&path, &code);
-    }
-}
-
-fn write_or_exit(path: &str, content: &str) {
-    if let Err(e) = std::fs::write(path, content) {
-        eprintln!("error: cannot write '{path}': {e}");
-        process::exit(1);
-    }
-    eprintln!("wrote {path}");
 }

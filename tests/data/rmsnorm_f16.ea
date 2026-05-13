@@ -1,0 +1,29 @@
+// rmsnorm_f16.ea — RMSNorm on f16x8 with f32 scalar sqrt round-trip
+//
+// y = x / sqrt(sum(x^2)/N + eps) * scale
+//
+// Per-element f16 except the scalar sqrt, which goes through f32
+// because there's no useful single-lane f16 sqrt instruction (would
+// be the same hardware speed via fptrunc/fpext).
+export func rmsnorm_f16(x: *f16, scale: f16, out: *mut f16) {
+    let v: f16x8 = load(x, 0)
+    let sq: f16x8 = v .* v
+    let sum: f16 = reduce_add(sq)
+
+    // mean: sum / 8
+    let n: f16 = to_f16(8.0)
+    let mean_scalar: f16 = sum / n
+
+    // Add eps and sqrt — done in f32 for the scalar (no f16 scalar sqrt)
+    let mean_f32: f32 = to_f32(mean_scalar)
+    let eps: f32 = 0.000001
+    let denom_f32: f32 = sqrt(mean_f32 + eps)
+    let inv_f32: f32 = 1.0 / denom_f32
+    let inv_f16: f16 = to_f16(inv_f32)
+
+    // y = x * inv * scale
+    let inv_v: f16x8 = splat(inv_f16)
+    let scale_v: f16x8 = splat(scale)
+    let r: f16x8 = v .* inv_v .* scale_v
+    store(out, 0, r)
+}
