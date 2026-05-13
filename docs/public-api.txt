@@ -1,0 +1,1006 @@
+pub mod ea_compiler
+pub mod ea_compiler::ast
+pub enum ea_compiler::ast::BinaryOp
+pub ea_compiler::ast::BinaryOp::Add
+pub ea_compiler::ast::BinaryOp::AddDot
+pub ea_compiler::ast::BinaryOp::And
+pub ea_compiler::ast::BinaryOp::AndDot
+pub ea_compiler::ast::BinaryOp::BitAnd
+pub ea_compiler::ast::BinaryOp::BitOr
+pub ea_compiler::ast::BinaryOp::BitXor
+pub ea_compiler::ast::BinaryOp::DivDot
+pub ea_compiler::ast::BinaryOp::Divide
+pub ea_compiler::ast::BinaryOp::Equal
+pub ea_compiler::ast::BinaryOp::EqualDot
+pub ea_compiler::ast::BinaryOp::Greater
+pub ea_compiler::ast::BinaryOp::GreaterDot
+pub ea_compiler::ast::BinaryOp::GreaterEqual
+pub ea_compiler::ast::BinaryOp::GreaterEqualDot
+pub ea_compiler::ast::BinaryOp::Less
+pub ea_compiler::ast::BinaryOp::LessDot
+pub ea_compiler::ast::BinaryOp::LessEqual
+pub ea_compiler::ast::BinaryOp::LessEqualDot
+pub ea_compiler::ast::BinaryOp::Modulo
+pub ea_compiler::ast::BinaryOp::MulDot
+pub ea_compiler::ast::BinaryOp::Multiply
+pub ea_compiler::ast::BinaryOp::NotEqual
+pub ea_compiler::ast::BinaryOp::NotEqualDot
+pub ea_compiler::ast::BinaryOp::Or
+pub ea_compiler::ast::BinaryOp::OrDot
+pub ea_compiler::ast::BinaryOp::ShiftLeft
+pub ea_compiler::ast::BinaryOp::ShiftLeftDot
+pub ea_compiler::ast::BinaryOp::ShiftRight
+pub ea_compiler::ast::BinaryOp::ShiftRightDot
+pub ea_compiler::ast::BinaryOp::SubDot
+pub ea_compiler::ast::BinaryOp::Subtract
+pub ea_compiler::ast::BinaryOp::XorDot
+impl core::clone::Clone for ea_compiler::ast::BinaryOp
+pub fn ea_compiler::ast::BinaryOp::clone(&self) -> ea_compiler::ast::BinaryOp
+impl core::cmp::PartialEq for ea_compiler::ast::BinaryOp
+pub fn ea_compiler::ast::BinaryOp::eq(&self, other: &ea_compiler::ast::BinaryOp) -> bool
+impl core::fmt::Debug for ea_compiler::ast::BinaryOp
+pub fn ea_compiler::ast::BinaryOp::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::ast::BinaryOp
+pub fn ea_compiler::ast::BinaryOp::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::ast::BinaryOp
+impl core::marker::Freeze for ea_compiler::ast::BinaryOp
+impl core::marker::Send for ea_compiler::ast::BinaryOp
+impl core::marker::Sync for ea_compiler::ast::BinaryOp
+impl core::marker::Unpin for ea_compiler::ast::BinaryOp
+impl core::marker::UnsafeUnpin for ea_compiler::ast::BinaryOp
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::ast::BinaryOp
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::ast::BinaryOp
+pub enum ea_compiler::ast::Expr
+pub ea_compiler::ast::Expr::ArrayLiteral(alloc::vec::Vec<ea_compiler::ast::Expr>, ea_compiler::lexer::Span)
+pub ea_compiler::ast::Expr::Binary(alloc::boxed::Box<ea_compiler::ast::Expr>, ea_compiler::ast::BinaryOp, alloc::boxed::Box<ea_compiler::ast::Expr>, ea_compiler::lexer::Span)
+pub ea_compiler::ast::Expr::Call
+pub ea_compiler::ast::Expr::Call::args: alloc::vec::Vec<ea_compiler::ast::Expr>
+pub ea_compiler::ast::Expr::Call::name: alloc::string::String
+pub ea_compiler::ast::Expr::Call::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Expr::FieldAccess
+pub ea_compiler::ast::Expr::FieldAccess::field: alloc::string::String
+pub ea_compiler::ast::Expr::FieldAccess::object: alloc::boxed::Box<ea_compiler::ast::Expr>
+pub ea_compiler::ast::Expr::FieldAccess::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Expr::Index
+pub ea_compiler::ast::Expr::Index::index: alloc::boxed::Box<ea_compiler::ast::Expr>
+pub ea_compiler::ast::Expr::Index::object: alloc::boxed::Box<ea_compiler::ast::Expr>
+pub ea_compiler::ast::Expr::Index::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Expr::Literal(ea_compiler::ast::Literal, ea_compiler::lexer::Span)
+pub ea_compiler::ast::Expr::Negate(alloc::boxed::Box<ea_compiler::ast::Expr>, ea_compiler::lexer::Span)
+pub ea_compiler::ast::Expr::Not(alloc::boxed::Box<ea_compiler::ast::Expr>, ea_compiler::lexer::Span)
+pub ea_compiler::ast::Expr::StructLiteral
+pub ea_compiler::ast::Expr::StructLiteral::fields: alloc::vec::Vec<(alloc::string::String, ea_compiler::ast::Expr)>
+pub ea_compiler::ast::Expr::StructLiteral::name: alloc::string::String
+pub ea_compiler::ast::Expr::StructLiteral::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Expr::Variable(alloc::string::String, ea_compiler::lexer::Span)
+pub ea_compiler::ast::Expr::Vector
+pub ea_compiler::ast::Expr::Vector::elements: alloc::vec::Vec<ea_compiler::ast::Expr>
+pub ea_compiler::ast::Expr::Vector::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Expr::Vector::ty: ea_compiler::ast::TypeAnnotation
+impl ea_compiler::ast::Expr
+pub fn ea_compiler::ast::Expr::span(&self) -> &ea_compiler::lexer::Span
+impl core::clone::Clone for ea_compiler::ast::Expr
+pub fn ea_compiler::ast::Expr::clone(&self) -> ea_compiler::ast::Expr
+impl core::cmp::PartialEq for ea_compiler::ast::Expr
+pub fn ea_compiler::ast::Expr::eq(&self, other: &ea_compiler::ast::Expr) -> bool
+impl core::fmt::Debug for ea_compiler::ast::Expr
+pub fn ea_compiler::ast::Expr::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::ast::Expr
+pub fn ea_compiler::ast::Expr::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::ast::Expr
+impl core::marker::Freeze for ea_compiler::ast::Expr
+impl core::marker::Send for ea_compiler::ast::Expr
+impl core::marker::Sync for ea_compiler::ast::Expr
+impl core::marker::Unpin for ea_compiler::ast::Expr
+impl core::marker::UnsafeUnpin for ea_compiler::ast::Expr
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::ast::Expr
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::ast::Expr
+pub enum ea_compiler::ast::Literal
+pub ea_compiler::ast::Literal::Bool(bool)
+pub ea_compiler::ast::Literal::Float(f64)
+pub ea_compiler::ast::Literal::Integer(i64)
+pub ea_compiler::ast::Literal::StringLit(alloc::string::String)
+impl core::clone::Clone for ea_compiler::ast::Literal
+pub fn ea_compiler::ast::Literal::clone(&self) -> ea_compiler::ast::Literal
+impl core::cmp::PartialEq for ea_compiler::ast::Literal
+pub fn ea_compiler::ast::Literal::eq(&self, other: &ea_compiler::ast::Literal) -> bool
+impl core::fmt::Debug for ea_compiler::ast::Literal
+pub fn ea_compiler::ast::Literal::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::ast::Literal
+pub fn ea_compiler::ast::Literal::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::ast::Literal
+impl core::marker::Freeze for ea_compiler::ast::Literal
+impl core::marker::Send for ea_compiler::ast::Literal
+impl core::marker::Sync for ea_compiler::ast::Literal
+impl core::marker::Unpin for ea_compiler::ast::Literal
+impl core::marker::UnsafeUnpin for ea_compiler::ast::Literal
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::ast::Literal
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::ast::Literal
+pub enum ea_compiler::ast::Stmt
+pub ea_compiler::ast::Stmt::Assign
+pub ea_compiler::ast::Stmt::Assign::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::Assign::target: alloc::string::String
+pub ea_compiler::ast::Stmt::Assign::value: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::Const
+pub ea_compiler::ast::Stmt::Const::name: alloc::string::String
+pub ea_compiler::ast::Stmt::Const::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::Const::ty: ea_compiler::ast::TypeAnnotation
+pub ea_compiler::ast::Stmt::Const::value: ea_compiler::ast::Literal
+pub ea_compiler::ast::Stmt::ExprStmt(ea_compiler::ast::Expr, ea_compiler::lexer::Span)
+pub ea_compiler::ast::Stmt::FieldAssign
+pub ea_compiler::ast::Stmt::FieldAssign::field: alloc::string::String
+pub ea_compiler::ast::Stmt::FieldAssign::object: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::FieldAssign::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::FieldAssign::value: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::For
+pub ea_compiler::ast::Stmt::For::body: alloc::vec::Vec<ea_compiler::ast::Stmt>
+pub ea_compiler::ast::Stmt::For::end: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::For::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::For::start: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::For::step: core::option::Option<u32>
+pub ea_compiler::ast::Stmt::For::var: alloc::string::String
+pub ea_compiler::ast::Stmt::ForEach
+pub ea_compiler::ast::Stmt::ForEach::body: alloc::vec::Vec<ea_compiler::ast::Stmt>
+pub ea_compiler::ast::Stmt::ForEach::end: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::ForEach::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::ForEach::start: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::ForEach::var: alloc::string::String
+pub ea_compiler::ast::Stmt::Function
+pub ea_compiler::ast::Stmt::Function::body: alloc::vec::Vec<ea_compiler::ast::Stmt>
+pub ea_compiler::ast::Stmt::Function::cfg: core::option::Option<alloc::string::String>
+pub ea_compiler::ast::Stmt::Function::export: bool
+pub ea_compiler::ast::Stmt::Function::name: alloc::string::String
+pub ea_compiler::ast::Stmt::Function::params: alloc::vec::Vec<ea_compiler::ast::Param>
+pub ea_compiler::ast::Stmt::Function::return_type: core::option::Option<ea_compiler::ast::TypeAnnotation>
+pub ea_compiler::ast::Stmt::Function::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::If
+pub ea_compiler::ast::Stmt::If::condition: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::If::else_body: core::option::Option<alloc::vec::Vec<ea_compiler::ast::Stmt>>
+pub ea_compiler::ast::Stmt::If::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::If::then_body: alloc::vec::Vec<ea_compiler::ast::Stmt>
+pub ea_compiler::ast::Stmt::IndexAssign
+pub ea_compiler::ast::Stmt::IndexAssign::index: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::IndexAssign::object: alloc::string::String
+pub ea_compiler::ast::Stmt::IndexAssign::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::IndexAssign::value: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::Kernel
+pub ea_compiler::ast::Stmt::Kernel::body: alloc::vec::Vec<ea_compiler::ast::Stmt>
+pub ea_compiler::ast::Stmt::Kernel::export: bool
+pub ea_compiler::ast::Stmt::Kernel::name: alloc::string::String
+pub ea_compiler::ast::Stmt::Kernel::params: alloc::vec::Vec<ea_compiler::ast::Param>
+pub ea_compiler::ast::Stmt::Kernel::range_bound: alloc::string::String
+pub ea_compiler::ast::Stmt::Kernel::range_var: alloc::string::String
+pub ea_compiler::ast::Stmt::Kernel::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::Kernel::step: u32
+pub ea_compiler::ast::Stmt::Kernel::tail: core::option::Option<ea_compiler::ast::TailStrategy>
+pub ea_compiler::ast::Stmt::Kernel::tail_body: core::option::Option<alloc::vec::Vec<ea_compiler::ast::Stmt>>
+pub ea_compiler::ast::Stmt::Let
+pub ea_compiler::ast::Stmt::Let::mutable: bool
+pub ea_compiler::ast::Stmt::Let::name: alloc::string::String
+pub ea_compiler::ast::Stmt::Let::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::Let::ty: ea_compiler::ast::TypeAnnotation
+pub ea_compiler::ast::Stmt::Let::value: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::Return(core::option::Option<ea_compiler::ast::Expr>, ea_compiler::lexer::Span)
+pub ea_compiler::ast::Stmt::StaticAssert
+pub ea_compiler::ast::Stmt::StaticAssert::condition: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::StaticAssert::message: alloc::string::String
+pub ea_compiler::ast::Stmt::StaticAssert::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::Struct
+pub ea_compiler::ast::Stmt::Struct::fields: alloc::vec::Vec<ea_compiler::ast::StructField>
+pub ea_compiler::ast::Stmt::Struct::name: alloc::string::String
+pub ea_compiler::ast::Stmt::Struct::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::Unroll
+pub ea_compiler::ast::Stmt::Unroll::body: alloc::boxed::Box<ea_compiler::ast::Stmt>
+pub ea_compiler::ast::Stmt::Unroll::count: u32
+pub ea_compiler::ast::Stmt::Unroll::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Stmt::While
+pub ea_compiler::ast::Stmt::While::body: alloc::vec::Vec<ea_compiler::ast::Stmt>
+pub ea_compiler::ast::Stmt::While::condition: ea_compiler::ast::Expr
+pub ea_compiler::ast::Stmt::While::span: ea_compiler::lexer::Span
+impl ea_compiler::ast::Stmt
+pub fn ea_compiler::ast::Stmt::span(&self) -> &ea_compiler::lexer::Span
+impl core::clone::Clone for ea_compiler::ast::Stmt
+pub fn ea_compiler::ast::Stmt::clone(&self) -> ea_compiler::ast::Stmt
+impl core::cmp::PartialEq for ea_compiler::ast::Stmt
+pub fn ea_compiler::ast::Stmt::eq(&self, other: &ea_compiler::ast::Stmt) -> bool
+impl core::fmt::Debug for ea_compiler::ast::Stmt
+pub fn ea_compiler::ast::Stmt::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::ast::Stmt
+pub fn ea_compiler::ast::Stmt::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::ast::Stmt
+impl core::marker::Freeze for ea_compiler::ast::Stmt
+impl core::marker::Send for ea_compiler::ast::Stmt
+impl core::marker::Sync for ea_compiler::ast::Stmt
+impl core::marker::Unpin for ea_compiler::ast::Stmt
+impl core::marker::UnsafeUnpin for ea_compiler::ast::Stmt
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::ast::Stmt
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::ast::Stmt
+pub enum ea_compiler::ast::TailStrategy
+pub ea_compiler::ast::TailStrategy::Mask
+pub ea_compiler::ast::TailStrategy::Pad
+pub ea_compiler::ast::TailStrategy::Scalar
+impl core::clone::Clone for ea_compiler::ast::TailStrategy
+pub fn ea_compiler::ast::TailStrategy::clone(&self) -> ea_compiler::ast::TailStrategy
+impl core::cmp::PartialEq for ea_compiler::ast::TailStrategy
+pub fn ea_compiler::ast::TailStrategy::eq(&self, other: &ea_compiler::ast::TailStrategy) -> bool
+impl core::fmt::Debug for ea_compiler::ast::TailStrategy
+pub fn ea_compiler::ast::TailStrategy::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::ast::TailStrategy
+impl core::marker::Freeze for ea_compiler::ast::TailStrategy
+impl core::marker::Send for ea_compiler::ast::TailStrategy
+impl core::marker::Sync for ea_compiler::ast::TailStrategy
+impl core::marker::Unpin for ea_compiler::ast::TailStrategy
+impl core::marker::UnsafeUnpin for ea_compiler::ast::TailStrategy
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::ast::TailStrategy
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::ast::TailStrategy
+pub enum ea_compiler::ast::TypeAnnotation
+pub ea_compiler::ast::TypeAnnotation::Named(alloc::string::String, ea_compiler::lexer::Span)
+pub ea_compiler::ast::TypeAnnotation::Pointer
+pub ea_compiler::ast::TypeAnnotation::Pointer::inner: alloc::boxed::Box<ea_compiler::ast::TypeAnnotation>
+pub ea_compiler::ast::TypeAnnotation::Pointer::mutable: bool
+pub ea_compiler::ast::TypeAnnotation::Pointer::restrict: bool
+pub ea_compiler::ast::TypeAnnotation::Pointer::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::TypeAnnotation::Vector
+pub ea_compiler::ast::TypeAnnotation::Vector::elem: alloc::boxed::Box<ea_compiler::ast::TypeAnnotation>
+pub ea_compiler::ast::TypeAnnotation::Vector::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::TypeAnnotation::Vector::width: usize
+impl ea_compiler::ast::TypeAnnotation
+pub fn ea_compiler::ast::TypeAnnotation::span(&self) -> &ea_compiler::lexer::Span
+impl core::clone::Clone for ea_compiler::ast::TypeAnnotation
+pub fn ea_compiler::ast::TypeAnnotation::clone(&self) -> ea_compiler::ast::TypeAnnotation
+impl core::cmp::PartialEq for ea_compiler::ast::TypeAnnotation
+pub fn ea_compiler::ast::TypeAnnotation::eq(&self, other: &ea_compiler::ast::TypeAnnotation) -> bool
+impl core::fmt::Debug for ea_compiler::ast::TypeAnnotation
+pub fn ea_compiler::ast::TypeAnnotation::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::ast::TypeAnnotation
+pub fn ea_compiler::ast::TypeAnnotation::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::ast::TypeAnnotation
+impl core::marker::Freeze for ea_compiler::ast::TypeAnnotation
+impl core::marker::Send for ea_compiler::ast::TypeAnnotation
+impl core::marker::Sync for ea_compiler::ast::TypeAnnotation
+impl core::marker::Unpin for ea_compiler::ast::TypeAnnotation
+impl core::marker::UnsafeUnpin for ea_compiler::ast::TypeAnnotation
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::ast::TypeAnnotation
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::ast::TypeAnnotation
+pub struct ea_compiler::ast::Param
+pub ea_compiler::ast::Param::cap: core::option::Option<alloc::string::String>
+pub ea_compiler::ast::Param::count: core::option::Option<alloc::string::String>
+pub ea_compiler::ast::Param::name: alloc::string::String
+pub ea_compiler::ast::Param::output: bool
+pub ea_compiler::ast::Param::span: ea_compiler::lexer::Span
+pub ea_compiler::ast::Param::ty: ea_compiler::ast::TypeAnnotation
+impl core::clone::Clone for ea_compiler::ast::Param
+pub fn ea_compiler::ast::Param::clone(&self) -> ea_compiler::ast::Param
+impl core::cmp::PartialEq for ea_compiler::ast::Param
+pub fn ea_compiler::ast::Param::eq(&self, other: &ea_compiler::ast::Param) -> bool
+impl core::fmt::Debug for ea_compiler::ast::Param
+pub fn ea_compiler::ast::Param::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::ast::Param
+pub fn ea_compiler::ast::Param::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::ast::Param
+impl core::marker::Freeze for ea_compiler::ast::Param
+impl core::marker::Send for ea_compiler::ast::Param
+impl core::marker::Sync for ea_compiler::ast::Param
+impl core::marker::Unpin for ea_compiler::ast::Param
+impl core::marker::UnsafeUnpin for ea_compiler::ast::Param
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::ast::Param
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::ast::Param
+pub struct ea_compiler::ast::StructField
+pub ea_compiler::ast::StructField::name: alloc::string::String
+pub ea_compiler::ast::StructField::ty: ea_compiler::ast::TypeAnnotation
+impl core::clone::Clone for ea_compiler::ast::StructField
+pub fn ea_compiler::ast::StructField::clone(&self) -> ea_compiler::ast::StructField
+impl core::cmp::PartialEq for ea_compiler::ast::StructField
+pub fn ea_compiler::ast::StructField::eq(&self, other: &ea_compiler::ast::StructField) -> bool
+impl core::fmt::Debug for ea_compiler::ast::StructField
+pub fn ea_compiler::ast::StructField::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::ast::StructField
+pub fn ea_compiler::ast::StructField::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::ast::StructField
+impl core::marker::Freeze for ea_compiler::ast::StructField
+impl core::marker::Send for ea_compiler::ast::StructField
+impl core::marker::Sync for ea_compiler::ast::StructField
+impl core::marker::Unpin for ea_compiler::ast::StructField
+impl core::marker::UnsafeUnpin for ea_compiler::ast::StructField
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::ast::StructField
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::ast::StructField
+pub fn ea_compiler::ast::exported_function_names(stmts: &[ea_compiler::ast::Stmt]) -> alloc::vec::Vec<&str>
+pub mod ea_compiler::bind_cmake
+pub fn ea_compiler::bind_cmake::generate(module_stem: &str) -> (alloc::string::String, alloc::string::String)
+pub mod ea_compiler::bind_common
+pub struct ea_compiler::bind_common::Arg
+pub ea_compiler::bind_common::Arg::cap: core::option::Option<alloc::string::String>
+pub ea_compiler::bind_common::Arg::count: core::option::Option<alloc::string::String>
+pub ea_compiler::bind_common::Arg::direction: alloc::string::String
+pub ea_compiler::bind_common::Arg::name: alloc::string::String
+pub ea_compiler::bind_common::Arg::ty: alloc::string::String
+impl core::marker::Freeze for ea_compiler::bind_common::Arg
+impl core::marker::Send for ea_compiler::bind_common::Arg
+impl core::marker::Sync for ea_compiler::bind_common::Arg
+impl core::marker::Unpin for ea_compiler::bind_common::Arg
+impl core::marker::UnsafeUnpin for ea_compiler::bind_common::Arg
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bind_common::Arg
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::bind_common::Arg
+pub struct ea_compiler::bind_common::ExportFunc
+pub ea_compiler::bind_common::ExportFunc::args: alloc::vec::Vec<ea_compiler::bind_common::Arg>
+pub ea_compiler::bind_common::ExportFunc::name: alloc::string::String
+pub ea_compiler::bind_common::ExportFunc::return_type: core::option::Option<alloc::string::String>
+impl core::marker::Freeze for ea_compiler::bind_common::ExportFunc
+impl core::marker::Send for ea_compiler::bind_common::ExportFunc
+impl core::marker::Sync for ea_compiler::bind_common::ExportFunc
+impl core::marker::Unpin for ea_compiler::bind_common::ExportFunc
+impl core::marker::UnsafeUnpin for ea_compiler::bind_common::ExportFunc
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bind_common::ExportFunc
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::bind_common::ExportFunc
+pub fn ea_compiler::bind_common::find_collapsed_args(args: &[ea_compiler::bind_common::Arg]) -> alloc::vec::Vec<bool>
+pub fn ea_compiler::bind_common::has_out_params(func: &ea_compiler::bind_common::ExportFunc) -> bool
+pub fn ea_compiler::bind_common::is_integer_type(ty: &str) -> bool
+pub fn ea_compiler::bind_common::is_mut_pointer(ty: &str) -> bool
+pub fn ea_compiler::bind_common::is_parallelizable(func: &ea_compiler::bind_common::ExportFunc) -> bool
+pub fn ea_compiler::bind_common::is_pointer(ty: &str) -> bool
+pub fn ea_compiler::bind_common::parse_exports(json: &str) -> core::result::Result<alloc::vec::Vec<ea_compiler::bind_common::ExportFunc>, alloc::string::String>
+pub fn ea_compiler::bind_common::parse_string_field(json: &str, key: &str) -> core::option::Option<alloc::string::String>
+pub fn ea_compiler::bind_common::pointer_inner(ty: &str) -> core::option::Option<&str>
+pub mod ea_compiler::bind_cpp
+pub fn ea_compiler::bind_cpp::generate(json_str: &str, module_stem: &str) -> core::result::Result<alloc::string::String, alloc::string::String>
+pub mod ea_compiler::bind_python
+pub fn ea_compiler::bind_python::generate(json_str: &str, module_stem: &str) -> core::result::Result<alloc::string::String, alloc::string::String>
+pub mod ea_compiler::bind_pytorch
+pub fn ea_compiler::bind_pytorch::generate(json_str: &str, module_stem: &str) -> core::result::Result<alloc::string::String, alloc::string::String>
+pub mod ea_compiler::bind_rust
+pub fn ea_compiler::bind_rust::generate(json_str: &str, module_stem: &str) -> core::result::Result<alloc::string::String, alloc::string::String>
+pub mod ea_compiler::codegen
+pub struct ea_compiler::codegen::CodeGenerator<'ctx>
+impl<'ctx> ea_compiler::codegen::CodeGenerator<'ctx>
+pub fn ea_compiler::codegen::CodeGenerator<'ctx>::compile_program(&mut self, stmts: &[ea_compiler::ast::Stmt]) -> ea_compiler::error::Result<()>
+pub fn ea_compiler::codegen::CodeGenerator<'ctx>::module(&self) -> &inkwell::module::Module<'ctx>
+pub fn ea_compiler::codegen::CodeGenerator<'ctx>::new(context: &'ctx inkwell::context::Context, module_name: &str, opts: &ea_compiler::CompileOptions) -> Self
+pub fn ea_compiler::codegen::CodeGenerator<'ctx>::print_ir(&self) -> alloc::string::String
+impl<'ctx> !core::marker::Freeze for ea_compiler::codegen::CodeGenerator<'ctx>
+impl<'ctx> !core::marker::Send for ea_compiler::codegen::CodeGenerator<'ctx>
+impl<'ctx> !core::marker::Sync for ea_compiler::codegen::CodeGenerator<'ctx>
+impl<'ctx> core::marker::Unpin for ea_compiler::codegen::CodeGenerator<'ctx>
+impl<'ctx> core::marker::UnsafeUnpin for ea_compiler::codegen::CodeGenerator<'ctx>
+impl<'ctx> !core::panic::unwind_safe::RefUnwindSafe for ea_compiler::codegen::CodeGenerator<'ctx>
+impl<'ctx> core::panic::unwind_safe::UnwindSafe for ea_compiler::codegen::CodeGenerator<'ctx>
+pub mod ea_compiler::desugar
+pub fn ea_compiler::desugar::desugar_kernels(stmts: alloc::vec::Vec<ea_compiler::ast::Stmt>) -> ea_compiler::error::Result<alloc::vec::Vec<ea_compiler::ast::Stmt>>
+pub fn ea_compiler::desugar::filter_cfg(stmts: alloc::vec::Vec<ea_compiler::ast::Stmt>, is_arm: bool) -> alloc::vec::Vec<ea_compiler::ast::Stmt>
+pub mod ea_compiler::error
+pub enum ea_compiler::error::CompileError
+pub ea_compiler::error::CompileError::CodeGenError
+pub ea_compiler::error::CompileError::CodeGenError::message: alloc::string::String
+pub ea_compiler::error::CompileError::CodeGenError::position: core::option::Option<ea_compiler::lexer::Position>
+pub ea_compiler::error::CompileError::LexError
+pub ea_compiler::error::CompileError::LexError::message: alloc::string::String
+pub ea_compiler::error::CompileError::LexError::position: ea_compiler::lexer::Position
+pub ea_compiler::error::CompileError::ParseError
+pub ea_compiler::error::CompileError::ParseError::message: alloc::string::String
+pub ea_compiler::error::CompileError::ParseError::position: ea_compiler::lexer::Position
+pub ea_compiler::error::CompileError::TypeError
+pub ea_compiler::error::CompileError::TypeError::message: alloc::string::String
+pub ea_compiler::error::CompileError::TypeError::span: ea_compiler::lexer::Span
+impl ea_compiler::error::CompileError
+pub fn ea_compiler::error::CompileError::codegen_error(message: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn ea_compiler::error::CompileError::lex_error(message: impl core::convert::Into<alloc::string::String>, position: ea_compiler::lexer::Position) -> Self
+pub fn ea_compiler::error::CompileError::parse_error(message: impl core::convert::Into<alloc::string::String>, position: ea_compiler::lexer::Position) -> Self
+pub fn ea_compiler::error::CompileError::type_error(message: impl core::convert::Into<alloc::string::String>, span: ea_compiler::lexer::Span) -> Self
+impl core::clone::Clone for ea_compiler::error::CompileError
+pub fn ea_compiler::error::CompileError::clone(&self) -> ea_compiler::error::CompileError
+impl core::convert::From<ea_compiler::error::CompileError> for ea_compiler::error::CompileErrors
+pub fn ea_compiler::error::CompileErrors::from(e: ea_compiler::error::CompileError) -> Self
+impl core::error::Error for ea_compiler::error::CompileError
+impl core::fmt::Debug for ea_compiler::error::CompileError
+pub fn ea_compiler::error::CompileError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::error::CompileError
+pub fn ea_compiler::error::CompileError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for ea_compiler::error::CompileError
+impl core::marker::Send for ea_compiler::error::CompileError
+impl core::marker::Sync for ea_compiler::error::CompileError
+impl core::marker::Unpin for ea_compiler::error::CompileError
+impl core::marker::UnsafeUnpin for ea_compiler::error::CompileError
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::error::CompileError
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::error::CompileError
+pub struct ea_compiler::error::CompileErrors
+impl ea_compiler::error::CompileErrors
+pub fn ea_compiler::error::CompileErrors::errors(&self) -> &[ea_compiler::error::CompileError]
+pub fn ea_compiler::error::CompileErrors::into_result(self) -> ea_compiler::error::Result<()>
+pub fn ea_compiler::error::CompileErrors::is_empty(&self) -> bool
+pub fn ea_compiler::error::CompileErrors::len(&self) -> usize
+pub fn ea_compiler::error::CompileErrors::new() -> Self
+pub fn ea_compiler::error::CompileErrors::push(&mut self, error: ea_compiler::error::CompileError)
+impl core::clone::Clone for ea_compiler::error::CompileErrors
+pub fn ea_compiler::error::CompileErrors::clone(&self) -> ea_compiler::error::CompileErrors
+impl core::convert::From<ea_compiler::error::CompileError> for ea_compiler::error::CompileErrors
+pub fn ea_compiler::error::CompileErrors::from(e: ea_compiler::error::CompileError) -> Self
+impl core::default::Default for ea_compiler::error::CompileErrors
+pub fn ea_compiler::error::CompileErrors::default() -> ea_compiler::error::CompileErrors
+impl core::fmt::Debug for ea_compiler::error::CompileErrors
+pub fn ea_compiler::error::CompileErrors::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::error::CompileErrors
+pub fn ea_compiler::error::CompileErrors::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for ea_compiler::error::CompileErrors
+impl core::marker::Send for ea_compiler::error::CompileErrors
+impl core::marker::Sync for ea_compiler::error::CompileErrors
+impl core::marker::Unpin for ea_compiler::error::CompileErrors
+impl core::marker::UnsafeUnpin for ea_compiler::error::CompileErrors
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::error::CompileErrors
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::error::CompileErrors
+pub fn ea_compiler::error::format_with_source(error: &ea_compiler::error::CompileError, filename: &str, source: &str) -> alloc::string::String
+pub type ea_compiler::error::Result<T> = core::result::Result<T, ea_compiler::error::CompileError>
+pub mod ea_compiler::header
+pub fn ea_compiler::header::generate(stmts: &[ea_compiler::ast::Stmt], module_name: &str) -> alloc::string::String
+pub mod ea_compiler::inspect
+pub struct ea_compiler::inspect::FunctionReport
+pub ea_compiler::inspect::FunctionReport::exported: bool
+pub ea_compiler::inspect::FunctionReport::fma_ops: u32
+pub ea_compiler::inspect::FunctionReport::hints: alloc::vec::Vec<alloc::string::String>
+pub ea_compiler::inspect::FunctionReport::loads: u32
+pub ea_compiler::inspect::FunctionReport::loops: u32
+pub ea_compiler::inspect::FunctionReport::name: alloc::string::String
+pub ea_compiler::inspect::FunctionReport::registers: alloc::vec::Vec<alloc::string::String>
+pub ea_compiler::inspect::FunctionReport::scalar_instructions: u32
+pub ea_compiler::inspect::FunctionReport::stores: u32
+pub ea_compiler::inspect::FunctionReport::vector_instructions: u32
+pub ea_compiler::inspect::FunctionReport::vector_width: core::option::Option<alloc::string::String>
+impl core::fmt::Debug for ea_compiler::inspect::FunctionReport
+pub fn ea_compiler::inspect::FunctionReport::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for ea_compiler::inspect::FunctionReport
+impl core::marker::Send for ea_compiler::inspect::FunctionReport
+impl core::marker::Sync for ea_compiler::inspect::FunctionReport
+impl core::marker::Unpin for ea_compiler::inspect::FunctionReport
+impl core::marker::UnsafeUnpin for ea_compiler::inspect::FunctionReport
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::inspect::FunctionReport
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::inspect::FunctionReport
+pub struct ea_compiler::inspect::InspectReport
+pub ea_compiler::inspect::InspectReport::functions: alloc::vec::Vec<ea_compiler::inspect::FunctionReport>
+impl core::fmt::Debug for ea_compiler::inspect::InspectReport
+pub fn ea_compiler::inspect::InspectReport::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::inspect::InspectReport
+pub fn ea_compiler::inspect::InspectReport::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for ea_compiler::inspect::InspectReport
+impl core::marker::Send for ea_compiler::inspect::InspectReport
+impl core::marker::Sync for ea_compiler::inspect::InspectReport
+impl core::marker::Unpin for ea_compiler::inspect::InspectReport
+impl core::marker::UnsafeUnpin for ea_compiler::inspect::InspectReport
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::inspect::InspectReport
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::inspect::InspectReport
+pub fn ea_compiler::inspect::analyze_module(module: &inkwell::module::Module<'_>, machine: &inkwell::targets::TargetMachine) -> ea_compiler::error::Result<ea_compiler::inspect::InspectReport>
+pub mod ea_compiler::lexer
+pub mod ea_compiler::lexer::tokens
+pub fn ea_compiler::lexer::tokens::token_name(kind: &ea_compiler::lexer::TokenKind) -> &'static str
+pub enum ea_compiler::lexer::TokenKind
+pub ea_compiler::lexer::TokenKind::Amp
+pub ea_compiler::lexer::TokenKind::AmpAmp
+pub ea_compiler::lexer::TokenKind::AmpDot
+pub ea_compiler::lexer::TokenKind::Arrow
+pub ea_compiler::lexer::TokenKind::Bang
+pub ea_compiler::lexer::TokenKind::BangEqual
+pub ea_compiler::lexer::TokenKind::BangEqualDot
+pub ea_compiler::lexer::TokenKind::BinLiteral
+pub ea_compiler::lexer::TokenKind::Bool
+pub ea_compiler::lexer::TokenKind::Caret
+pub ea_compiler::lexer::TokenKind::CaretDot
+pub ea_compiler::lexer::TokenKind::Colon
+pub ea_compiler::lexer::TokenKind::Comma
+pub ea_compiler::lexer::TokenKind::Const
+pub ea_compiler::lexer::TokenKind::Dot
+pub ea_compiler::lexer::TokenKind::DotDot
+pub ea_compiler::lexer::TokenKind::Else
+pub ea_compiler::lexer::TokenKind::EqualEqual
+pub ea_compiler::lexer::TokenKind::EqualEqualDot
+pub ea_compiler::lexer::TokenKind::Equals
+pub ea_compiler::lexer::TokenKind::Export
+pub ea_compiler::lexer::TokenKind::F16
+pub ea_compiler::lexer::TokenKind::F16x4
+pub ea_compiler::lexer::TokenKind::F16x8
+pub ea_compiler::lexer::TokenKind::F32
+pub ea_compiler::lexer::TokenKind::F32x16
+pub ea_compiler::lexer::TokenKind::F32x4
+pub ea_compiler::lexer::TokenKind::F32x8
+pub ea_compiler::lexer::TokenKind::F64
+pub ea_compiler::lexer::TokenKind::F64x2
+pub ea_compiler::lexer::TokenKind::F64x4
+pub ea_compiler::lexer::TokenKind::False
+pub ea_compiler::lexer::TokenKind::FloatLiteral
+pub ea_compiler::lexer::TokenKind::For
+pub ea_compiler::lexer::TokenKind::ForEach
+pub ea_compiler::lexer::TokenKind::Func
+pub ea_compiler::lexer::TokenKind::Greater
+pub ea_compiler::lexer::TokenKind::GreaterDot
+pub ea_compiler::lexer::TokenKind::GreaterEqual
+pub ea_compiler::lexer::TokenKind::GreaterEqualDot
+pub ea_compiler::lexer::TokenKind::Hash
+pub ea_compiler::lexer::TokenKind::HexLiteral
+pub ea_compiler::lexer::TokenKind::I16
+pub ea_compiler::lexer::TokenKind::I16x16
+pub ea_compiler::lexer::TokenKind::I16x32
+pub ea_compiler::lexer::TokenKind::I16x4
+pub ea_compiler::lexer::TokenKind::I16x8
+pub ea_compiler::lexer::TokenKind::I32
+pub ea_compiler::lexer::TokenKind::I32x16
+pub ea_compiler::lexer::TokenKind::I32x2
+pub ea_compiler::lexer::TokenKind::I32x4
+pub ea_compiler::lexer::TokenKind::I32x8
+pub ea_compiler::lexer::TokenKind::I64
+pub ea_compiler::lexer::TokenKind::I8
+pub ea_compiler::lexer::TokenKind::I8x16
+pub ea_compiler::lexer::TokenKind::I8x32
+pub ea_compiler::lexer::TokenKind::I8x4
+pub ea_compiler::lexer::TokenKind::I8x64
+pub ea_compiler::lexer::TokenKind::I8x8
+pub ea_compiler::lexer::TokenKind::Identifier
+pub ea_compiler::lexer::TokenKind::If
+pub ea_compiler::lexer::TokenKind::In
+pub ea_compiler::lexer::TokenKind::IntLiteral
+pub ea_compiler::lexer::TokenKind::LeftBrace
+pub ea_compiler::lexer::TokenKind::LeftBracket
+pub ea_compiler::lexer::TokenKind::LeftParen
+pub ea_compiler::lexer::TokenKind::Less
+pub ea_compiler::lexer::TokenKind::LessDot
+pub ea_compiler::lexer::TokenKind::LessEqual
+pub ea_compiler::lexer::TokenKind::LessEqualDot
+pub ea_compiler::lexer::TokenKind::Let
+pub ea_compiler::lexer::TokenKind::LineComment
+pub ea_compiler::lexer::TokenKind::Minus
+pub ea_compiler::lexer::TokenKind::MinusDot
+pub ea_compiler::lexer::TokenKind::Mut
+pub ea_compiler::lexer::TokenKind::Newline
+pub ea_compiler::lexer::TokenKind::Percent
+pub ea_compiler::lexer::TokenKind::Pipe
+pub ea_compiler::lexer::TokenKind::PipeDot
+pub ea_compiler::lexer::TokenKind::PipePipe
+pub ea_compiler::lexer::TokenKind::Plus
+pub ea_compiler::lexer::TokenKind::PlusDot
+pub ea_compiler::lexer::TokenKind::Restrict
+pub ea_compiler::lexer::TokenKind::Return
+pub ea_compiler::lexer::TokenKind::RightBrace
+pub ea_compiler::lexer::TokenKind::RightBracket
+pub ea_compiler::lexer::TokenKind::RightParen
+pub ea_compiler::lexer::TokenKind::ShiftLeft
+pub ea_compiler::lexer::TokenKind::ShiftLeftDot
+pub ea_compiler::lexer::TokenKind::ShiftRight
+pub ea_compiler::lexer::TokenKind::ShiftRightDot
+pub ea_compiler::lexer::TokenKind::Slash
+pub ea_compiler::lexer::TokenKind::SlashDot
+pub ea_compiler::lexer::TokenKind::Splat
+pub ea_compiler::lexer::TokenKind::Star
+pub ea_compiler::lexer::TokenKind::StarDot
+pub ea_compiler::lexer::TokenKind::StringLiteral
+pub ea_compiler::lexer::TokenKind::Struct
+pub ea_compiler::lexer::TokenKind::True
+pub ea_compiler::lexer::TokenKind::U16
+pub ea_compiler::lexer::TokenKind::U16x16
+pub ea_compiler::lexer::TokenKind::U16x4
+pub ea_compiler::lexer::TokenKind::U16x8
+pub ea_compiler::lexer::TokenKind::U32x4
+pub ea_compiler::lexer::TokenKind::U8
+pub ea_compiler::lexer::TokenKind::U8x16
+pub ea_compiler::lexer::TokenKind::U8x32
+pub ea_compiler::lexer::TokenKind::U8x64
+pub ea_compiler::lexer::TokenKind::U8x8
+pub ea_compiler::lexer::TokenKind::Unroll
+pub ea_compiler::lexer::TokenKind::While
+impl core::clone::Clone for ea_compiler::lexer::TokenKind
+pub fn ea_compiler::lexer::TokenKind::clone(&self) -> ea_compiler::lexer::TokenKind
+impl core::cmp::PartialEq for ea_compiler::lexer::TokenKind
+pub fn ea_compiler::lexer::TokenKind::eq(&self, other: &ea_compiler::lexer::TokenKind) -> bool
+impl core::fmt::Debug for ea_compiler::lexer::TokenKind
+pub fn ea_compiler::lexer::TokenKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::lexer::TokenKind
+impl<'s> logos::Logos<'s> for ea_compiler::lexer::TokenKind
+pub type ea_compiler::lexer::TokenKind::Error = ()
+pub type ea_compiler::lexer::TokenKind::Extras = ()
+pub type ea_compiler::lexer::TokenKind::Source = str
+pub fn ea_compiler::lexer::TokenKind::lex(lex: &mut logos::lexer::Lexer<'s, Self>)
+impl core::marker::Freeze for ea_compiler::lexer::TokenKind
+impl core::marker::Send for ea_compiler::lexer::TokenKind
+impl core::marker::Sync for ea_compiler::lexer::TokenKind
+impl core::marker::Unpin for ea_compiler::lexer::TokenKind
+impl core::marker::UnsafeUnpin for ea_compiler::lexer::TokenKind
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::lexer::TokenKind
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::lexer::TokenKind
+pub struct ea_compiler::lexer::Lexer<'src>
+impl<'src> ea_compiler::lexer::Lexer<'src>
+pub fn ea_compiler::lexer::Lexer<'src>::new(source: &'src str) -> Self
+pub fn ea_compiler::lexer::Lexer<'src>::tokenize(&self) -> ea_compiler::error::Result<alloc::vec::Vec<ea_compiler::lexer::Token>>
+impl<'src> core::marker::Freeze for ea_compiler::lexer::Lexer<'src>
+impl<'src> core::marker::Send for ea_compiler::lexer::Lexer<'src>
+impl<'src> core::marker::Sync for ea_compiler::lexer::Lexer<'src>
+impl<'src> core::marker::Unpin for ea_compiler::lexer::Lexer<'src>
+impl<'src> core::marker::UnsafeUnpin for ea_compiler::lexer::Lexer<'src>
+impl<'src> core::panic::unwind_safe::RefUnwindSafe for ea_compiler::lexer::Lexer<'src>
+impl<'src> core::panic::unwind_safe::UnwindSafe for ea_compiler::lexer::Lexer<'src>
+pub struct ea_compiler::lexer::Position
+pub ea_compiler::lexer::Position::column: usize
+pub ea_compiler::lexer::Position::line: usize
+pub ea_compiler::lexer::Position::offset: usize
+impl ea_compiler::lexer::Position
+pub fn ea_compiler::lexer::Position::new(line: usize, column: usize, offset: usize) -> Self
+impl core::clone::Clone for ea_compiler::lexer::Position
+pub fn ea_compiler::lexer::Position::clone(&self) -> ea_compiler::lexer::Position
+impl core::cmp::PartialEq for ea_compiler::lexer::Position
+pub fn ea_compiler::lexer::Position::eq(&self, other: &ea_compiler::lexer::Position) -> bool
+impl core::default::Default for ea_compiler::lexer::Position
+pub fn ea_compiler::lexer::Position::default() -> Self
+impl core::fmt::Debug for ea_compiler::lexer::Position
+pub fn ea_compiler::lexer::Position::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::lexer::Position
+impl core::marker::Freeze for ea_compiler::lexer::Position
+impl core::marker::Send for ea_compiler::lexer::Position
+impl core::marker::Sync for ea_compiler::lexer::Position
+impl core::marker::Unpin for ea_compiler::lexer::Position
+impl core::marker::UnsafeUnpin for ea_compiler::lexer::Position
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::lexer::Position
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::lexer::Position
+pub struct ea_compiler::lexer::Span
+pub ea_compiler::lexer::Span::end: ea_compiler::lexer::Position
+pub ea_compiler::lexer::Span::start: ea_compiler::lexer::Position
+impl ea_compiler::lexer::Span
+pub fn ea_compiler::lexer::Span::new(start: ea_compiler::lexer::Position, end: ea_compiler::lexer::Position) -> Self
+impl core::clone::Clone for ea_compiler::lexer::Span
+pub fn ea_compiler::lexer::Span::clone(&self) -> ea_compiler::lexer::Span
+impl core::cmp::PartialEq for ea_compiler::lexer::Span
+pub fn ea_compiler::lexer::Span::eq(&self, other: &ea_compiler::lexer::Span) -> bool
+impl core::default::Default for ea_compiler::lexer::Span
+pub fn ea_compiler::lexer::Span::default() -> ea_compiler::lexer::Span
+impl core::fmt::Debug for ea_compiler::lexer::Span
+pub fn ea_compiler::lexer::Span::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::lexer::Span
+impl core::marker::Freeze for ea_compiler::lexer::Span
+impl core::marker::Send for ea_compiler::lexer::Span
+impl core::marker::Sync for ea_compiler::lexer::Span
+impl core::marker::Unpin for ea_compiler::lexer::Span
+impl core::marker::UnsafeUnpin for ea_compiler::lexer::Span
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::lexer::Span
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::lexer::Span
+pub struct ea_compiler::lexer::Token
+pub ea_compiler::lexer::Token::kind: ea_compiler::lexer::TokenKind
+pub ea_compiler::lexer::Token::lexeme: alloc::string::String
+pub ea_compiler::lexer::Token::position: ea_compiler::lexer::Position
+impl ea_compiler::lexer::Token
+pub fn ea_compiler::lexer::Token::new(kind: ea_compiler::lexer::TokenKind, lexeme: alloc::string::String, position: ea_compiler::lexer::Position) -> Self
+impl core::clone::Clone for ea_compiler::lexer::Token
+pub fn ea_compiler::lexer::Token::clone(&self) -> ea_compiler::lexer::Token
+impl core::cmp::PartialEq for ea_compiler::lexer::Token
+pub fn ea_compiler::lexer::Token::eq(&self, other: &ea_compiler::lexer::Token) -> bool
+impl core::fmt::Debug for ea_compiler::lexer::Token
+pub fn ea_compiler::lexer::Token::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::lexer::Token
+pub fn ea_compiler::lexer::Token::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::lexer::Token
+impl core::marker::Freeze for ea_compiler::lexer::Token
+impl core::marker::Send for ea_compiler::lexer::Token
+impl core::marker::Sync for ea_compiler::lexer::Token
+impl core::marker::Unpin for ea_compiler::lexer::Token
+impl core::marker::UnsafeUnpin for ea_compiler::lexer::Token
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::lexer::Token
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::lexer::Token
+pub mod ea_compiler::metadata
+pub fn ea_compiler::metadata::generate_json(stmts: &[ea_compiler::ast::Stmt], lib_name: &str) -> alloc::string::String
+pub mod ea_compiler::parser
+pub struct ea_compiler::parser::Parser
+impl ea_compiler::parser::Parser
+pub fn ea_compiler::parser::Parser::new(tokens: alloc::vec::Vec<ea_compiler::lexer::Token>) -> Self
+pub fn ea_compiler::parser::Parser::parse_program(&mut self) -> ea_compiler::error::Result<alloc::vec::Vec<ea_compiler::ast::Stmt>>
+impl core::marker::Freeze for ea_compiler::parser::Parser
+impl core::marker::Send for ea_compiler::parser::Parser
+impl core::marker::Sync for ea_compiler::parser::Parser
+impl core::marker::Unpin for ea_compiler::parser::Parser
+impl core::marker::UnsafeUnpin for ea_compiler::parser::Parser
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::parser::Parser
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::parser::Parser
+pub mod ea_compiler::target
+pub fn ea_compiler::target::create_target_machine(opts: &ea_compiler::CompileOptions) -> ea_compiler::error::Result<inkwell::targets::TargetMachine>
+pub fn ea_compiler::target::optimize_module(module: &inkwell::module::Module<'_>, machine: &inkwell::targets::TargetMachine, opt_level: u8) -> ea_compiler::error::Result<()>
+pub fn ea_compiler::target::write_asm_file(module: &inkwell::module::Module<'_>, path: &std::path::Path, opts: &ea_compiler::CompileOptions) -> ea_compiler::error::Result<()>
+pub fn ea_compiler::target::write_object_file(module: &inkwell::module::Module<'_>, path: &std::path::Path, opts: &ea_compiler::CompileOptions) -> ea_compiler::error::Result<()>
+pub mod ea_compiler::typeck
+pub mod ea_compiler::typeck::const_eval
+pub enum ea_compiler::typeck::const_eval::ConstValue
+pub ea_compiler::typeck::const_eval::ConstValue::Bool(bool)
+pub ea_compiler::typeck::const_eval::ConstValue::Float(f64)
+pub ea_compiler::typeck::const_eval::ConstValue::Integer(i64)
+impl core::clone::Clone for ea_compiler::typeck::const_eval::ConstValue
+pub fn ea_compiler::typeck::const_eval::ConstValue::clone(&self) -> ea_compiler::typeck::const_eval::ConstValue
+impl core::fmt::Debug for ea_compiler::typeck::const_eval::ConstValue
+pub fn ea_compiler::typeck::const_eval::ConstValue::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for ea_compiler::typeck::const_eval::ConstValue
+impl core::marker::Send for ea_compiler::typeck::const_eval::ConstValue
+impl core::marker::Sync for ea_compiler::typeck::const_eval::ConstValue
+impl core::marker::Unpin for ea_compiler::typeck::const_eval::ConstValue
+impl core::marker::UnsafeUnpin for ea_compiler::typeck::const_eval::ConstValue
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::typeck::const_eval::ConstValue
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::typeck::const_eval::ConstValue
+pub mod ea_compiler::typeck::deprecations
+pub struct ea_compiler::typeck::deprecations::DeprecationInfo
+pub ea_compiler::typeck::deprecations::DeprecationInfo::advice: &'static str
+pub ea_compiler::typeck::deprecations::DeprecationInfo::since: &'static str
+impl core::clone::Clone for ea_compiler::typeck::deprecations::DeprecationInfo
+pub fn ea_compiler::typeck::deprecations::DeprecationInfo::clone(&self) -> ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::cmp::PartialEq for ea_compiler::typeck::deprecations::DeprecationInfo
+pub fn ea_compiler::typeck::deprecations::DeprecationInfo::eq(&self, other: &ea_compiler::typeck::deprecations::DeprecationInfo) -> bool
+impl core::fmt::Debug for ea_compiler::typeck::deprecations::DeprecationInfo
+pub fn ea_compiler::typeck::deprecations::DeprecationInfo::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Freeze for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Send for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Sync for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Unpin for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::UnsafeUnpin for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::typeck::deprecations::DeprecationInfo
+pub struct ea_compiler::typeck::deprecations::DeprecationWarning
+pub ea_compiler::typeck::deprecations::DeprecationWarning::advice: alloc::string::String
+pub ea_compiler::typeck::deprecations::DeprecationWarning::name: alloc::string::String
+pub ea_compiler::typeck::deprecations::DeprecationWarning::since: alloc::string::String
+pub ea_compiler::typeck::deprecations::DeprecationWarning::span: ea_compiler::lexer::Span
+impl core::clone::Clone for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::clone(&self) -> ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::cmp::PartialEq for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::eq(&self, other: &ea_compiler::typeck::deprecations::DeprecationWarning) -> bool
+impl core::fmt::Debug for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Freeze for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Send for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Sync for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Unpin for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::UnsafeUnpin for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::typeck::deprecations::DeprecationWarning
+pub const ea_compiler::typeck::deprecations::DEPRECATED_INTRINSICS: ea_compiler::typeck::deprecations::DeprecationTable
+pub fn ea_compiler::typeck::deprecations::lookup(table: ea_compiler::typeck::deprecations::DeprecationTable, name: &str) -> core::option::Option<&'static ea_compiler::typeck::deprecations::DeprecationInfo>
+pub type ea_compiler::typeck::deprecations::DeprecationTable = &'static [(&'static str, ea_compiler::typeck::deprecations::DeprecationInfo)]
+pub mod ea_compiler::typeck::types
+pub enum ea_compiler::typeck::types::Type
+pub ea_compiler::typeck::types::Type::Bool
+pub ea_compiler::typeck::types::Type::F16
+pub ea_compiler::typeck::types::Type::F32
+pub ea_compiler::typeck::types::Type::F64
+pub ea_compiler::typeck::types::Type::FloatLiteral
+pub ea_compiler::typeck::types::Type::I16
+pub ea_compiler::typeck::types::Type::I32
+pub ea_compiler::typeck::types::Type::I64
+pub ea_compiler::typeck::types::Type::I8
+pub ea_compiler::typeck::types::Type::IntLiteral
+pub ea_compiler::typeck::types::Type::Pointer
+pub ea_compiler::typeck::types::Type::Pointer::inner: alloc::boxed::Box<ea_compiler::typeck::types::Type>
+pub ea_compiler::typeck::types::Type::Pointer::mutable: bool
+pub ea_compiler::typeck::types::Type::Pointer::restrict: bool
+pub ea_compiler::typeck::types::Type::String
+pub ea_compiler::typeck::types::Type::Struct(alloc::string::String)
+pub ea_compiler::typeck::types::Type::U16
+pub ea_compiler::typeck::types::Type::U32
+pub ea_compiler::typeck::types::Type::U64
+pub ea_compiler::typeck::types::Type::U8
+pub ea_compiler::typeck::types::Type::Vector
+pub ea_compiler::typeck::types::Type::Vector::elem: alloc::boxed::Box<ea_compiler::typeck::types::Type>
+pub ea_compiler::typeck::types::Type::Vector::width: usize
+pub ea_compiler::typeck::types::Type::Void
+impl ea_compiler::typeck::types::Type
+pub fn ea_compiler::typeck::types::Type::is_bool(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_float(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_integer(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_numeric(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_pointer(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_unsigned_integer(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_vector(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::pointee(&self) -> core::option::Option<&ea_compiler::typeck::types::Type>
+pub fn ea_compiler::typeck::types::Type::size_bits(&self) -> usize
+impl core::clone::Clone for ea_compiler::typeck::types::Type
+pub fn ea_compiler::typeck::types::Type::clone(&self) -> ea_compiler::typeck::types::Type
+impl core::cmp::PartialEq for ea_compiler::typeck::types::Type
+pub fn ea_compiler::typeck::types::Type::eq(&self, other: &ea_compiler::typeck::types::Type) -> bool
+impl core::fmt::Debug for ea_compiler::typeck::types::Type
+pub fn ea_compiler::typeck::types::Type::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::typeck::types::Type
+pub fn ea_compiler::typeck::types::Type::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::typeck::types::Type
+impl core::marker::Freeze for ea_compiler::typeck::types::Type
+impl core::marker::Send for ea_compiler::typeck::types::Type
+impl core::marker::Sync for ea_compiler::typeck::types::Type
+impl core::marker::Unpin for ea_compiler::typeck::types::Type
+impl core::marker::UnsafeUnpin for ea_compiler::typeck::types::Type
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::typeck::types::Type
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::typeck::types::Type
+pub fn ea_compiler::typeck::types::conversion_hint(from: &ea_compiler::typeck::types::Type, to: &ea_compiler::typeck::types::Type) -> core::option::Option<alloc::string::String>
+pub fn ea_compiler::typeck::types::is_unsigned(ty: &ea_compiler::typeck::types::Type) -> bool
+pub fn ea_compiler::typeck::types::parse_typed_load(name: &str) -> core::option::Option<ea_compiler::typeck::types::Type>
+pub fn ea_compiler::typeck::types::resolve_type(ty: &ea_compiler::ast::TypeAnnotation) -> ea_compiler::error::Result<ea_compiler::typeck::types::Type>
+pub fn ea_compiler::typeck::types::suggest_closest_name<'a>(query: &str, candidates: impl core::iter::traits::iterator::Iterator<Item = &'a str>) -> core::option::Option<alloc::string::String>
+pub fn ea_compiler::typeck::types::suggest_dot_op(left: &ea_compiler::typeck::types::Type, right: &ea_compiler::typeck::types::Type, op: &ea_compiler::ast::BinaryOp) -> core::option::Option<alloc::string::String>
+pub fn ea_compiler::typeck::types::types_compatible(actual: &ea_compiler::typeck::types::Type, expected: &ea_compiler::typeck::types::Type) -> bool
+pub fn ea_compiler::typeck::types::unify_numeric(left: &ea_compiler::typeck::types::Type, right: &ea_compiler::typeck::types::Type, span: ea_compiler::lexer::Span) -> ea_compiler::error::Result<ea_compiler::typeck::types::Type>
+pub fn ea_compiler::typeck::types::unify_vector(left: &ea_compiler::typeck::types::Type, right: &ea_compiler::typeck::types::Type, span: ea_compiler::lexer::Span) -> ea_compiler::error::Result<ea_compiler::typeck::types::Type>
+pub enum ea_compiler::typeck::Type
+pub ea_compiler::typeck::Type::Bool
+pub ea_compiler::typeck::Type::F16
+pub ea_compiler::typeck::Type::F32
+pub ea_compiler::typeck::Type::F64
+pub ea_compiler::typeck::Type::FloatLiteral
+pub ea_compiler::typeck::Type::I16
+pub ea_compiler::typeck::Type::I32
+pub ea_compiler::typeck::Type::I64
+pub ea_compiler::typeck::Type::I8
+pub ea_compiler::typeck::Type::IntLiteral
+pub ea_compiler::typeck::Type::Pointer
+pub ea_compiler::typeck::Type::Pointer::inner: alloc::boxed::Box<ea_compiler::typeck::types::Type>
+pub ea_compiler::typeck::Type::Pointer::mutable: bool
+pub ea_compiler::typeck::Type::Pointer::restrict: bool
+pub ea_compiler::typeck::Type::String
+pub ea_compiler::typeck::Type::Struct(alloc::string::String)
+pub ea_compiler::typeck::Type::U16
+pub ea_compiler::typeck::Type::U32
+pub ea_compiler::typeck::Type::U64
+pub ea_compiler::typeck::Type::U8
+pub ea_compiler::typeck::Type::Vector
+pub ea_compiler::typeck::Type::Vector::elem: alloc::boxed::Box<ea_compiler::typeck::types::Type>
+pub ea_compiler::typeck::Type::Vector::width: usize
+pub ea_compiler::typeck::Type::Void
+impl ea_compiler::typeck::types::Type
+pub fn ea_compiler::typeck::types::Type::is_bool(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_float(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_integer(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_numeric(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_pointer(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_unsigned_integer(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_vector(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::pointee(&self) -> core::option::Option<&ea_compiler::typeck::types::Type>
+pub fn ea_compiler::typeck::types::Type::size_bits(&self) -> usize
+impl core::clone::Clone for ea_compiler::typeck::types::Type
+pub fn ea_compiler::typeck::types::Type::clone(&self) -> ea_compiler::typeck::types::Type
+impl core::cmp::PartialEq for ea_compiler::typeck::types::Type
+pub fn ea_compiler::typeck::types::Type::eq(&self, other: &ea_compiler::typeck::types::Type) -> bool
+impl core::fmt::Debug for ea_compiler::typeck::types::Type
+pub fn ea_compiler::typeck::types::Type::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::typeck::types::Type
+pub fn ea_compiler::typeck::types::Type::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::typeck::types::Type
+impl core::marker::Freeze for ea_compiler::typeck::types::Type
+impl core::marker::Send for ea_compiler::typeck::types::Type
+impl core::marker::Sync for ea_compiler::typeck::types::Type
+impl core::marker::Unpin for ea_compiler::typeck::types::Type
+impl core::marker::UnsafeUnpin for ea_compiler::typeck::types::Type
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::typeck::types::Type
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::typeck::types::Type
+pub struct ea_compiler::typeck::DeprecationInfo
+pub ea_compiler::typeck::DeprecationInfo::advice: &'static str
+pub ea_compiler::typeck::DeprecationInfo::since: &'static str
+impl core::clone::Clone for ea_compiler::typeck::deprecations::DeprecationInfo
+pub fn ea_compiler::typeck::deprecations::DeprecationInfo::clone(&self) -> ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::cmp::PartialEq for ea_compiler::typeck::deprecations::DeprecationInfo
+pub fn ea_compiler::typeck::deprecations::DeprecationInfo::eq(&self, other: &ea_compiler::typeck::deprecations::DeprecationInfo) -> bool
+impl core::fmt::Debug for ea_compiler::typeck::deprecations::DeprecationInfo
+pub fn ea_compiler::typeck::deprecations::DeprecationInfo::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Freeze for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Send for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Sync for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Unpin for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::UnsafeUnpin for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::typeck::deprecations::DeprecationInfo
+pub struct ea_compiler::typeck::DeprecationWarning
+pub ea_compiler::typeck::DeprecationWarning::advice: alloc::string::String
+pub ea_compiler::typeck::DeprecationWarning::name: alloc::string::String
+pub ea_compiler::typeck::DeprecationWarning::since: alloc::string::String
+pub ea_compiler::typeck::DeprecationWarning::span: ea_compiler::lexer::Span
+impl core::clone::Clone for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::clone(&self) -> ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::cmp::PartialEq for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::eq(&self, other: &ea_compiler::typeck::deprecations::DeprecationWarning) -> bool
+impl core::fmt::Debug for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Freeze for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Send for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Sync for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Unpin for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::UnsafeUnpin for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::typeck::deprecations::DeprecationWarning
+pub struct ea_compiler::typeck::TypeChecker
+impl ea_compiler::typeck::TypeChecker
+pub fn ea_compiler::typeck::TypeChecker::check_program(&mut self, stmts: &[ea_compiler::ast::Stmt]) -> ea_compiler::error::Result<()>
+pub fn ea_compiler::typeck::TypeChecker::new() -> Self
+pub fn ea_compiler::typeck::TypeChecker::warnings(&self) -> alloc::vec::Vec<ea_compiler::typeck::deprecations::DeprecationWarning>
+pub fn ea_compiler::typeck::TypeChecker::with_deprecations(deprecations: ea_compiler::typeck::deprecations::DeprecationTable) -> Self
+impl ea_compiler::typeck::TypeChecker
+pub fn ea_compiler::typeck::TypeChecker::eval_const_expr(&self, expr: &ea_compiler::ast::Expr) -> ea_compiler::error::Result<ea_compiler::typeck::const_eval::ConstValue>
+impl core::default::Default for ea_compiler::typeck::TypeChecker
+pub fn ea_compiler::typeck::TypeChecker::default() -> Self
+impl !core::marker::Freeze for ea_compiler::typeck::TypeChecker
+impl core::marker::Send for ea_compiler::typeck::TypeChecker
+impl !core::marker::Sync for ea_compiler::typeck::TypeChecker
+impl core::marker::Unpin for ea_compiler::typeck::TypeChecker
+impl core::marker::UnsafeUnpin for ea_compiler::typeck::TypeChecker
+impl !core::panic::unwind_safe::RefUnwindSafe for ea_compiler::typeck::TypeChecker
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::typeck::TypeChecker
+pub const ea_compiler::typeck::DEPRECATED_INTRINSICS: ea_compiler::typeck::deprecations::DeprecationTable
+pub type ea_compiler::typeck::DeprecationTable = &'static [(&'static str, ea_compiler::typeck::deprecations::DeprecationInfo)]
+pub enum ea_compiler::OutputMode
+pub ea_compiler::OutputMode::Asm
+pub ea_compiler::OutputMode::Executable(alloc::string::String)
+pub ea_compiler::OutputMode::LlvmIr
+pub ea_compiler::OutputMode::ObjectFile
+pub ea_compiler::OutputMode::SharedLib(alloc::string::String)
+impl core::marker::Freeze for ea_compiler::OutputMode
+impl core::marker::Send for ea_compiler::OutputMode
+impl core::marker::Sync for ea_compiler::OutputMode
+impl core::marker::Unpin for ea_compiler::OutputMode
+impl core::marker::UnsafeUnpin for ea_compiler::OutputMode
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::OutputMode
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::OutputMode
+pub struct ea_compiler::CompileOptions
+pub ea_compiler::CompileOptions::extra_features: alloc::string::String
+pub ea_compiler::CompileOptions::opt_level: u8
+pub ea_compiler::CompileOptions::target_cpu: core::option::Option<alloc::string::String>
+pub ea_compiler::CompileOptions::target_triple: core::option::Option<alloc::string::String>
+impl ea_compiler::CompileOptions
+pub fn ea_compiler::CompileOptions::is_arm(&self) -> bool
+impl core::clone::Clone for ea_compiler::CompileOptions
+pub fn ea_compiler::CompileOptions::clone(&self) -> ea_compiler::CompileOptions
+impl core::default::Default for ea_compiler::CompileOptions
+pub fn ea_compiler::CompileOptions::default() -> Self
+impl core::fmt::Debug for ea_compiler::CompileOptions
+pub fn ea_compiler::CompileOptions::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for ea_compiler::CompileOptions
+impl core::marker::Send for ea_compiler::CompileOptions
+impl core::marker::Sync for ea_compiler::CompileOptions
+impl core::marker::Unpin for ea_compiler::CompileOptions
+impl core::marker::UnsafeUnpin for ea_compiler::CompileOptions
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::CompileOptions
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::CompileOptions
+pub struct ea_compiler::DeprecationInfo
+pub ea_compiler::DeprecationInfo::advice: &'static str
+pub ea_compiler::DeprecationInfo::since: &'static str
+impl core::clone::Clone for ea_compiler::typeck::deprecations::DeprecationInfo
+pub fn ea_compiler::typeck::deprecations::DeprecationInfo::clone(&self) -> ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::cmp::PartialEq for ea_compiler::typeck::deprecations::DeprecationInfo
+pub fn ea_compiler::typeck::deprecations::DeprecationInfo::eq(&self, other: &ea_compiler::typeck::deprecations::DeprecationInfo) -> bool
+impl core::fmt::Debug for ea_compiler::typeck::deprecations::DeprecationInfo
+pub fn ea_compiler::typeck::deprecations::DeprecationInfo::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Freeze for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Send for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Sync for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::Unpin for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::marker::UnsafeUnpin for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::typeck::deprecations::DeprecationInfo
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::typeck::deprecations::DeprecationInfo
+pub struct ea_compiler::DeprecationWarning
+pub ea_compiler::DeprecationWarning::advice: alloc::string::String
+pub ea_compiler::DeprecationWarning::name: alloc::string::String
+pub ea_compiler::DeprecationWarning::since: alloc::string::String
+pub ea_compiler::DeprecationWarning::span: ea_compiler::lexer::Span
+impl core::clone::Clone for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::clone(&self) -> ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::cmp::PartialEq for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::eq(&self, other: &ea_compiler::typeck::deprecations::DeprecationWarning) -> bool
+impl core::fmt::Debug for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::typeck::deprecations::DeprecationWarning::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Freeze for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Send for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Sync for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::Unpin for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::marker::UnsafeUnpin for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::typeck::deprecations::DeprecationWarning
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::typeck::deprecations::DeprecationWarning
+pub fn ea_compiler::check_types(stmts: &[ea_compiler::ast::Stmt]) -> ea_compiler::error::Result<()>
+pub fn ea_compiler::check_types_with_warnings(stmts: &[ea_compiler::ast::Stmt]) -> ea_compiler::error::Result<alloc::vec::Vec<ea_compiler::typeck::deprecations::DeprecationWarning>>
+pub fn ea_compiler::compile(source: &str, output_path: &std::path::Path, mode: ea_compiler::OutputMode) -> ea_compiler::error::Result<()>
+pub fn ea_compiler::compile_to_ir(source: &str) -> ea_compiler::error::Result<alloc::string::String>
+pub fn ea_compiler::compile_to_ir_with_options(source: &str, opts: ea_compiler::CompileOptions) -> ea_compiler::error::Result<alloc::string::String>
+pub fn ea_compiler::compile_with_options(source: &str, output_path: &std::path::Path, mode: ea_compiler::OutputMode, opts: &ea_compiler::CompileOptions) -> ea_compiler::error::Result<()>
+pub fn ea_compiler::desugar(stmts: alloc::vec::Vec<ea_compiler::ast::Stmt>) -> ea_compiler::error::Result<alloc::vec::Vec<ea_compiler::ast::Stmt>>
+pub fn ea_compiler::inspect_source(source: &str, opts: &ea_compiler::CompileOptions) -> ea_compiler::error::Result<ea_compiler::inspect::InspectReport>
+pub fn ea_compiler::parse(tokens: alloc::vec::Vec<ea_compiler::lexer::Token>) -> ea_compiler::error::Result<alloc::vec::Vec<ea_compiler::ast::Stmt>>
+pub fn ea_compiler::tokenize(source: &str) -> ea_compiler::error::Result<alloc::vec::Vec<ea_compiler::lexer::Token>>

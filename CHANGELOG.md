@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased] — v1.12.0-dev
+
+### Added
+
+#### Deprecation-warning infrastructure
+- `src/typeck/deprecations.rs`: `DeprecationInfo`, `DeprecationWarning`, and a `DEPRECATED_INTRINSICS` table. Calling an intrinsic listed in the table records a warning on the active `TypeChecker` (the intrinsic still compiles normally).
+- `TypeChecker::with_deprecations(table)` for tests; `TypeChecker::warnings()` accessor; `ea_compiler::check_types_with_warnings(stmts)` library entry point.
+- The compiler driver (`ea` CLI, `compile_with_options`, `compile_to_ir_with_options`, `inspect_source`) prints any collected warnings to stderr after a successful type check.
+- Production `DEPRECATED_INTRINSICS` is empty as of v1.12.0-dev; the v1.12.0 monomorphic-rename batch (`sat_add` → `sat_add_i8x16`, etc.) will be the first real consumer.
+
+#### Migration documentation
+- New `docs/migrations/` directory with one file per breaking release. `docs/migrations/README.md` documents the deprecation-cycle policy: minor-release warning → at least one full minor cycle → removal in the next major release.
+- `docs/migrations/v1.11.0.md` retroactively documents the `maddubs_i32` → `maddubs_i16` + `madd_i16` migration.
+- `docs/migrations/v1.12.0.md` template for the upcoming monomorphic-rename batch.
+
+#### CI
+- New `public-api-check` job in `.github/workflows/ci.yml`: runs `cargo public-api --simplified` and diffs against `docs/public-api.txt`. Fails CI on unintended public-API drift; intentional changes require updating the snapshot in the same PR.
+- Initial snapshot committed at `docs/public-api.txt`.
+
 ## v1.11.0 — 2026-05-13 — ARM I8MM + FP16 intrinsics, exp_poly_f32, pack/saturate surface
 
 ### Added

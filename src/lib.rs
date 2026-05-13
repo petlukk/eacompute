@@ -25,6 +25,8 @@ use lexer::{Lexer, Token};
 use parser::Parser;
 use typeck::TypeChecker;
 
+pub use typeck::{DeprecationInfo, DeprecationWarning};
+
 pub fn tokenize(source: &str) -> error::Result<Vec<Token>> {
     Lexer::new(source).tokenize()
 }
@@ -38,7 +40,15 @@ pub fn desugar(stmts: Vec<Stmt>) -> error::Result<Vec<Stmt>> {
 }
 
 pub fn check_types(stmts: &[Stmt]) -> error::Result<()> {
-    TypeChecker::new().check_program(stmts)
+    check_types_with_warnings(stmts).map(|_| ())
+}
+
+/// Type-check `stmts` and return any deprecation warnings collected during
+/// the pass. Empty vec if no deprecated intrinsics were used.
+pub fn check_types_with_warnings(stmts: &[Stmt]) -> error::Result<Vec<DeprecationWarning>> {
+    let mut tc = TypeChecker::new();
+    tc.check_program(stmts)?;
+    Ok(tc.warnings())
 }
 
 #[cfg(feature = "llvm")]
@@ -130,7 +140,9 @@ pub fn compile_with_options(
     let stmts = parse(tokens)?;
     let stmts = desugar::filter_cfg(stmts, opts.is_arm());
     let stmts = desugar(stmts)?;
-    check_types(&stmts)?;
+    for warning in check_types_with_warnings(&stmts)? {
+        eprintln!("{warning}");
+    }
 
     let context = inkwell::context::Context::create();
     let mut cg = codegen::CodeGenerator::new(&context, "ea_module", opts);
@@ -278,7 +290,9 @@ pub fn compile_to_ir_with_options(source: &str, opts: CompileOptions) -> error::
     let stmts = parse(tokens)?;
     let stmts = desugar::filter_cfg(stmts, opts.is_arm());
     let stmts = desugar(stmts)?;
-    check_types(&stmts)?;
+    for warning in check_types_with_warnings(&stmts)? {
+        eprintln!("{warning}");
+    }
 
     let context = inkwell::context::Context::create();
     let mut cg = codegen::CodeGenerator::new(&context, "ea_module", &opts);
@@ -299,7 +313,9 @@ pub fn inspect_source(
     let stmts = parse(tokens)?;
     let stmts = desugar::filter_cfg(stmts, opts.is_arm());
     let stmts = desugar(stmts)?;
-    check_types(&stmts)?;
+    for warning in check_types_with_warnings(&stmts)? {
+        eprintln!("{warning}");
+    }
 
     let context = inkwell::context::Context::create();
     let mut cg = codegen::CodeGenerator::new(&context, "ea_module", opts);

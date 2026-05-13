@@ -17,6 +17,23 @@ impl TypeChecker {
         type_hint: Option<&Type>,
         span: &Span,
     ) -> Option<crate::error::Result<Type>> {
+        let result = self.dispatch_intrinsic(name, args, locals, type_hint, span);
+        // Record only when the call actually dispatches as an intrinsic — a
+        // user function shadowing an intrinsic name (see `abs`) does not warn.
+        if result.is_some() {
+            self.record_deprecation_if_any(name, span);
+        }
+        result
+    }
+
+    fn dispatch_intrinsic(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        type_hint: Option<&Type>,
+        span: &Span,
+    ) -> Option<crate::error::Result<Type>> {
         match name {
             "println" => Some(self.check_println(args, locals, span)),
             "splat" => Some(self.check_splat(args, locals, type_hint, span)),
