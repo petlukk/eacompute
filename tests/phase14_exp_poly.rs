@@ -190,6 +190,7 @@ mod tests {
         accuracy_test_impl(&points, "f32x4");
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn test_exp_poly_f32x8_boundary_points() {
         accuracy_test_impl(
@@ -200,6 +201,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn test_exp_poly_f32x8_reduction_stress() {
         use std::f32::consts::LN_2;
@@ -217,6 +219,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn test_exp_poly_f32x8_random() {
         let mut points = Vec::new();
@@ -232,6 +235,7 @@ mod tests {
     /// CRITICAL regression guard: a future "simplification" of compile_exp_poly_f32
     /// to delegate to compile_exp would silently undo the entire feature. This
     /// test pins the property that motivated the whole spec.
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn test_exp_poly_f32_does_not_emit_llvm_exp() {
         let src = r#"
@@ -257,6 +261,7 @@ mod tests {
     }
 
     /// Confirm the polynomial / ldexp pattern is actually emitted for f32x8.
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn test_exp_poly_f32x8_emits_expected_pattern() {
         let src = r#"
@@ -443,6 +448,7 @@ mod tests {
     /// End-to-end softmax using exp_poly_f32. Compares against an expf-based
     /// reference. Tolerance 1e-3 relative (~2^-10 — softmax's normalize-by-sum
     /// absorbs the polynomial error).
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn test_exp_poly_f32_softmax_integration() {
         let ea = r#"
