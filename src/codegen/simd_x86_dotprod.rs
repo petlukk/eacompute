@@ -16,7 +16,10 @@ impl<'ctx> CodeGenerator<'ctx> {
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         if self.is_arm {
             return Err(CompileError::codegen_error(
-                "maddubs_i16 is x86-only (SSSE3/AVX2 pmaddubsw); no NEON equivalent",
+                "maddubs_i16 is x86-only (SSSE3/AVX2 pmaddubsw); on ARM, use \
+                 wmul_i16(i8x8 lo, i8x8 lo) + wmul_i16(i8x8 hi, i8x8 hi) + \
+                 addp_i16 to fuse the adjacent pairs, or use usmmla_i32 for \
+                 the mixed-sign 8-bit dot product (--i8mm required)",
             ));
         }
         let a = self.compile_expr(&args[0], function)?.into_vector_value();
@@ -101,7 +104,9 @@ impl<'ctx> CodeGenerator<'ctx> {
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         if self.is_arm {
             return Err(CompileError::codegen_error(
-                "madd_i16 is x86-only (SSE2/AVX2 pmaddwd); no NEON equivalent",
+                "madd_i16 is x86-only (SSE2/AVX2 pmaddwd); on ARM, use \
+                 wmul_i32(lo i16x4, lo i16x4) + wmul_i32(hi i16x4, hi i16x4) + \
+                 addp_i32 to fuse adjacent products into the i32 result",
             ));
         }
         let a = self.compile_expr(&args[0], function)?.into_vector_value();
@@ -182,7 +187,9 @@ impl<'ctx> CodeGenerator<'ctx> {
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         if self.is_arm {
             return Err(CompileError::codegen_error(
-                "hadd_i16 is x86-only (SSSE3/AVX2 phaddw); no NEON equivalent",
+                "hadd_i16 is x86-only (SSSE3/AVX2 phaddw); on ARM, use \
+                 addp_i16(a, b) which has identical semantics (pairwise add \
+                 of adjacent lanes across both operands)",
             ));
         }
         let a = self.compile_expr(&args[0], function)?.into_vector_value();
