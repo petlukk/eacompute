@@ -171,9 +171,17 @@
 
 ### Performance
 
-- `exp_poly_f32` runs at ~10× scalar `exp()` on Pi 5 NEON (per spec:
-  4× from vectorization × ~2.5× from polynomial vs libm at
-  relative-error ≤ 2⁻¹⁸).
+- `exp_poly_f32` throughput vs scalar `exp()` is baseline-dependent.
+  Measured on the Phase 6 benchmarks:
+  - **2.93× isolated** on x86 AMD Zen 4 + glibc 2.42 (modern scalar `expf`).
+  - **2.60×** inside the bundled softmax kernel on the same host.
+  - **2.23×** end-to-end on Pi 5 inside Olorin's `gemma4_gelu` kernel
+    (Cortex-A76, glibc `expf`, no `libmvec`).
+  - The spec's original "~10×" headline is an upper bound against older
+    or scalar-only libm without a vectorized `expf`; against modern glibc
+    the win is the 2-3× range shown above. See
+    [`docs/release/v1.11.0/perf-results.md`](perf-results.md) for the
+    methodology and full numbers.
 - Native f16 NEON eliminates the f32 round-trip on every KV read in
   Olorin's attention / RoPE / RMSNorm hot paths under `--fp16`.
 

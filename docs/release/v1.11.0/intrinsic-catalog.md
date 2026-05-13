@@ -38,7 +38,7 @@ Conventions:
 | `sqrt` | `(TxN) -> TxN` for f32 / f64 | none | Hardware fsqrt. |
 | `rsqrt` | `(TxN) -> TxN` for f32 / f64 | none | Reciprocal sqrt (rsqrte + Newton refine). |
 | `exp` | `(TxN) -> TxN` for f32 / f64 | none | Calls libm via `llvm.exp.v*` — **scalarizes**. Use `exp_poly_f32` for SIMD throughput. |
-| `exp_poly_f32` (NEW v1.11.0) | `(f32xN) -> f32xN` for N ∈ {4, 8} | none | Degree-5 minimax polynomial. Defined on `[-50, 50]`; relative error ≤ 2⁻¹⁸; ~10× scalar `exp()` on Pi 5 NEON. See [`docs/src/cookbook/fast-transcendentals.md`](../../src/cookbook/fast-transcendentals.md). |
+| `exp_poly_f32` (NEW v1.11.0) | `(f32xN) -> f32xN` for N ∈ {4, 8} | none | Degree-5 minimax polynomial. Defined on `[-50, 50]`; relative error ≤ 2⁻¹⁸. Throughput vs scalar `exp()` is baseline-dependent: 2.93× isolated on modern x86 (glibc 2.42 `expf`), 2.23× on Pi 5 inside a real GELU kernel; higher against older or scalar-only libm. See [`docs/src/cookbook/fast-transcendentals.md`](../../src/cookbook/fast-transcendentals.md) and [`docs/release/v1.11.0/perf-results.md`](perf-results.md). |
 
 ## Lane ops
 

@@ -9,8 +9,23 @@ cosmetic: throughput stays at one element per scalar libm call.
 In a softmax loop or a tanh-GELU activation, that scalarization is the
 entire kernel. `exp_poly_f32(f32xN) -> f32xN` (new in v1.11.0) replaces
 it with a polynomial that stays in SIMD registers — seven to eight FMAs
-per lane, no libm call, no scalarization, and ~10× the throughput of
-scalar `exp()` on Pi 5 NEON.
+per lane, no libm call, no scalarization.
+
+The throughput win depends on the baseline:
+
+- **Modern x86 with a fast `expf` in glibc** (AMD Zen 4 / glibc 2.42 on
+  our reference benchmark): **2.93× isolated**, 2.60× inside softmax.
+- **Pi 5 (ARM Cortex-A76, glibc `expf`, no `libmvec`)** measured inside
+  a real GELU kernel in Olorin: **2.23×** end-to-end on `gemma4_gelu`,
+  consistent across 64-12288-lane shapes.
+- **Older libm or scalar-only environments without a vectorized `expf`**:
+  the gap widens — the spec's original "~10×" headline holds against
+  the slowest baselines but does not match every modern glibc.
+
+See [`docs/release/v1.11.0/perf-results.md`](../../release/v1.11.0/perf-results.md)
+for the methodology, full numbers, and a discussion of why glibc 2.42's
+`expf` is faster than the spec assumed. The win is real on every baseline
+we measured; the magnitude is environment-sensitive.
 
 ## The contract
 
