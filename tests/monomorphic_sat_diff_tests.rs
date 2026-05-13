@@ -325,7 +325,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn abs_diff_typed_still_arm_only_on_x86() {
+        // try_compile_x86 uses the host default target; on the ubuntu-24.04-arm
+        // CI runner the "x86" name is a lie. Gate to actual x86 hosts.
         let err = try_compile_x86(
             "export func f(a: i8x16, b: i8x16) -> i8x16 { return abs_diff_i8x16(a, b) }\n",
         )
