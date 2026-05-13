@@ -1,40 +1,8 @@
 # Changelog
 
-## [Unreleased] — v1.12.0-dev
+## v1.12.0 — 2026-05-13 — deprecation infrastructure + u64 widening multiply + typed sat_add/sat_sub/abs_diff
 
-### Added
-
-#### `cvt_f32_f16(f32x16) -> i16x16` (AVX-512 width-16 form)
-- Closes the asymmetry: `cvt_f16_f32` already accepted widths `{4, 8, 16}`; `cvt_f32_f16` was capped at `{4, 8}`. The pair now supports the same width set in both directions.
-- Lowers via the existing `compile_cvt_f32_f16` (`fptrunc <16 x float> to <16 x half>` + bitcast); LLVM 18's x86 backend emits a single `vcvtps2ph` zmm-form instruction with `--avx512`.
-- Typeck-only change — codegen already handled the generic width. Updated the error message: `cvt_f32_f16 expects f32x4, f32x8 or f32x16, got ...`.
-- ARM rejection happens at the vector-type validation site (`f32x16 requires AVX-512; use f32x4 on ARM`) — caught before the cvt intrinsic runs.
-
-#### Widening intrinsic (closes the u8→u16 high-half asymmetry)
-- `widen_u8_u16_hi(u8x16) -> u16x8` — zero-extend the **high** 8 lanes of a `u8x16` to a `u16x8`. Sibling of `widen_u8_u16` (which handles the low half). Pair them to widen all 16 lanes of a `u8x16` without a manual shuffle step.
-  - **ARM**: `ushll2 v.8h, v.16b, #0` — single instruction. (Low half: `ushll`.)
-  - **x86**: `vpxor + vpunpckhbw` — 2 instructions. (Low half: `vpmovzxbw`.)
-
-  Codegen refactor: `compile_widen_u8_u16` / `compile_widen_u8_u16_hi` share a `compile_widen_u8_u16_half(is_lo)` helper; same for typeck. Identical lowering, mask offset differs by 8. Updated the `widen_u8_u16` docstring to point at the new sibling (was: "shuffle the upper half to the low lanes first via `shuffle` or `hi128_*`").
-
-#### Lane-extractor intrinsics (fills the i16/u16 gap)
-- `lo128_i16x16(i16x16) -> i16x8`, `hi128_i16x16(i16x16) -> i16x8` — 256→128-bit halve for i16. AVX2 input (x86); ARM rejects with the standard 256-bit-NEON-narrowing hint.
-- `lo128_u16x16(u16x16) -> u16x8`, `hi128_u16x16(u16x16) -> u16x8` — same for u16.
-- `lo256_i16x32(i16x32) -> i16x16`, `hi256_i16x32(i16x32) -> i16x16` — 512→256-bit halve for i16 (AVX-512BW input). No u16x32 sibling because the `u16x32` type itself doesn't exist yet; add if a consumer asks.
-- Closes the asymmetry where the lo*/hi* family covered i8/u8/i32/f32 but skipped i16/u16. Makes the `madd_i16` ARM-recipe (which had to walk around the gap) ergonomic. No new codegen — these dispatch into the existing generic `compile_lo_extract` / `compile_hi_extract`.
-
-### Deprecated
-
-- **Polymorphic `sat_add` / `sat_sub` / `abs_diff` — use the typed spellings.** The polymorphic forms continue to compile but emit a deprecation warning at each call site, pointing at the typed replacement. Removal scheduled for v2.0.0. Typed spellings:
-  - `sat_add_i8x16`, `sat_add_u8x16`, `sat_add_i16x8`, `sat_add_u16x8` (cross-platform)
-  - `sat_sub_i8x16`, `sat_sub_u8x16`, `sat_sub_i16x8`, `sat_sub_u16x8` (cross-platform)
-  - `abs_diff_i8x16`, `abs_diff_u8x16`, `abs_diff_i16x8`, `abs_diff_u16x8`, `abs_diff_i32x4`, `abs_diff_u32x4` (ARM-only, mirrors the polymorphic parent)
-
-  Codegen for all typed spellings forwards to the existing `compile_sat_add` / `compile_sat_sub` / `compile_abs_diff` — same lowering, no behavior change. See `docs/migrations/v1.12.0.md`. First real exercise of the v1.12.0 deprecation-warning infrastructure.
-
-### Fixed
-
-- **x86 codegen for `sat_add` / `sat_sub` no longer produces an unresolved symbol at link time.** The previous codegen called `llvm.x86.sse2.padds.b` / `paddus.b` / `psubs.w` etc. directly, but LLVM 7+ removed those target-specific intrinsics in favor of the canonical target-independent forms (`llvm.sadd.sat.vNiM`, `llvm.uadd.sat.vNiM`, etc.). The old names link-failed with `undefined reference to llvm.x86.sse2.padds.b` whenever a program was actually built into an executable. Existing tests only compiled to object file, so the bug went unnoticed in v1.11.0. Codegen now uses the canonical intrinsic names, which the backend lowers to `padds`/`paddus` on x86 and `sqadd`/`uqadd` on ARM. Removes the x86/ARM branching in `src/codegen/simd_saturating.rs`.
+Seven PRs since v1.11.0. The intrinsic surface now has typed spellings for `sat_add` / `sat_sub` / `abs_diff` (polymorphic forms deprecated, removal v2.0.0), a cross-platform u32×u32→u64 widening multiply (`wmul_u64_lo`/`hi`, unblocks Poly1305), and additions that close API symmetries (`widen_u8_u16_hi`, `cvt_f32_f16` width-16, i16/u16 lane extractors). New `u64x{2,4,8}` vector types underpin the widening-multiply work. A deprecation-warning runtime + `docs/migrations/` directory + `cargo public-api` CI gate land alongside, exercised by the rename batch. Two latent codegen bugs from v1.11.0 caught and fixed by the new end-to-end test discipline. 847 tests on 3-platform CI (x86 Linux, Linux ARM64, Windows).
 
 ### Added
 
@@ -43,25 +11,44 @@
   - **ARM**: `umull v.2d, v.2s, v.2s` (lo) / `umull2 v.2d, v.4s, v.4s` (hi) — single instruction each via `llvm.aarch64.neon.umull.v2i64` with the appropriate shufflevector pattern (LLVM 18 pattern-matches the high-half extract+umull to `umull2`).
   - **x86**: lowers via the canonical IR pattern `mul(zext, zext)`; backend emits `vpmuludq` after `vpmovzxdq` (lo) or `vpshufd` (hi). No reliance on the deprecated `llvm.x86.sse2.pmulu.dq` intrinsic (removed in LLVM 7+).
   - **Motivating use case**: Poly1305 5-limb radix-2^26 accumulator (25 widening multiplies per block).
+- `widen_u8_u16_hi(u8x16) -> u16x8` — zero-extend the **high** 8 lanes of a `u8x16` to a `u16x8`. Sibling of `widen_u8_u16` (low half). ARM: `ushll2 v.8h, v.16b, #0` (1 insn). x86: `vpxor + vpunpckhbw` (2 insn).
+- `lo128_i16x16` / `hi128_i16x16` / `lo128_u16x16` / `hi128_u16x16` / `lo256_i16x32` / `hi256_i16x32` — lane extractors filling the i16/u16 gap in the existing `lo*`/`hi*` family. Pure dispatch wiring; reuses the generic `compile_lo_extract` / `compile_hi_extract`. ARM emits `ushll`/`ushll2` (where 128-bit input applies); x86 emits `vextractf128 $1` for `hi128_*` and free truncation for `lo128_*`.
+- `cvt_f32_f16(f32x16) -> i16x16` — AVX-512 width-16 form. Closes the asymmetry: `cvt_f16_f32` already accepted widths `{4, 8, 16}`; `cvt_f32_f16` was capped at `{4, 8}`. Lowers via existing `fptrunc <16 x float> to <16 x half>` → single `vcvtps2ph $4, %zmm0, %ymm0`.
+
+#### Typed (monomorphic) spellings for sat_add / sat_sub / abs_diff
+- 14 new intrinsic names; the polymorphic parents continue to compile but emit a deprecation warning. See **Deprecated** section.
+  - `sat_add_i8x16`, `sat_add_u8x16`, `sat_add_i16x8`, `sat_add_u16x8` (cross-platform).
+  - `sat_sub_i8x16`, `sat_sub_u8x16`, `sat_sub_i16x8`, `sat_sub_u16x8` (cross-platform).
+  - `abs_diff_i8x16`, `abs_diff_u8x16`, `abs_diff_i16x8`, `abs_diff_u16x8`, `abs_diff_i32x4`, `abs_diff_u32x4` (ARM-only).
+- Codegen for all typed spellings forwards to the existing `compile_sat_add` / `compile_sat_sub` / `compile_abs_diff` — same lowering, no behavior change. First real exercise of the deprecation-warning runtime.
 
 #### Types
-- `u64x2` (128-bit, both platforms), `u64x4` (256-bit, x86 with AVX2), `u64x8` (512-bit, x86 with AVX-512). Vector types over `u64`; mirror the existing `f64x{2,4}` plumbing. ARM rejects `u64x4` / `u64x8` at the type-validation site with a narrowing hint ("u64xN requires AVX-512/AVX2; use u64x2 on ARM"), consistent with `f64x4` / `i32x8` etc.
+- `u64x2` (128-bit, both platforms), `u64x4` (256-bit, x86 AVX2), `u64x8` (512-bit, x86 AVX-512). Vector types over `u64`; mirror the existing `f64x{2,4}` plumbing. ARM rejects `u64x4` / `u64x8` at the type-validation site with a narrowing hint ("u64xN requires AVX-512/AVX2; use u64x2 on ARM").
 - New lexer tokens: `TokenKind::U64x2`, `U64x4`, `U64x8`. Additive — no rename of existing tokens.
 
 #### Deprecation-warning infrastructure
 - `src/typeck/deprecations.rs`: `DeprecationInfo`, `DeprecationWarning`, and a `DEPRECATED_INTRINSICS` table. Calling an intrinsic listed in the table records a warning on the active `TypeChecker` (the intrinsic still compiles normally).
 - `TypeChecker::with_deprecations(table)` for tests; `TypeChecker::warnings()` accessor; `ea_compiler::check_types_with_warnings(stmts)` library entry point.
 - The compiler driver (`ea` CLI, `compile_with_options`, `compile_to_ir_with_options`, `inspect_source`) prints any collected warnings to stderr after a successful type check.
-- Production `DEPRECATED_INTRINSICS` is empty as of v1.12.0-dev; the v1.12.0 monomorphic-rename batch (`sat_add` → `sat_add_i8x16`, etc.) will be the first real consumer.
+- Production `DEPRECATED_INTRINSICS` now has three entries: the polymorphic `sat_add`, `sat_sub`, `abs_diff` (first real consumers).
 
 #### Migration documentation
 - New `docs/migrations/` directory with one file per breaking release. `docs/migrations/README.md` documents the deprecation-cycle policy: minor-release warning → at least one full minor cycle → removal in the next major release.
 - `docs/migrations/v1.11.0.md` retroactively documents the `maddubs_i32` → `maddubs_i16` + `madd_i16` migration.
-- `docs/migrations/v1.12.0.md` template for the upcoming monomorphic-rename batch.
+- `docs/migrations/v1.12.0.md` covers the sat_add / sat_sub / abs_diff typed-spelling migration, plus a summary of the additive changes that don't need migration.
 
 #### CI
 - New `public-api-check` job in `.github/workflows/ci.yml`: runs `cargo public-api --simplified` and diffs against `docs/public-api.txt`. Fails CI on unintended public-API drift; intentional changes require updating the snapshot in the same PR.
 - Initial snapshot committed at `docs/public-api.txt`.
+
+### Deprecated
+
+- **Polymorphic `sat_add` / `sat_sub` / `abs_diff` — use the typed spellings.** The polymorphic forms continue to compile but emit a deprecation warning at each call site, pointing at the typed replacement. Removal scheduled for v2.0.0. See `docs/migrations/v1.12.0.md` for the migration recipes.
+
+### Fixed
+
+- **x86 codegen for `sat_add` / `sat_sub` no longer produces an unresolved symbol at link time.** The previous codegen called `llvm.x86.sse2.padds.b` / `paddus.b` / `psubs.w` etc. directly, but LLVM 7+ removed those target-specific intrinsics in favor of the canonical target-independent forms (`llvm.sadd.sat.vNiM`, `llvm.uadd.sat.vNiM`, etc.). The old names link-failed with `undefined reference to llvm.x86.sse2.padds.b` whenever a program was actually built into an executable. Existing tests only compiled to object file, so the bug went unnoticed in v1.11.0. Codegen now uses the canonical intrinsic names, which the backend lowers to `padds`/`paddus` on x86 and `sqadd`/`uqadd` on ARM. Removes the x86/ARM branching in `src/codegen/simd_saturating.rs`.
+- **`wmul_u64` codegen on x86** — caught during development of the new intrinsic: the analogous `llvm.x86.sse2.pmulu.dq` was also removed in LLVM 7+; new codegen uses canonical `mul(zext, zext)` IR. Same lesson, separate fix.
 
 ## v1.11.0 — 2026-05-13 — ARM I8MM + FP16 intrinsics, exp_poly_f32, pack/saturate surface
 
