@@ -80,8 +80,22 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "min"
                 | "max"
                 | "sat_add"
+                | "sat_add_i8x16"
+                | "sat_add_u8x16"
+                | "sat_add_i16x8"
+                | "sat_add_u16x8"
                 | "sat_sub"
+                | "sat_sub_i8x16"
+                | "sat_sub_u8x16"
+                | "sat_sub_i16x8"
+                | "sat_sub_u16x8"
                 | "abs_diff"
+                | "abs_diff_i8x16"
+                | "abs_diff_u8x16"
+                | "abs_diff_i16x8"
+                | "abs_diff_u16x8"
+                | "abs_diff_i32x4"
+                | "abs_diff_u32x4"
                 | "addp_i32"
                 | "addp_i16"
                 | "wmul_i16"
@@ -275,9 +289,16 @@ impl<'ctx> CodeGenerator<'ctx> {
             "prefetch" => self.compile_prefetch(args, function),
             "movemask" => self.compile_movemask(args, function),
             "min" | "max" => self.compile_min_max(args, name, function),
-            "sat_add" => self.compile_sat_add(args, function),
-            "sat_sub" => self.compile_sat_sub(args, function),
-            "abs_diff" => self.compile_abs_diff(args, function),
+            "sat_add" | "sat_add_i8x16" | "sat_add_u8x16" | "sat_add_i16x8" | "sat_add_u16x8" => {
+                self.compile_sat_add(args, function)
+            }
+            "sat_sub" | "sat_sub_i8x16" | "sat_sub_u8x16" | "sat_sub_i16x8" | "sat_sub_u16x8" => {
+                self.compile_sat_sub(args, function)
+            }
+            "abs_diff" | "abs_diff_i8x16" | "abs_diff_u8x16" | "abs_diff_i16x8"
+            | "abs_diff_u16x8" | "abs_diff_i32x4" | "abs_diff_u32x4" => {
+                self.compile_abs_diff(args, function)
+            }
             "addp_i32" => self.compile_addp_i32(args, function),
             "addp_i16" => self.compile_addp_i16(args, function),
             "wmul_i16" => self.compile_wmul_i16(args, function),

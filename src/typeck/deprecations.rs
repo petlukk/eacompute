@@ -46,10 +46,36 @@ pub type DeprecationTable = &'static [(&'static str, DeprecationInfo)];
 
 /// The production table of deprecated intrinsics.
 ///
-/// Empty as of v1.12.0-dev. Add entries here when removing an intrinsic name
-/// in a future release: keep it functional for one minor cycle so callers see
-/// the warning before the hard break.
-pub const DEPRECATED_INTRINSICS: DeprecationTable = &[];
+/// Add entries here when renaming or removing an intrinsic: keep the old
+/// name functional for at least one minor release cycle so callers see the
+/// warning before the hard break in the next major release.
+pub const DEPRECATED_INTRINSICS: DeprecationTable = &[
+    (
+        "sat_add",
+        DeprecationInfo {
+            since: "1.12.0",
+            advice: "use the typed spelling: sat_add_i8x16 / sat_add_u8x16 / \
+                     sat_add_i16x8 / sat_add_u16x8",
+        },
+    ),
+    (
+        "sat_sub",
+        DeprecationInfo {
+            since: "1.12.0",
+            advice: "use the typed spelling: sat_sub_i8x16 / sat_sub_u8x16 / \
+                     sat_sub_i16x8 / sat_sub_u16x8",
+        },
+    ),
+    (
+        "abs_diff",
+        DeprecationInfo {
+            since: "1.12.0",
+            advice: "use the typed spelling: abs_diff_i8x16 / abs_diff_u8x16 / \
+                     abs_diff_i16x8 / abs_diff_u16x8 / abs_diff_i32x4 / \
+                     abs_diff_u32x4 (ARM-only)",
+        },
+    ),
+];
 
 pub fn lookup(table: DeprecationTable, name: &str) -> Option<&'static DeprecationInfo> {
     table.iter().find(|(n, _)| *n == name).map(|(_, info)| info)
