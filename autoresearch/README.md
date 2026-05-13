@@ -2,6 +2,16 @@
 
 Automated kernel optimization loop inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). An AI agent iteratively rewrites Eä SIMD kernels to find the fastest correct implementation.
 
+> **Note on the kernel archive.** The `best_kernel.ea` files under
+> `kernels/<name>/` were produced in earlier Eä releases when the
+> intrinsic surface was much smaller (no `smmla_*`, no `exp_poly_f32`,
+> no native f16, no AVX-512 lane family, no `f32x{4,8}_from_scalars`).
+> Most are scalar or basic-SIMD and **do not** represent current
+> best-known implementations on v1.11.0+. Re-running autoresearch on
+> the modern intrinsic set is tracked as a v1.12.0 follow-up in
+> [`/ROADMAP.md`](../ROADMAP.md). Treat the existing archive as
+> historical baselines.
+
 ## How It Works
 
 A bash orchestrator runs a modify → compile → benchmark → keep/discard loop:
