@@ -4,6 +4,11 @@
 
 ### Added
 
+#### Types
+- `u64x2` (128-bit, both platforms), `u64x4` (256-bit, x86 with AVX2), `u64x8` (512-bit, x86 with AVX-512). Vector types over `u64`; mirror the existing `f64x{2,4}` plumbing. ARM rejects `u64x4` / `u64x8` at the type-validation site with a narrowing hint ("u64xN requires AVX-512/AVX2; use u64x2 on ARM"), consistent with `f64x4` / `i32x8` etc.
+- New lexer tokens: `TokenKind::U64x2`, `U64x4`, `U64x8`. Additive — no rename of existing tokens.
+- Prerequisite for the upcoming `wmul_u64_lo` / `wmul_u64_hi` intrinsics (u32×u32 → u64 widening multiply landing in a follow-up PR; Poly1305 unblocker).
+
 #### Deprecation-warning infrastructure
 - `src/typeck/deprecations.rs`: `DeprecationInfo`, `DeprecationWarning`, and a `DEPRECATED_INTRINSICS` table. Calling an intrinsic listed in the table records a warning on the active `TypeChecker` (the intrinsic still compiles normally).
 - `TypeChecker::with_deprecations(table)` for tests; `TypeChecker::warnings()` accessor; `ea_compiler::check_types_with_warnings(stmts)` library entry point.
