@@ -5,6 +5,7 @@ mod common;
 
 #[cfg(feature = "llvm")]
 mod tests {
+    #[allow(unused_imports)]
     use super::common::*;
 
     // --- u8x16 basic: specific bytes match ---

@@ -4,6 +4,7 @@ mod common;
 
 #[cfg(feature = "llvm")]
 mod tests {
+    #[allow(unused_imports)]
     use super::common::*;
 
     // === madd_i16 AVX2: i16x16 × i16x16 → i32x8 ===

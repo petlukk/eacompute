@@ -260,8 +260,11 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn test_arm_addp_i32_rejected_on_x86() {
+        // CompileOptions::default() uses host arch; this test asserts the
+        // x86-host rejection path, so it's gated to x86_64 runners.
         let err = try_compile(
             r#"export func f(a: i32x4, b: i32x4) -> i32x4 { return addp_i32(a, b) }"#,
             &CompileOptions::default(),
@@ -306,8 +309,14 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn test_f32x8_from_scalars() {
+        // f32x8 requires AVX2 on x86 or an ARM target CPU (e.g. cortex-a76)
+        // that exposes 256-bit width via two NEON registers. assert_output
+        // runs the binary natively, so this is gated to x86_64 runners.
+        // The ARM cross-compile path is exercised by Phase 6 benchmarks
+        // (benchmarks/v1.11.0/gather_compose_bench_arm.ea).
         assert_output(
             r#"
         export func main() {
