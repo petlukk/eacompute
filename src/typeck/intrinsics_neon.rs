@@ -51,6 +51,45 @@ impl TypeChecker {
         }
     }
 
+    /// Shared typeck for the v1.12.0 monomorphic spellings of `abs_diff`.
+    /// Each named variant pins exactly one (elem, width) pair. ARM-only
+    /// behavior is enforced by `compile_abs_diff` at codegen time.
+    pub(super) fn check_abs_diff_typed(
+        &self,
+        name: &str,
+        expected_elem: Type,
+        expected_width: usize,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 2 arguments"),
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        if a != b {
+            return Err(CompileError::type_error(
+                format!("{name} arguments must have the same type, got ({a}, {b})"),
+                span.clone(),
+            ));
+        }
+        match &a {
+            Type::Vector { elem, width }
+                if elem.as_ref() == &expected_elem && *width == expected_width =>
+            {
+                Ok(a)
+            }
+            _ => Err(CompileError::type_error(
+                format!("{name} expects {expected_elem}x{expected_width}, got {a}"),
+                span.clone(),
+            )),
+        }
+    }
+
     /// addp_i32(a: i32x4, b: i32x4) -> i32x4. ARM-only pairwise add.
     /// Result: [a[0]+a[1], a[2]+a[3], b[0]+b[1], b[2]+b[3]].
     pub(super) fn check_addp_i32(

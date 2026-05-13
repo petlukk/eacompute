@@ -101,6 +101,50 @@ impl TypeChecker {
             "sat_add" => Some(self.check_sat_add(args, locals, span)),
             "sat_sub" => Some(self.check_sat_sub(args, locals, span)),
             "abs_diff" => Some(self.check_abs_diff(args, locals, span)),
+            // v1.12.0 monomorphic spellings — replace the polymorphic forms
+            // above. Old names emit deprecation warnings; see DEPRECATED_INTRINSICS.
+            "sat_add_i8x16" => {
+                Some(self.check_sat_typed("sat_add_i8x16", Type::I8, 16, args, locals, span))
+            }
+            "sat_add_u8x16" => {
+                Some(self.check_sat_typed("sat_add_u8x16", Type::U8, 16, args, locals, span))
+            }
+            "sat_add_i16x8" => {
+                Some(self.check_sat_typed("sat_add_i16x8", Type::I16, 8, args, locals, span))
+            }
+            "sat_add_u16x8" => {
+                Some(self.check_sat_typed("sat_add_u16x8", Type::U16, 8, args, locals, span))
+            }
+            "sat_sub_i8x16" => {
+                Some(self.check_sat_typed("sat_sub_i8x16", Type::I8, 16, args, locals, span))
+            }
+            "sat_sub_u8x16" => {
+                Some(self.check_sat_typed("sat_sub_u8x16", Type::U8, 16, args, locals, span))
+            }
+            "sat_sub_i16x8" => {
+                Some(self.check_sat_typed("sat_sub_i16x8", Type::I16, 8, args, locals, span))
+            }
+            "sat_sub_u16x8" => {
+                Some(self.check_sat_typed("sat_sub_u16x8", Type::U16, 8, args, locals, span))
+            }
+            "abs_diff_i8x16" => {
+                Some(self.check_abs_diff_typed("abs_diff_i8x16", Type::I8, 16, args, locals, span))
+            }
+            "abs_diff_u8x16" => {
+                Some(self.check_abs_diff_typed("abs_diff_u8x16", Type::U8, 16, args, locals, span))
+            }
+            "abs_diff_i16x8" => {
+                Some(self.check_abs_diff_typed("abs_diff_i16x8", Type::I16, 8, args, locals, span))
+            }
+            "abs_diff_u16x8" => {
+                Some(self.check_abs_diff_typed("abs_diff_u16x8", Type::U16, 8, args, locals, span))
+            }
+            "abs_diff_i32x4" => {
+                Some(self.check_abs_diff_typed("abs_diff_i32x4", Type::I32, 4, args, locals, span))
+            }
+            "abs_diff_u32x4" => {
+                Some(self.check_abs_diff_typed("abs_diff_u32x4", Type::U32, 4, args, locals, span))
+            }
             "round_f32x4_i32x4" => Some(self.check_round_f32x4_i32x4(args, locals, span)),
             "round_f32x8_i32x8" => Some(self.check_round_f32x8_i32x8(args, locals, span)),
             "pack_sat_i16x8" => Some(self.check_pack_sat_i16x8(args, locals, span)),

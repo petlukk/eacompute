@@ -2,6 +2,19 @@
 
 ## [Unreleased] — v1.12.0-dev
 
+### Deprecated
+
+- **Polymorphic `sat_add` / `sat_sub` / `abs_diff` — use the typed spellings.** The polymorphic forms continue to compile but emit a deprecation warning at each call site, pointing at the typed replacement. Removal scheduled for v2.0.0. Typed spellings:
+  - `sat_add_i8x16`, `sat_add_u8x16`, `sat_add_i16x8`, `sat_add_u16x8` (cross-platform)
+  - `sat_sub_i8x16`, `sat_sub_u8x16`, `sat_sub_i16x8`, `sat_sub_u16x8` (cross-platform)
+  - `abs_diff_i8x16`, `abs_diff_u8x16`, `abs_diff_i16x8`, `abs_diff_u16x8`, `abs_diff_i32x4`, `abs_diff_u32x4` (ARM-only, mirrors the polymorphic parent)
+
+  Codegen for all typed spellings forwards to the existing `compile_sat_add` / `compile_sat_sub` / `compile_abs_diff` — same lowering, no behavior change. See `docs/migrations/v1.12.0.md`. First real exercise of the v1.12.0 deprecation-warning infrastructure.
+
+### Fixed
+
+- **x86 codegen for `sat_add` / `sat_sub` no longer produces an unresolved symbol at link time.** The previous codegen called `llvm.x86.sse2.padds.b` / `paddus.b` / `psubs.w` etc. directly, but LLVM 7+ removed those target-specific intrinsics in favor of the canonical target-independent forms (`llvm.sadd.sat.vNiM`, `llvm.uadd.sat.vNiM`, etc.). The old names link-failed with `undefined reference to llvm.x86.sse2.padds.b` whenever a program was actually built into an executable. Existing tests only compiled to object file, so the bug went unnoticed in v1.11.0. Codegen now uses the canonical intrinsic names, which the backend lowers to `padds`/`paddus` on x86 and `sqadd`/`uqadd` on ARM. Removes the x86/ARM branching in `src/codegen/simd_saturating.rs`.
+
 ### Added
 
 #### Cross-platform intrinsics

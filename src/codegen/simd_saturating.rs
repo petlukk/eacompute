@@ -7,58 +7,36 @@ use super::CodeGenerator;
 
 impl<'ctx> CodeGenerator<'ctx> {
     /// sat_add(a, b) -> same type. Cross-platform saturating addition.
-    /// ARM: NEON sqadd/uqadd. x86: SSE2 padds/paddus.
+    ///
+    /// Lowers to LLVM's target-independent `llvm.{s,u}add.sat` intrinsic.
+    /// Backend emits `padds`/`paddus` on x86 and `sqadd`/`uqadd` on ARM.
+    /// The platform-specific `llvm.x86.sse2.padds.*` names are deprecated
+    /// in LLVM 7+; using them produces an unresolved symbol at link time
+    /// (caught by tests/monomorphic_sat_diff_tests.rs).
     pub(super) fn compile_sat_add(
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
-        let is_unsigned = self.infer_unsigned_elem_from_arg(&args[0]);
-        let a = self.compile_expr(&args[0], function)?.into_vector_value();
-        let b = self.compile_expr(&args[1], function)?.into_vector_value();
-        let vec_ty = a.get_type();
-        let (width, elem_name) = self.vector_type_parts(vec_ty);
-
-        let intrinsic_name = if self.is_arm {
-            let sign = if is_unsigned { "uq" } else { "sq" };
-            format!("llvm.aarch64.neon.{sign}add.v{width}{elem_name}")
-        } else {
-            match (is_unsigned, elem_name, width) {
-                (false, "i8", 16) => "llvm.x86.sse2.padds.b".to_string(),
-                (true, "i8", 16) => "llvm.x86.sse2.paddus.b".to_string(),
-                (false, "i16", 8) => "llvm.x86.sse2.padds.w".to_string(),
-                (true, "i16", 8) => "llvm.x86.sse2.paddus.w".to_string(),
-                _ => {
-                    return Err(CompileError::codegen_error(format!(
-                        "sat_add: unsupported type on x86: {elem_name}x{width}"
-                    )));
-                }
-            }
-        };
-
-        let fn_type = vec_ty.fn_type(&[vec_ty.into(), vec_ty.into()], false);
-        let intrinsic = self
-            .module
-            .get_function(&intrinsic_name)
-            .unwrap_or_else(|| self.module.add_function(&intrinsic_name, fn_type, None));
-
-        let result = self
-            .builder
-            .build_call(intrinsic, &[a.into(), b.into()], "sat_add")
-            .map_err(|e| CompileError::codegen_error(e.to_string()))?
-            .try_as_basic_value()
-            .basic()
-            .ok_or_else(|| CompileError::codegen_error("sat_add did not return a value"))?;
-
-        Ok(result)
+        self.compile_sat_op(args, function, "add", "sat_add")
     }
 
     /// sat_sub(a, b) -> same type. Cross-platform saturating subtraction.
-    /// ARM: NEON sqsub/uqsub. x86: SSE2 psubs/psubus.
+    /// See [`compile_sat_add`] for the lowering rationale.
     pub(super) fn compile_sat_sub(
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        self.compile_sat_op(args, function, "sub", "sat_sub")
+    }
+
+    fn compile_sat_op(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+        op: &str, // "add" or "sub"
+        call_name: &str,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         let is_unsigned = self.infer_unsigned_elem_from_arg(&args[0]);
         let a = self.compile_expr(&args[0], function)?.into_vector_value();
@@ -66,22 +44,8 @@ impl<'ctx> CodeGenerator<'ctx> {
         let vec_ty = a.get_type();
         let (width, elem_name) = self.vector_type_parts(vec_ty);
 
-        let intrinsic_name = if self.is_arm {
-            let sign = if is_unsigned { "uq" } else { "sq" };
-            format!("llvm.aarch64.neon.{sign}sub.v{width}{elem_name}")
-        } else {
-            match (is_unsigned, elem_name, width) {
-                (false, "i8", 16) => "llvm.x86.sse2.psubs.b".to_string(),
-                (true, "i8", 16) => "llvm.x86.sse2.psubus.b".to_string(),
-                (false, "i16", 8) => "llvm.x86.sse2.psubs.w".to_string(),
-                (true, "i16", 8) => "llvm.x86.sse2.psubus.w".to_string(),
-                _ => {
-                    return Err(CompileError::codegen_error(format!(
-                        "sat_sub: unsupported type on x86: {elem_name}x{width}"
-                    )));
-                }
-            }
-        };
+        let sign = if is_unsigned { "u" } else { "s" };
+        let intrinsic_name = format!("llvm.{sign}{op}.sat.v{width}{elem_name}");
 
         let fn_type = vec_ty.fn_type(&[vec_ty.into(), vec_ty.into()], false);
         let intrinsic = self
@@ -91,11 +55,13 @@ impl<'ctx> CodeGenerator<'ctx> {
 
         let result = self
             .builder
-            .build_call(intrinsic, &[a.into(), b.into()], "sat_sub")
+            .build_call(intrinsic, &[a.into(), b.into()], call_name)
             .map_err(|e| CompileError::codegen_error(e.to_string()))?
             .try_as_basic_value()
             .basic()
-            .ok_or_else(|| CompileError::codegen_error("sat_sub did not return a value"))?;
+            .ok_or_else(|| {
+                CompileError::codegen_error(format!("{call_name} did not return a value"))
+            })?;
 
         Ok(result)
     }

@@ -65,26 +65,44 @@ fn non_deprecated_call_emits_no_warning() {
 }
 
 #[test]
-fn production_table_starts_empty() {
-    // Sanity check on policy: until the v1.12.0 rename batch lands, the
-    // production deprecation table should have no entries.
-    assert!(
-        ea_compiler::typeck::DEPRECATED_INTRINSICS.is_empty(),
-        "DEPRECATED_INTRINSICS should be empty at v1.12.0-dev; \
-         when adding entries, update this test and docs/migrations/"
-    );
+fn production_table_has_v1_12_0_rename_batch() {
+    // The first real deprecation cycle: sat_add / sat_sub / abs_diff
+    // monomorphic rename. Old polymorphic names emit warnings; new typed
+    // spellings are in src/typeck/intrinsics.rs and tests/monomorphic_sat_diff_tests.rs.
+    let names: Vec<&str> = ea_compiler::typeck::DEPRECATED_INTRINSICS
+        .iter()
+        .map(|(n, _)| *n)
+        .collect();
+    for expected in ["sat_add", "sat_sub", "abs_diff"] {
+        assert!(
+            names.contains(&expected),
+            "expected {expected} in DEPRECATED_INTRINSICS, got {names:?}"
+        );
+    }
+    for (_, info) in ea_compiler::typeck::DEPRECATED_INTRINSICS {
+        assert_eq!(info.since, "1.12.0");
+        assert!(info.advice.contains("typed spelling"));
+    }
 }
 
 #[test]
-fn default_typechecker_emits_no_warnings_for_known_intrinsic() {
-    // With the default (production) table, a working intrinsic must not
-    // record a warning — guards against the recorder firing on every call.
-    let tokens = ea_compiler::tokenize(SOURCE_USING_DEPRECATED).unwrap();
+fn default_typechecker_emits_no_warnings_for_non_deprecated_intrinsic() {
+    // With the default (production) table, calling an intrinsic that is
+    // NOT in DEPRECATED_INTRINSICS must record no warning — guards
+    // against the recorder firing on every intrinsic call. `widen_u8_u16`
+    // is a stable non-deprecated intrinsic; if it gets deprecated in a
+    // future release, switch this test to another.
+    let src = "export func f(a: u8x16) -> u16x8 { return widen_u8_u16(a) }\n";
+    let tokens = ea_compiler::tokenize(src).unwrap();
     let stmts = ea_compiler::parse(tokens).unwrap();
     let stmts = ea_compiler::desugar(stmts).unwrap();
     let mut tc = TypeChecker::new();
     tc.check_program(&stmts).unwrap();
-    assert!(tc.warnings().is_empty());
+    assert!(
+        tc.warnings().is_empty(),
+        "widen_u8_u16 should not warn, got {:?}",
+        tc.warnings()
+    );
 }
 
 #[test]

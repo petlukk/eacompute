@@ -165,6 +165,46 @@ impl TypeChecker {
         }
     }
 
+    /// Shared typeck for the v1.12.0 monomorphic spellings of `sat_add` and
+    /// `sat_sub`. Each named variant pins exactly one (elem, width) pair.
+    /// The polymorphic forms remain functional but emit deprecation warnings;
+    /// see `docs/migrations/v1.12.0.md`.
+    pub(super) fn check_sat_typed(
+        &self,
+        name: &str,
+        expected_elem: Type,
+        expected_width: usize,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 2 arguments"),
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        if a != b {
+            return Err(CompileError::type_error(
+                format!("{name} arguments must have the same type, got ({a}, {b})"),
+                span.clone(),
+            ));
+        }
+        match &a {
+            Type::Vector { elem, width }
+                if elem.as_ref() == &expected_elem && *width == expected_width =>
+            {
+                Ok(a)
+            }
+            _ => Err(CompileError::type_error(
+                format!("{name} expects {expected_elem}x{expected_width}, got {a}"),
+                span.clone(),
+            )),
+        }
+    }
+
     /// widen_u8_u16(u8x16) -> u16x8: zero-extend the LOW 8 lanes of a u8x16
     /// vector to a u16x8. The upper 8 lanes of the input are silently discarded.
     /// Lowers to vpmovzxbw on x86 and umull/ushll on ARM. To widen the upper
