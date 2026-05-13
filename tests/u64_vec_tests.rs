@@ -44,13 +44,14 @@ mod tests {
             r#"
             #include <stdio.h>
             #include <stdint.h>
+            #include <inttypes.h>
             extern void test(const uint64_t*, const uint64_t*, uint64_t*);
             int main() {
                 uint64_t a[2] = {1ULL << 40, 2ULL << 40};
                 uint64_t b[2] = {3ULL << 40, 5ULL << 40};
                 uint64_t out[2];
                 test(a, b, out);
-                printf("%lu %lu\n", out[0], out[1]);
+                printf("%" PRIu64 " %" PRIu64 "\n", out[0], out[1]);
                 return 0;
             }
             "#,
@@ -70,12 +71,13 @@ mod tests {
             r#"
             #include <stdio.h>
             #include <stdint.h>
+            #include <inttypes.h>
             extern void test(const uint64_t*, uint64_t*);
             int main() {
                 uint64_t input[2] = {0xCAFEBABEDEADBEEFULL, 0x0123456789ABCDEFULL};
                 uint64_t out[2];
                 test(input, out);
-                printf("%lx %lx\n", out[0], out[1]);
+                printf("%" PRIx64 " %" PRIx64 "\n", out[0], out[1]);
                 return 0;
             }
             "#,
@@ -98,13 +100,15 @@ mod tests {
             r#"
             #include <stdio.h>
             #include <stdint.h>
+            #include <inttypes.h>
             extern void test(const uint64_t*, const uint64_t*, uint64_t*);
             int main() {
                 uint64_t a[4] = {1, 10, 100, 1000};
                 uint64_t b[4] = {2, 20, 200, 2000};
                 uint64_t out[4];
                 test(a, b, out);
-                printf("%lu %lu %lu %lu\n", out[0], out[1], out[2], out[3]);
+                printf("%" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+                    out[0], out[1], out[2], out[3]);
                 return 0;
             }
             "#,
@@ -127,13 +131,15 @@ mod tests {
             r#"
             #include <stdio.h>
             #include <stdint.h>
+            #include <inttypes.h>
             extern void test(const uint64_t*, const uint64_t*, uint64_t*);
             int main() {
                 uint64_t a[8] = {1, 2, 3, 4, 5, 6, 7, 8};
                 uint64_t b[8] = {10, 20, 30, 40, 50, 60, 70, 80};
                 uint64_t out[8];
                 test(a, b, out);
-                printf("%lu %lu %lu %lu %lu %lu %lu %lu\n",
+                printf("%" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " "
+                       "%" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
                     out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7]);
                 return 0;
             }
@@ -154,11 +160,12 @@ mod tests {
             r#"
             #include <stdio.h>
             #include <stdint.h>
+            #include <inttypes.h>
             extern void test(uint64_t*);
             int main() {
                 uint64_t out[2];
                 test(out);
-                printf("%lu %lu\n", out[0], out[1]);
+                printf("%" PRIu64 " %" PRIu64 "\n", out[0], out[1]);
                 return 0;
             }
             "#,
