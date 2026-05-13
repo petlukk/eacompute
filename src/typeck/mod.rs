@@ -1,5 +1,6 @@
 mod check;
 pub mod const_eval;
+pub mod deprecations;
 mod expr_check;
 mod intrinsics;
 mod intrinsics_byteshift;
@@ -13,10 +14,14 @@ mod intrinsics_pack;
 mod intrinsics_simd;
 pub mod types;
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::ast::{Literal, Param, Stmt};
 
+pub use deprecations::{
+    DEPRECATED_INTRINSICS, DeprecationInfo, DeprecationTable, DeprecationWarning,
+};
 pub use types::Type;
 
 #[derive(Debug, Clone)]
@@ -29,6 +34,8 @@ pub struct TypeChecker {
     pub(crate) functions: HashMap<String, FuncSig>,
     pub(crate) structs: HashMap<String, Vec<(String, Type)>>,
     pub(crate) constants: HashMap<String, (Type, Literal)>,
+    pub(crate) deprecations: DeprecationTable,
+    pub(crate) warnings: RefCell<Vec<DeprecationWarning>>,
 }
 
 impl Default for TypeChecker {
@@ -39,10 +46,35 @@ impl Default for TypeChecker {
 
 impl TypeChecker {
     pub fn new() -> Self {
+        Self::with_deprecations(DEPRECATED_INTRINSICS)
+    }
+
+    /// Construct a TypeChecker with a custom deprecation table. Tests use
+    /// this to inject synthetic entries; production code uses [`Self::new`].
+    pub fn with_deprecations(deprecations: DeprecationTable) -> Self {
         Self {
             functions: HashMap::new(),
             structs: HashMap::new(),
             constants: HashMap::new(),
+            deprecations,
+            warnings: RefCell::new(Vec::new()),
+        }
+    }
+
+    /// All deprecation warnings recorded during the most recent
+    /// [`Self::check_program`] call.
+    pub fn warnings(&self) -> Vec<DeprecationWarning> {
+        self.warnings.borrow().clone()
+    }
+
+    pub(crate) fn record_deprecation_if_any(&self, name: &str, span: &crate::lexer::Span) {
+        if let Some(info) = deprecations::lookup(self.deprecations, name) {
+            self.warnings.borrow_mut().push(DeprecationWarning {
+                name: name.to_string(),
+                since: info.since.to_string(),
+                advice: info.advice.to_string(),
+                span: span.clone(),
+            });
         }
     }
 

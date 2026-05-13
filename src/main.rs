@@ -237,6 +237,8 @@ fn main() {
                     process::exit(1);
                 }
             };
+            // Warnings are surfaced by the subsequent compile_with_options
+            // call; suppress here to avoid duplicate stderr emission.
             if let Err(e) = ea_compiler::check_types(&stmts) {
                 print_error(&e, input_file, &source);
                 process::exit(1);
