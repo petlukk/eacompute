@@ -4,6 +4,13 @@
 
 ### Added
 
+#### Widening intrinsic (closes the u8→u16 high-half asymmetry)
+- `widen_u8_u16_hi(u8x16) -> u16x8` — zero-extend the **high** 8 lanes of a `u8x16` to a `u16x8`. Sibling of `widen_u8_u16` (which handles the low half). Pair them to widen all 16 lanes of a `u8x16` without a manual shuffle step.
+  - **ARM**: `ushll2 v.8h, v.16b, #0` — single instruction. (Low half: `ushll`.)
+  - **x86**: `vpxor + vpunpckhbw` — 2 instructions. (Low half: `vpmovzxbw`.)
+
+  Codegen refactor: `compile_widen_u8_u16` / `compile_widen_u8_u16_hi` share a `compile_widen_u8_u16_half(is_lo)` helper; same for typeck. Identical lowering, mask offset differs by 8. Updated the `widen_u8_u16` docstring to point at the new sibling (was: "shuffle the upper half to the low lanes first via `shuffle` or `hi128_*`").
+
 #### Lane-extractor intrinsics (fills the i16/u16 gap)
 - `lo128_i16x16(i16x16) -> i16x8`, `hi128_i16x16(i16x16) -> i16x8` — 256→128-bit halve for i16. AVX2 input (x86); ARM rejects with the standard 256-bit-NEON-narrowing hint.
 - `lo128_u16x16(u16x16) -> u16x8`, `hi128_u16x16(u16x16) -> u16x8` — same for u16.

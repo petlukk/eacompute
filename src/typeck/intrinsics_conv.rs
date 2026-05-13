@@ -206,18 +206,40 @@ impl TypeChecker {
     }
 
     /// widen_u8_u16(u8x16) -> u16x8: zero-extend the LOW 8 lanes of a u8x16
-    /// vector to a u16x8. The upper 8 lanes of the input are silently discarded.
-    /// Lowers to vpmovzxbw on x86 and umull/ushll on ARM. To widen the upper
-    /// half, shuffle it to the low lanes first (via `shuffle` or `hi128_*`).
+    /// vector to a u16x8. Sibling: `widen_u8_u16_hi` for the upper 8 lanes.
+    /// Lowers to vpmovzxbw on x86 and umull/ushll on ARM.
     pub(super) fn check_widen_u8_u16(
         &self,
         args: &[Expr],
         locals: &HashMap<String, (Type, bool)>,
         span: &Span,
     ) -> crate::error::Result<Type> {
+        self.check_widen_u8_u16_half("widen_u8_u16", args, locals, span)
+    }
+
+    /// widen_u8_u16_hi(u8x16) -> u16x8: zero-extend the HIGH 8 lanes of a
+    /// u8x16 vector to a u16x8. Sibling of `widen_u8_u16` (low half). The
+    /// pair lets a caller widen all 16 lanes of a u8x16 without a manual
+    /// shuffle step.
+    pub(super) fn check_widen_u8_u16_hi(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        self.check_widen_u8_u16_half("widen_u8_u16_hi", args, locals, span)
+    }
+
+    fn check_widen_u8_u16_half(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
         if args.len() != 1 {
             return Err(CompileError::type_error(
-                "widen_u8_u16 expects 1 argument (u8x16 vector)",
+                format!("{name} expects 1 argument (u8x16 vector)"),
                 span.clone(),
             ));
         }
@@ -230,7 +252,7 @@ impl TypeChecker {
                 })
             }
             _ => Err(CompileError::type_error(
-                format!("widen_u8_u16 expects u8x16, got {arg_type}"),
+                format!("{name} expects u8x16, got {arg_type}"),
                 args[0].span().clone(),
             )),
         }
