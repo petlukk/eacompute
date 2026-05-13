@@ -169,7 +169,9 @@ pub fn compile_with_options(
 
             // Pick the linker by *target*, not host. A windows triple
             // means we need a PE DLL even when we're on Linux.
-            let target_is_windows = opts.target_triple.as_deref()
+            let target_is_windows = opts
+                .target_triple
+                .as_deref()
                 .map(|t| t.contains("windows"))
                 .unwrap_or(cfg!(target_os = "windows"));
             let host_is_windows = cfg!(target_os = "windows");
@@ -178,18 +180,27 @@ pub fn compile_with_options(
                 // Native Windows: lld-link.exe (ships with LLVM 18).
                 let out_flag = format!("/OUT:{}", lib_name);
                 let output = std::process::Command::new("lld-link.exe")
-                    .arg("/DLL").arg("/NOLOGO").arg("/NODEFAULTLIB").arg("/NOENTRY")
-                    .arg(&out_flag).arg(output_path)
+                    .arg("/DLL")
+                    .arg("/NOLOGO")
+                    .arg("/NODEFAULTLIB")
+                    .arg("/NOENTRY")
+                    .arg(&out_flag)
+                    .arg(output_path)
                     .output()
-                    .map_err(|e| error::CompileError::codegen_error(
-                        format!("failed to invoke lld-link: {e}")))?;
+                    .map_err(|e| {
+                        error::CompileError::codegen_error(format!(
+                            "failed to invoke lld-link: {e}"
+                        ))
+                    })?;
                 let _ = std::fs::remove_file(output_path);
                 if !output.status.success() {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     let stdout = String::from_utf8_lossy(&output.stdout);
                     let detail = if !stderr.is_empty() { stderr } else { stdout };
-                    return Err(error::CompileError::codegen_error(
-                        format!("lld-link failed:\n{}", detail.trim())));
+                    return Err(error::CompileError::codegen_error(format!(
+                        "lld-link failed:\n{}",
+                        detail.trim()
+                    )));
                 }
             } else if target_is_windows {
                 // Cross from non-Windows host: mingw-w64. Override with
@@ -200,27 +211,38 @@ pub fn compile_with_options(
                     // mingw provides DllMainCRTStartup, msvcrt math
                     // (fmaf/expf), and libgcc compiler-rt (__extendhfsf2).
                     // -static-libgcc avoids a runtime libgcc_s_seh-1.dll dep.
-                    .arg("-shared").arg("-static-libgcc")
-                    .arg(output_path).arg("-o").arg(lib_name)
+                    .arg("-shared")
+                    .arg("-static-libgcc")
+                    .arg(output_path)
+                    .arg("-o")
+                    .arg(lib_name)
                     .status()
-                    .map_err(|e| error::CompileError::codegen_error(
-                        format!("failed to invoke {cc}: {e}")))?;
+                    .map_err(|e| {
+                        error::CompileError::codegen_error(format!("failed to invoke {cc}: {e}"))
+                    })?;
                 let _ = std::fs::remove_file(output_path);
                 if !status.success() {
                     return Err(error::CompileError::codegen_error(
-                        "shared library linking failed (mingw-w64)"));
+                        "shared library linking failed (mingw-w64)",
+                    ));
                 }
             } else {
                 let cc = std::env::var("CC").unwrap_or_else(|_| "cc".to_string());
                 let status = std::process::Command::new(&cc)
-                    .arg("-shared").arg(output_path).arg("-o").arg(lib_name).arg("-lm")
+                    .arg("-shared")
+                    .arg(output_path)
+                    .arg("-o")
+                    .arg(lib_name)
+                    .arg("-lm")
                     .status()
-                    .map_err(|e| error::CompileError::codegen_error(
-                        format!("failed to invoke linker: {e}")))?;
+                    .map_err(|e| {
+                        error::CompileError::codegen_error(format!("failed to invoke linker: {e}"))
+                    })?;
                 let _ = std::fs::remove_file(output_path);
                 if !status.success() {
                     return Err(error::CompileError::codegen_error(
-                        "shared library linking failed"));
+                        "shared library linking failed",
+                    ));
                 }
             }
         }

@@ -41,6 +41,8 @@ mod simd_x86_dotprod;
 #[cfg(feature = "llvm")]
 mod statements;
 #[cfg(feature = "llvm")]
+mod statements_select;
+#[cfg(feature = "llvm")]
 mod structs;
 
 #[cfg(feature = "llvm")]
