@@ -1,5 +1,6 @@
 pub mod error;
 pub mod manifest;
+pub mod report;
 
 pub use error::BenchError;
 
