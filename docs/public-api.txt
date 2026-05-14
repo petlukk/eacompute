@@ -305,6 +305,238 @@ impl core::marker::UnsafeUnpin for ea_compiler::ast::StructField
 impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::ast::StructField
 impl core::panic::unwind_safe::UnwindSafe for ea_compiler::ast::StructField
 pub fn ea_compiler::ast::exported_function_names(stmts: &[ea_compiler::ast::Stmt]) -> alloc::vec::Vec<&str>
+pub mod ea_compiler::bench
+pub mod ea_compiler::bench::error
+pub enum ea_compiler::bench::error::BenchError
+pub ea_compiler::bench::error::BenchError::CcBuild
+pub ea_compiler::bench::error::BenchError::CcBuild::stderr: alloc::string::String
+pub ea_compiler::bench::error::BenchError::EaBuild
+pub ea_compiler::bench::error::BenchError::EaBuild::stderr: alloc::string::String
+pub ea_compiler::bench::error::BenchError::HarnessLine
+pub ea_compiler::bench::error::BenchError::HarnessLine::line_no: usize
+pub ea_compiler::bench::error::BenchError::HarnessLine::msg: alloc::string::String
+pub ea_compiler::bench::error::BenchError::HarnessLine::raw: alloc::string::String
+pub ea_compiler::bench::error::BenchError::HarnessRun
+pub ea_compiler::bench::error::BenchError::HarnessRun::exit_code: i32
+pub ea_compiler::bench::error::BenchError::HarnessRun::stderr_tail: alloc::string::String
+pub ea_compiler::bench::error::BenchError::Io(std::io::error::Error, std::path::PathBuf)
+pub ea_compiler::bench::error::BenchError::JsonParse
+pub ea_compiler::bench::error::BenchError::JsonParse::context: alloc::string::String
+pub ea_compiler::bench::error::BenchError::JsonParse::msg: alloc::string::String
+pub ea_compiler::bench::error::BenchError::ManifestParse
+pub ea_compiler::bench::error::BenchError::ManifestParse::line: usize
+pub ea_compiler::bench::error::BenchError::ManifestParse::msg: alloc::string::String
+pub ea_compiler::bench::error::BenchError::ManifestParse::path: std::path::PathBuf
+pub ea_compiler::bench::error::BenchError::Unsupported(alloc::string::String)
+impl core::error::Error for ea_compiler::bench::error::BenchError
+impl core::fmt::Debug for ea_compiler::bench::error::BenchError
+pub fn ea_compiler::bench::error::BenchError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::bench::error::BenchError
+pub fn ea_compiler::bench::error::BenchError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for ea_compiler::bench::error::BenchError
+impl core::marker::Send for ea_compiler::bench::error::BenchError
+impl core::marker::Sync for ea_compiler::bench::error::BenchError
+impl core::marker::Unpin for ea_compiler::bench::error::BenchError
+impl core::marker::UnsafeUnpin for ea_compiler::bench::error::BenchError
+impl !core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bench::error::BenchError
+impl !core::panic::unwind_safe::UnwindSafe for ea_compiler::bench::error::BenchError
+pub mod ea_compiler::bench::manifest
+pub struct ea_compiler::bench::manifest::Manifest
+pub ea_compiler::bench::manifest::Manifest::arch: alloc::vec::Vec<alloc::string::String>
+pub ea_compiler::bench::manifest::Manifest::baseline: std::path::PathBuf
+pub ea_compiler::bench::manifest::Manifest::cc_flags: alloc::vec::Vec<alloc::string::String>
+pub ea_compiler::bench::manifest::Manifest::ea_flags: alloc::vec::Vec<alloc::string::String>
+pub ea_compiler::bench::manifest::Manifest::harness: std::path::PathBuf
+pub ea_compiler::bench::manifest::Manifest::kernel: std::path::PathBuf
+pub ea_compiler::bench::manifest::Manifest::name: alloc::string::String
+pub ea_compiler::bench::manifest::Manifest::path: std::path::PathBuf
+impl core::clone::Clone for ea_compiler::bench::manifest::Manifest
+pub fn ea_compiler::bench::manifest::Manifest::clone(&self) -> ea_compiler::bench::manifest::Manifest
+impl core::cmp::Eq for ea_compiler::bench::manifest::Manifest
+impl core::cmp::PartialEq for ea_compiler::bench::manifest::Manifest
+pub fn ea_compiler::bench::manifest::Manifest::eq(&self, other: &ea_compiler::bench::manifest::Manifest) -> bool
+impl core::fmt::Debug for ea_compiler::bench::manifest::Manifest
+pub fn ea_compiler::bench::manifest::Manifest::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::bench::manifest::Manifest
+impl core::marker::Freeze for ea_compiler::bench::manifest::Manifest
+impl core::marker::Send for ea_compiler::bench::manifest::Manifest
+impl core::marker::Sync for ea_compiler::bench::manifest::Manifest
+impl core::marker::Unpin for ea_compiler::bench::manifest::Manifest
+impl core::marker::UnsafeUnpin for ea_compiler::bench::manifest::Manifest
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bench::manifest::Manifest
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::bench::manifest::Manifest
+pub fn ea_compiler::bench::manifest::parse(text: &str, manifest_path: &std::path::Path) -> core::result::Result<ea_compiler::bench::manifest::Manifest, ea_compiler::bench::error::BenchError>
+pub mod ea_compiler::bench::report
+pub enum ea_compiler::bench::report::KernelStatus
+pub ea_compiler::bench::report::KernelStatus::Improvement
+pub ea_compiler::bench::report::KernelStatus::MissingFromCurrent
+pub ea_compiler::bench::report::KernelStatus::NewKernel
+pub ea_compiler::bench::report::KernelStatus::Ok
+pub ea_compiler::bench::report::KernelStatus::Regression
+impl core::cmp::PartialEq for ea_compiler::bench::report::KernelStatus
+pub fn ea_compiler::bench::report::KernelStatus::eq(&self, other: &ea_compiler::bench::report::KernelStatus) -> bool
+impl core::fmt::Debug for ea_compiler::bench::report::KernelStatus
+pub fn ea_compiler::bench::report::KernelStatus::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::bench::report::KernelStatus
+impl core::marker::Freeze for ea_compiler::bench::report::KernelStatus
+impl core::marker::Send for ea_compiler::bench::report::KernelStatus
+impl core::marker::Sync for ea_compiler::bench::report::KernelStatus
+impl core::marker::Unpin for ea_compiler::bench::report::KernelStatus
+impl core::marker::UnsafeUnpin for ea_compiler::bench::report::KernelStatus
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bench::report::KernelStatus
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::bench::report::KernelStatus
+pub struct ea_compiler::bench::report::DiffReport
+pub ea_compiler::bench::report::DiffReport::kernels: alloc::vec::Vec<ea_compiler::bench::report::KernelDiff>
+pub ea_compiler::bench::report::DiffReport::regressions: u32
+pub ea_compiler::bench::report::DiffReport::stale: bool
+pub ea_compiler::bench::report::DiffReport::stale_reason: core::option::Option<alloc::string::String>
+impl core::fmt::Debug for ea_compiler::bench::report::DiffReport
+pub fn ea_compiler::bench::report::DiffReport::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for ea_compiler::bench::report::DiffReport
+impl core::marker::Send for ea_compiler::bench::report::DiffReport
+impl core::marker::Sync for ea_compiler::bench::report::DiffReport
+impl core::marker::Unpin for ea_compiler::bench::report::DiffReport
+impl core::marker::UnsafeUnpin for ea_compiler::bench::report::DiffReport
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bench::report::DiffReport
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::bench::report::DiffReport
+pub struct ea_compiler::bench::report::Env
+pub ea_compiler::bench::report::Env::arch: alloc::string::String
+pub ea_compiler::bench::report::Env::host_cpu: alloc::string::String
+pub ea_compiler::bench::report::Env::opt_level: u8
+pub ea_compiler::bench::report::Env::os: alloc::string::String
+pub ea_compiler::bench::report::Env::pinned: bool
+pub ea_compiler::bench::report::Env::target_cpu: alloc::string::String
+pub ea_compiler::bench::report::Env::target_features: alloc::string::String
+impl core::clone::Clone for ea_compiler::bench::report::Env
+pub fn ea_compiler::bench::report::Env::clone(&self) -> ea_compiler::bench::report::Env
+impl core::cmp::PartialEq for ea_compiler::bench::report::Env
+pub fn ea_compiler::bench::report::Env::eq(&self, other: &ea_compiler::bench::report::Env) -> bool
+impl core::fmt::Debug for ea_compiler::bench::report::Env
+pub fn ea_compiler::bench::report::Env::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::bench::report::Env
+impl core::marker::Freeze for ea_compiler::bench::report::Env
+impl core::marker::Send for ea_compiler::bench::report::Env
+impl core::marker::Sync for ea_compiler::bench::report::Env
+impl core::marker::Unpin for ea_compiler::bench::report::Env
+impl core::marker::UnsafeUnpin for ea_compiler::bench::report::Env
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bench::report::Env
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::bench::report::Env
+pub struct ea_compiler::bench::report::KernelDiff
+pub ea_compiler::bench::report::KernelDiff::baseline_ns: core::option::Option<u64>
+pub ea_compiler::bench::report::KernelDiff::current_ns: core::option::Option<u64>
+pub ea_compiler::bench::report::KernelDiff::delta_pct: core::option::Option<f64>
+pub ea_compiler::bench::report::KernelDiff::kernel: alloc::string::String
+pub ea_compiler::bench::report::KernelDiff::status: ea_compiler::bench::report::KernelStatus
+impl core::fmt::Debug for ea_compiler::bench::report::KernelDiff
+pub fn ea_compiler::bench::report::KernelDiff::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for ea_compiler::bench::report::KernelDiff
+impl core::marker::Send for ea_compiler::bench::report::KernelDiff
+impl core::marker::Sync for ea_compiler::bench::report::KernelDiff
+impl core::marker::Unpin for ea_compiler::bench::report::KernelDiff
+impl core::marker::UnsafeUnpin for ea_compiler::bench::report::KernelDiff
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bench::report::KernelDiff
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::bench::report::KernelDiff
+pub struct ea_compiler::bench::report::Measurement
+pub ea_compiler::bench::report::Measurement::extra: alloc::vec::Vec<(alloc::string::String, alloc::string::String)>
+pub ea_compiler::bench::report::Measurement::kernel: alloc::string::String
+pub ea_compiler::bench::report::Measurement::median_ns: u64
+pub ea_compiler::bench::report::Measurement::n_inner: core::option::Option<u64>
+pub ea_compiler::bench::report::Measurement::n_runs: core::option::Option<u64>
+pub ea_compiler::bench::report::Measurement::p10_ns: core::option::Option<u64>
+pub ea_compiler::bench::report::Measurement::p90_ns: core::option::Option<u64>
+impl core::clone::Clone for ea_compiler::bench::report::Measurement
+pub fn ea_compiler::bench::report::Measurement::clone(&self) -> ea_compiler::bench::report::Measurement
+impl core::cmp::PartialEq for ea_compiler::bench::report::Measurement
+pub fn ea_compiler::bench::report::Measurement::eq(&self, other: &ea_compiler::bench::report::Measurement) -> bool
+impl core::fmt::Debug for ea_compiler::bench::report::Measurement
+pub fn ea_compiler::bench::report::Measurement::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::bench::report::Measurement
+impl core::marker::Freeze for ea_compiler::bench::report::Measurement
+impl core::marker::Send for ea_compiler::bench::report::Measurement
+impl core::marker::Sync for ea_compiler::bench::report::Measurement
+impl core::marker::Unpin for ea_compiler::bench::report::Measurement
+impl core::marker::UnsafeUnpin for ea_compiler::bench::report::Measurement
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bench::report::Measurement
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::bench::report::Measurement
+pub struct ea_compiler::bench::report::Result_
+pub ea_compiler::bench::report::Result_::eacompute_version: alloc::string::String
+pub ea_compiler::bench::report::Result_::env: ea_compiler::bench::report::Env
+pub ea_compiler::bench::report::Result_::git_sha: core::option::Option<alloc::string::String>
+pub ea_compiler::bench::report::Result_::measurements: alloc::vec::Vec<ea_compiler::bench::report::Measurement>
+pub ea_compiler::bench::report::Result_::name: alloc::string::String
+pub ea_compiler::bench::report::Result_::schema_version: u32
+pub ea_compiler::bench::report::Result_::timestamp: alloc::string::String
+impl core::clone::Clone for ea_compiler::bench::report::Result_
+pub fn ea_compiler::bench::report::Result_::clone(&self) -> ea_compiler::bench::report::Result_
+impl core::cmp::PartialEq for ea_compiler::bench::report::Result_
+pub fn ea_compiler::bench::report::Result_::eq(&self, other: &ea_compiler::bench::report::Result_) -> bool
+impl core::fmt::Debug for ea_compiler::bench::report::Result_
+pub fn ea_compiler::bench::report::Result_::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for ea_compiler::bench::report::Result_
+impl core::marker::Freeze for ea_compiler::bench::report::Result_
+impl core::marker::Send for ea_compiler::bench::report::Result_
+impl core::marker::Sync for ea_compiler::bench::report::Result_
+impl core::marker::Unpin for ea_compiler::bench::report::Result_
+impl core::marker::UnsafeUnpin for ea_compiler::bench::report::Result_
+impl core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bench::report::Result_
+impl core::panic::unwind_safe::UnwindSafe for ea_compiler::bench::report::Result_
+pub const ea_compiler::bench::report::REGRESSION_THRESHOLD: f64
+pub fn ea_compiler::bench::report::diff(current: &ea_compiler::bench::report::Result_, baseline: &ea_compiler::bench::report::Result_) -> ea_compiler::bench::report::DiffReport
+pub fn ea_compiler::bench::report::format_diff(d: &ea_compiler::bench::report::DiffReport, current: &ea_compiler::bench::report::Result_) -> alloc::string::String
+pub fn ea_compiler::bench::report::iso8601_utc(unix_secs: u64) -> alloc::string::String
+pub fn ea_compiler::bench::report::parse_measurement_line(line: &str, line_no: usize) -> core::result::Result<ea_compiler::bench::report::Measurement, ea_compiler::bench::error::BenchError>
+pub fn ea_compiler::bench::report::read_baseline(path: &std::path::Path) -> core::result::Result<ea_compiler::bench::report::Result_, ea_compiler::bench::error::BenchError>
+pub fn ea_compiler::bench::report::write_result_json(r: &ea_compiler::bench::report::Result_) -> alloc::string::String
+pub mod ea_compiler::bench::runner
+pub struct ea_compiler::bench::runner::Options<'a>
+pub ea_compiler::bench::runner::Options::cc_binary: &'a str
+pub ea_compiler::bench::runner::Options::ea_binary: &'a std::path::Path
+pub ea_compiler::bench::runner::Options::ea_passthrough: &'a [alloc::string::String]
+pub ea_compiler::bench::runner::Options::tempdir: &'a std::path::Path
+pub ea_compiler::bench::runner::Options::use_taskset: bool
+impl<'a> core::marker::Freeze for ea_compiler::bench::runner::Options<'a>
+impl<'a> core::marker::Send for ea_compiler::bench::runner::Options<'a>
+impl<'a> core::marker::Sync for ea_compiler::bench::runner::Options<'a>
+impl<'a> core::marker::Unpin for ea_compiler::bench::runner::Options<'a>
+impl<'a> core::marker::UnsafeUnpin for ea_compiler::bench::runner::Options<'a>
+impl<'a> core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bench::runner::Options<'a>
+impl<'a> core::panic::unwind_safe::UnwindSafe for ea_compiler::bench::runner::Options<'a>
+pub fn ea_compiler::bench::runner::run(m: &ea_compiler::bench::manifest::Manifest, o: &ea_compiler::bench::runner::Options<'_>) -> core::result::Result<alloc::vec::Vec<ea_compiler::bench::report::Measurement>, ea_compiler::bench::error::BenchError>
+pub fn ea_compiler::bench::runner::taskset_available() -> bool
+pub enum ea_compiler::bench::BenchError
+pub ea_compiler::bench::BenchError::CcBuild
+pub ea_compiler::bench::BenchError::CcBuild::stderr: alloc::string::String
+pub ea_compiler::bench::BenchError::EaBuild
+pub ea_compiler::bench::BenchError::EaBuild::stderr: alloc::string::String
+pub ea_compiler::bench::BenchError::HarnessLine
+pub ea_compiler::bench::BenchError::HarnessLine::line_no: usize
+pub ea_compiler::bench::BenchError::HarnessLine::msg: alloc::string::String
+pub ea_compiler::bench::BenchError::HarnessLine::raw: alloc::string::String
+pub ea_compiler::bench::BenchError::HarnessRun
+pub ea_compiler::bench::BenchError::HarnessRun::exit_code: i32
+pub ea_compiler::bench::BenchError::HarnessRun::stderr_tail: alloc::string::String
+pub ea_compiler::bench::BenchError::Io(std::io::error::Error, std::path::PathBuf)
+pub ea_compiler::bench::BenchError::JsonParse
+pub ea_compiler::bench::BenchError::JsonParse::context: alloc::string::String
+pub ea_compiler::bench::BenchError::JsonParse::msg: alloc::string::String
+pub ea_compiler::bench::BenchError::ManifestParse
+pub ea_compiler::bench::BenchError::ManifestParse::line: usize
+pub ea_compiler::bench::BenchError::ManifestParse::msg: alloc::string::String
+pub ea_compiler::bench::BenchError::ManifestParse::path: std::path::PathBuf
+pub ea_compiler::bench::BenchError::Unsupported(alloc::string::String)
+impl core::error::Error for ea_compiler::bench::error::BenchError
+impl core::fmt::Debug for ea_compiler::bench::error::BenchError
+pub fn ea_compiler::bench::error::BenchError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for ea_compiler::bench::error::BenchError
+pub fn ea_compiler::bench::error::BenchError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for ea_compiler::bench::error::BenchError
+impl core::marker::Send for ea_compiler::bench::error::BenchError
+impl core::marker::Sync for ea_compiler::bench::error::BenchError
+impl core::marker::Unpin for ea_compiler::bench::error::BenchError
+impl core::marker::UnsafeUnpin for ea_compiler::bench::error::BenchError
+impl !core::panic::unwind_safe::RefUnwindSafe for ea_compiler::bench::error::BenchError
+impl !core::panic::unwind_safe::UnwindSafe for ea_compiler::bench::error::BenchError
+pub fn ea_compiler::bench::run(args: &[alloc::string::String]) -> core::result::Result<i32, ea_compiler::bench::error::BenchError>
 pub mod ea_compiler::bind_cmake
 pub fn ea_compiler::bind_cmake::generate(module_stem: &str) -> (alloc::string::String, alloc::string::String)
 pub mod ea_compiler::bind_common

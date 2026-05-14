@@ -23,6 +23,7 @@
 - [Python API](reference/python-api.md)
 - [Binding Annotations](reference/bindings.md)
 - [ARM / NEON](reference/arm.md)
+- [`ea bench`](reference/bench.md)
 
 # Cookbook
 

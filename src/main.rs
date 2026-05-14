@@ -1,3 +1,4 @@
+mod bench_handler;
 mod bind_handler;
 mod usage;
 
@@ -23,6 +24,10 @@ fn main() {
         }
         "--version" | "-V" => {
             println!("ea {}", env!("CARGO_PKG_VERSION"));
+            return;
+        }
+        "bench" => {
+            bench_handler::handle_bench(&args[1..]);
             return;
         }
         "bind" => {

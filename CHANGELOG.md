@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.13.0 — UNRELEASED — ea bench subcommand
+
+Standing benchmark suite for the v1.11.0 audit kernels. Converts performance regression detection from vigilance-dependent to mechanical: `ea bench <manifest.toml>` builds an `.ea` kernel + C harness, runs the harness pinned to one core (`taskset` on Linux), captures JSONL measurements, wraps them with environment metadata, and diffs against a committed baseline JSON. Day-one manifests cover `exp_poly_f32` (cross-platform), `fp16_kv` (aarch64), and `gather_compose` (x86 + ARM variants). Warn-only regression gate at 10% in v1.13.0 — regressions print `WARNING:` but the process still exits 0 so we collect runner-variance signal for one release before deciding the threshold.
+
+### Added
+
+#### Tooling
+- **`ea bench <manifest.toml>` subcommand.** Builds an `.ea` kernel + C harness, runs the harness pinned to one core (`taskset`-gated on Linux), captures JSONL measurements on stdout, relays harness stderr with a `[harness] ` prefix, and emits a single result JSON to stdout (or `--out PATH`). Flags: `--target=`, `--avx512`, `--fp16`, `--i8mm`, `--dotprod`, `--opt-level=`, `--update-baseline`, `--no-diff`, `--out PATH`. See `docs/src/reference/bench.md` for the manifest schema and harness contract.
+- **JSONL harness contract.** The v1.11.0 audit harnesses (`exp_poly_f32_harness.c`, `fp16_kv_harness.c`, `gather_compose_harness.c`) now emit one `{"kernel":"...","median_ns":N,...}` line per measurement on stdout, with banners and verify messages on stderr. The existing methodology (deterministic LCG fill, warmup, median of N runs of M inner calls, volatile sink) is unchanged.
+- **Committed baselines for x86_64.** `benchmarks/v1.11.0/exp_poly_f32.baseline.json` and `gather_compose_x86.baseline.json` captured on the maintainer's dev host. Future runs diff against these.
+- **CI smoke step.** `.github/workflows/ci.yml` runs `ea bench benchmarks/v1.11.0/exp_poly_f32.bench.toml` on the x86 Linux job and uploads the result JSON as a build artifact. Warn-only this release (`|| true` guard).
+- **Reference doc.** `docs/src/reference/bench.md` documents the manifest schema, harness contract, output schema, diff/baseline semantics, and a "how to add a new benchmark" recipe.
+
+### Notes
+
+- ARM-side baselines (`fp16_kv`, `gather_compose_arm`) ship without committed baselines — first run on aarch64 will print `no baseline yet`. These wait for the Pi 5 self-hosted runner work (separate v1.13.0 item).
+- Autoresearch archive integration and pre-v1.11.0 benchmark migration (`fma_kernel`, `horizontal_reduction`) are out of scope for v1.13.0. Both consume `ea bench` once it exists.
+- Committed baselines are host-specific; CI runner deltas (often 20%+ on libm-backed kernels) are expected and warn-only for v1.13.0.
+
 ## v1.12.0 — 2026-05-13 — deprecation infrastructure + u64 widening multiply + typed sat_add/sat_sub/abs_diff
 
 Seven PRs since v1.11.0. The intrinsic surface now has typed spellings for `sat_add` / `sat_sub` / `abs_diff` (polymorphic forms deprecated, removal v2.0.0), a cross-platform u32×u32→u64 widening multiply (`wmul_u64_lo`/`hi`, unblocks Poly1305), and additions that close API symmetries (`widen_u8_u16_hi`, `cvt_f32_f16` width-16, i16/u16 lane extractors). New `u64x{2,4,8}` vector types underpin the widening-multiply work. A deprecation-warning runtime + `docs/migrations/` directory + `cargo public-api` CI gate land alongside, exercised by the rename batch. Two latent codegen bugs from v1.11.0 caught and fixed by the new end-to-end test discipline. 847 tests on 3-platform CI (x86 Linux, Linux ARM64, Windows).

@@ -147,21 +147,30 @@ int main(void) {
     double sm_libm_med  = sm_libm_ns[N_RUNS / 2];
     double sm_poly_med  = sm_poly_ns[N_RUNS / 2];
 
-    printf("exp_poly_f32 v1.11.0 — n=%d, median of %d runs of %d calls each\n\n",
-           N, N_RUNS, N_INNER);
-    printf("[primary] isolated exp() — the spec's '~10x faster' claim:\n");
-    printf("  exp_only_libm:    %8.2f us/call  (scalarized to libm expf)\n",
-           exp_libm_med / 1000.0);
-    printf("  exp_only_poly:    %8.2f us/call  (SIMD polynomial)\n",
-           exp_poly_med / 1000.0);
-    printf("  speedup:          %.2fx\n\n", exp_libm_med / exp_poly_med);
+    fprintf(stderr, "exp_poly_f32 v1.11.0 — n=%d, median of %d runs of %d calls each\n\n",
+            N, N_RUNS, N_INNER);
+    fprintf(stderr, "[primary] isolated exp() — the spec's '~10x faster' claim:\n");
+    fprintf(stderr, "  exp_only_libm:    %8.2f us/call  (scalarized to libm expf)\n",
+            exp_libm_med / 1000.0);
+    fprintf(stderr, "  exp_only_poly:    %8.2f us/call  (SIMD polynomial)\n",
+            exp_poly_med / 1000.0);
+    fprintf(stderr, "  speedup:          %.2fx\n\n", exp_libm_med / exp_poly_med);
 
-    printf("[secondary] full softmax (multi-pass, exp amortized):\n");
-    printf("  softmax_libm:     %8.2f us/call\n", sm_libm_med / 1000.0);
-    printf("  softmax_poly:     %8.2f us/call\n", sm_poly_med / 1000.0);
-    printf("  speedup:          %.2fx  (Amdahl: softmax has 2 extra passes besides exp)\n\n",
-           sm_libm_med / sm_poly_med);
+    fprintf(stderr, "[secondary] full softmax (multi-pass, exp amortized):\n");
+    fprintf(stderr, "  softmax_libm:     %8.2f us/call\n", sm_libm_med / 1000.0);
+    fprintf(stderr, "  softmax_poly:     %8.2f us/call\n", sm_poly_med / 1000.0);
+    fprintf(stderr, "  speedup:          %.2fx  (Amdahl: softmax has 2 extra passes besides exp)\n\n",
+            sm_libm_med / sm_poly_med);
 
-    printf("  sink: %g\n", (double)g_sink);
+    fprintf(stderr, "  sink: %g\n", (double)g_sink);
+
+    printf("{\"kernel\":\"exp_only_libm\",\"median_ns\":%lu,\"n_inner\":%d,\"n_runs\":%d}\n",
+           (unsigned long)exp_libm_med, N_INNER, N_RUNS);
+    printf("{\"kernel\":\"exp_only_poly\",\"median_ns\":%lu,\"n_inner\":%d,\"n_runs\":%d}\n",
+           (unsigned long)exp_poly_med, N_INNER, N_RUNS);
+    printf("{\"kernel\":\"softmax_libm\",\"median_ns\":%lu,\"n_inner\":%d,\"n_runs\":%d}\n",
+           (unsigned long)sm_libm_med, N_INNER, N_RUNS);
+    printf("{\"kernel\":\"softmax_poly\",\"median_ns\":%lu,\"n_inner\":%d,\"n_runs\":%d}\n",
+           (unsigned long)sm_poly_med, N_INNER, N_RUNS);
     return 0;
 }

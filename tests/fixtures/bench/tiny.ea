@@ -1,0 +1,3 @@
+export func noop() -> i32 {
+    return 0
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "name": "exp_poly_f32",
+  "eacompute_version": "1.12.0",
+  "git_sha": "307501e",
+  "timestamp": "2026-05-14T09:56:18Z",
+  "env": {
+    "os": "linux",
+    "arch": "x86_64",
+    "host_cpu": "znver4",
+    "target_cpu": "native",
+    "target_features": "",
+    "opt_level": 3,
+    "pinned": true
+  },
+  "measurements": [
+    {"kernel": "exp_only_libm", "median_ns": 26543, "n_inner": 200, "n_runs": 10},
+    {"kernel": "exp_only_poly", "median_ns": 8224, "n_inner": 200, "n_runs": 10},
+    {"kernel": "softmax_libm", "median_ns": 29704, "n_inner": 200, "n_runs": 10},
+    {"kernel": "softmax_poly", "median_ns": 10387, "n_inner": 200, "n_runs": 10}
+  ]
+}

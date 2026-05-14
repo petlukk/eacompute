@@ -151,20 +151,33 @@ int main(void) {
 #ifdef BUILD_X86
     qsort(gt_ns, N_RUNS, sizeof(double), cmp_double);
     double gt_med = gt_ns[N_RUNS / 2];
-    printf("gather_compose v1.11.0 — x86 — n=%d outputs, %d-entry LUT, median of %d runs of %d calls\n",
-           N, LUT_SIZE, N_RUNS, N_INNER);
-    printf("  scalar_loop:   %8.2f us/call\n", sc_med / 1000.0);
-    printf("  compose_x4:    %8.2f us/call  (compose / scalar = %.2fx)\n",
-           cp_med / 1000.0, sc_med / cp_med);
-    printf("  gather_x86:    %8.2f us/call  (gather / scalar = %.2fx)\n",
-           gt_med / 1000.0, sc_med / gt_med);
+    fprintf(stderr, "gather_compose v1.11.0 — x86 — n=%d outputs, %d-entry LUT, median of %d runs of %d calls\n",
+            N, LUT_SIZE, N_RUNS, N_INNER);
+    fprintf(stderr, "  scalar_loop:   %8.2f us/call\n", sc_med / 1000.0);
+    fprintf(stderr, "  compose_x4:    %8.2f us/call  (compose / scalar = %.2fx)\n",
+            cp_med / 1000.0, sc_med / cp_med);
+    fprintf(stderr, "  gather_x86:    %8.2f us/call  (gather / scalar = %.2fx)\n",
+            gt_med / 1000.0, sc_med / gt_med);
+    fprintf(stderr, "  sink: %g\n", (double)g_sink);
+
+    printf("{\"kernel\":\"scalar_loop\",\"median_ns\":%lu,\"n_inner\":%d,\"n_runs\":%d}\n",
+           (unsigned long)sc_med, N_INNER, N_RUNS);
+    printf("{\"kernel\":\"compose_x4\",\"median_ns\":%lu,\"n_inner\":%d,\"n_runs\":%d}\n",
+           (unsigned long)cp_med, N_INNER, N_RUNS);
+    printf("{\"kernel\":\"gather_x86\",\"median_ns\":%lu,\"n_inner\":%d,\"n_runs\":%d}\n",
+           (unsigned long)gt_med, N_INNER, N_RUNS);
 #else
-    printf("gather_compose v1.11.0 — ARM — n=%d outputs, %d-entry LUT, median of %d runs of %d calls\n",
-           N, LUT_SIZE, N_RUNS, N_INNER);
-    printf("  scalar_loop:   %8.2f us/call\n", sc_med / 1000.0);
-    printf("  compose_x4:    %8.2f us/call  (compose / scalar = %.2fx — spec target: >= 1.0x)\n",
-           cp_med / 1000.0, sc_med / cp_med);
+    fprintf(stderr, "gather_compose v1.11.0 — ARM — n=%d outputs, %d-entry LUT, median of %d runs of %d calls\n",
+            N, LUT_SIZE, N_RUNS, N_INNER);
+    fprintf(stderr, "  scalar_loop:   %8.2f us/call\n", sc_med / 1000.0);
+    fprintf(stderr, "  compose_x4:    %8.2f us/call  (compose / scalar = %.2fx — spec target: >= 1.0x)\n",
+            cp_med / 1000.0, sc_med / cp_med);
+    fprintf(stderr, "  sink: %g\n", (double)g_sink);
+
+    printf("{\"kernel\":\"scalar_loop\",\"median_ns\":%lu,\"n_inner\":%d,\"n_runs\":%d}\n",
+           (unsigned long)sc_med, N_INNER, N_RUNS);
+    printf("{\"kernel\":\"compose_x4\",\"median_ns\":%lu,\"n_inner\":%d,\"n_runs\":%d}\n",
+           (unsigned long)cp_med, N_INNER, N_RUNS);
 #endif
-    printf("  sink: %g\n", (double)g_sink);
     return 0;
 }

@@ -14,6 +14,8 @@ pub mod parser;
 pub mod typeck;
 
 #[cfg(feature = "llvm")]
+pub mod bench;
+#[cfg(feature = "llvm")]
 pub mod codegen;
 #[cfg(feature = "llvm")]
 pub mod inspect;
