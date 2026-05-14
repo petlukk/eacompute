@@ -136,3 +136,125 @@ fn parse_measurement_handles_utf8_in_value() {
     let m = parse_measurement_line(line, 1).unwrap();
     assert_eq!(m.kernel, "naïve_kernel");
 }
+
+fn measurement(name: &str, ns: u64) -> Measurement {
+    Measurement {
+        kernel: name.into(),
+        median_ns: ns,
+        p10_ns: None,
+        p90_ns: None,
+        n_inner: None,
+        n_runs: None,
+        extra: vec![],
+    }
+}
+
+fn result_with(env: Env, ms: Vec<Measurement>) -> Result_ {
+    Result_ {
+        schema_version: 1,
+        name: "x".into(),
+        eacompute_version: "1.13.0".into(),
+        git_sha: None,
+        timestamp: "2026-05-14T00:00:00Z".into(),
+        env,
+        measurements: ms,
+    }
+}
+
+#[test]
+fn diff_no_regression_below_threshold() {
+    let base = result_with(sample_env(), vec![measurement("k", 1000)]);
+    let curr = result_with(sample_env(), vec![measurement("k", 1099)]); // +9.9%
+    let d = diff(&curr, &base);
+    assert_eq!(d.regressions, 0);
+    assert_eq!(d.kernels.len(), 1);
+    assert!(!d.stale);
+}
+
+#[test]
+fn diff_regression_above_threshold() {
+    let base = result_with(sample_env(), vec![measurement("k", 1000)]);
+    let curr = result_with(sample_env(), vec![measurement("k", 1101)]); // +10.1%
+    let d = diff(&curr, &base);
+    assert_eq!(d.regressions, 1);
+}
+
+#[test]
+fn diff_threshold_boundary_inclusive_on_pass() {
+    // Exactly +10.00% should NOT be flagged (strict > 10%)
+    let base = result_with(sample_env(), vec![measurement("k", 1000)]);
+    let curr = result_with(sample_env(), vec![measurement("k", 1100)]);
+    let d = diff(&curr, &base);
+    assert_eq!(d.regressions, 0);
+}
+
+#[test]
+fn diff_speedup_does_not_regress() {
+    let base = result_with(sample_env(), vec![measurement("k", 1000)]);
+    let curr = result_with(sample_env(), vec![measurement("k", 500)]);
+    let d = diff(&curr, &base);
+    assert_eq!(d.regressions, 0);
+}
+
+#[test]
+fn diff_missing_kernel_in_current_flagged() {
+    let base = result_with(sample_env(), vec![measurement("a", 1), measurement("b", 2)]);
+    let curr = result_with(sample_env(), vec![measurement("a", 1)]);
+    let d = diff(&curr, &base);
+    let b_row = d.kernels.iter().find(|k| k.kernel == "b").unwrap();
+    assert!(matches!(b_row.status, KernelStatus::MissingFromCurrent));
+}
+
+#[test]
+fn diff_new_kernel_flagged() {
+    let base = result_with(sample_env(), vec![measurement("a", 1)]);
+    let curr = result_with(sample_env(), vec![measurement("a", 1), measurement("c", 2)]);
+    let d = diff(&curr, &base);
+    let c_row = d.kernels.iter().find(|k| k.kernel == "c").unwrap();
+    assert!(matches!(c_row.status, KernelStatus::NewKernel));
+}
+
+#[test]
+fn diff_stale_on_arch_mismatch() {
+    let mut e = sample_env();
+    e.arch = "aarch64".into();
+    let base = result_with(e, vec![measurement("k", 1000)]);
+    let curr = result_with(sample_env(), vec![measurement("k", 1000)]);
+    let d = diff(&curr, &base);
+    assert!(d.stale);
+    assert!(d.stale_reason.as_ref().unwrap().contains("arch"));
+}
+
+#[test]
+fn diff_stale_on_features_mismatch() {
+    let mut e = sample_env();
+    e.target_features = "+sse2".into();
+    let base = result_with(e, vec![measurement("k", 1000)]);
+    let curr = result_with(sample_env(), vec![measurement("k", 1000)]);
+    let d = diff(&curr, &base);
+    assert!(d.stale);
+    assert!(d.stale_reason.as_ref().unwrap().contains("target_features"));
+}
+
+#[test]
+fn diff_stale_on_opt_level_mismatch() {
+    let mut e = sample_env();
+    e.opt_level = 2;
+    let base = result_with(e, vec![measurement("k", 1000)]);
+    let curr = result_with(sample_env(), vec![measurement("k", 1000)]);
+    let d = diff(&curr, &base);
+    assert!(d.stale);
+    assert!(d.stale_reason.as_ref().unwrap().contains("opt_level"));
+}
+
+#[test]
+fn format_diff_human_summary() {
+    let base = result_with(sample_env(), vec![measurement("k", 1000)]);
+    let curr = result_with(sample_env(), vec![measurement("k", 1099)]);
+    let d = diff(&curr, &base);
+    let txt = format_diff(&d, &curr);
+    assert!(txt.contains("k"));
+    assert!(txt.contains("1099"));
+    assert!(txt.contains("+9.9%") || txt.contains("+9.90%"));
+    assert!(txt.contains("0 regressions"));
+}

@@ -7,6 +7,10 @@ pub const REGRESSION_THRESHOLD: f64 = 0.10;
 mod writer;
 pub use writer::{iso8601_utc, write_result_json};
 
+#[path = "report_diff.rs"]
+mod diff_mod;
+pub use diff_mod::{DiffReport, KernelDiff, KernelStatus, diff, format_diff};
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Measurement {
     pub kernel: String,
