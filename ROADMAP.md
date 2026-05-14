@@ -22,6 +22,8 @@ Generic GitHub Actions `aarch64` runners don't exercise `--fp16` or `--i8mm` cod
 
 ### `ea bench` subcommand (or `cargo bench` harness)
 
+**SHIPPED in v1.13.0.** See `docs/src/reference/bench.md` for usage. The subcommand path was chosen over the `cargo bench` harness; the original observations below are retained for historical context.
+
 Phase 6 of the v1.11.0 audit wrote `.ea` kernels + C harnesses + Makefile from scratch. A standing benchmark suite re-running per release would have surfaced the "~10× → 2.93×" `exp_poly_f32` calibration before the audit and would catch perf regressions from upstream LLVM/glibc.
 
 Two paths: extend `ea` with a `bench` subcommand that takes an `.ea` + C harness and reports timing; or wire `benchmarks/v1.11.0/` into a Rust harness invoked by `cargo bench`. The second is cheaper to start. Both v1.11.0 and v1.12.0 shipped without this; v1.13.0 should not.
