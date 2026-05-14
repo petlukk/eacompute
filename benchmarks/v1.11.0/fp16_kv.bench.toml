@@ -1,0 +1,7 @@
+name = "fp16_kv"
+kernel = "fp16_kv_bench.ea"
+harness = "fp16_kv_harness.c"
+baseline = "fp16_kv.baseline.json"
+arch = ["aarch64"]
+ea_flags = ["--fp16"]
+cc_flags = ["-O2"]

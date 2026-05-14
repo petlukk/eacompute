@@ -1,0 +1,7 @@
+name = "gather_compose_arm"
+kernel = "gather_compose_bench_arm.ea"
+harness = "gather_compose_harness.c"
+baseline = "gather_compose_arm.baseline.json"
+arch = ["aarch64"]
+ea_flags = ["--dotprod"]
+cc_flags = ["-O2"]
