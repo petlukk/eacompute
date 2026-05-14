@@ -4,6 +4,7 @@ pub fn print_usage() {
 Usage: ea <file.ea> [options]
        ea bind <file.ea> --python [--rust] [--pytorch] [--cmake] [--cpp]
        ea inspect <file.ea> [--avx512] [--target=CPU]
+       ea bench <manifest.toml> [--update-baseline] [--no-diff]
 
 Options:
   -o <name>          Compile and link to executable
@@ -23,6 +24,7 @@ Options:
   --help, -h / --version, -V
 
 Subcommands:
+  bench <manifest.toml>    Run a benchmark and diff against committed baseline
   inspect <file.ea>        Analyze kernel: instruction mix, loops, registers
   bind <file.ea> --python  Generate Python/NumPy bindings
   bind <file.ea> --rust    Generate Rust FFI + safe wrappers
