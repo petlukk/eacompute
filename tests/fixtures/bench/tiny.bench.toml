@@ -1,0 +1,7 @@
+name = "tiny"
+kernel = "tiny.ea"
+harness = "tiny_harness.c"
+baseline = "tiny.baseline.json"
+arch = ["x86_64", "aarch64"]
+ea_flags = []
+cc_flags = ["-O0"]
