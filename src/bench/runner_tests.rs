@@ -27,11 +27,12 @@ fn plan_ea_args_include_lib_target_and_passthrough() {
     };
     let p = build_plan(&fixture_manifest(), &opts);
     assert_eq!(p.ea_cmd[0], "/usr/local/bin/ea");
+    // `ea` CLI expects the source file as the first argument after the binary.
+    assert_eq!(p.ea_cmd[1], "/work/x.ea");
     assert!(p.ea_cmd.contains(&"--lib".to_string()));
     assert!(p.ea_cmd.contains(&"--avx512".to_string()));
     assert!(p.ea_cmd.contains(&"--fp16".to_string()));
     assert!(p.ea_cmd.contains(&"--opt-level=3".to_string()));
-    assert_eq!(p.ea_cmd.last().unwrap(), "/work/x.ea");
 }
 
 #[test]

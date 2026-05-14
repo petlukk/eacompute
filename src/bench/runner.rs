@@ -28,13 +28,14 @@ pub fn build_plan(m: &Manifest, o: &Options<'_>) -> RunPlan {
     let lib_path = o.tempdir.join(format!("lib{lib_name}.so"));
     let exe_path = o.tempdir.join(format!("{}_bench", m.name));
 
+    // The `ea` CLI expects: ea <file.ea> [flags...]
     let mut ea = vec![o.ea_binary.display().to_string()];
+    ea.push(m.kernel.display().to_string());
     ea.push("--lib".to_string());
     ea.push("-o".to_string());
     ea.push(lib_path.display().to_string());
     ea.extend(o.ea_passthrough.iter().cloned());
     ea.extend(m.ea_flags.iter().cloned());
-    ea.push(m.kernel.display().to_string());
 
     let mut cc = vec![o.cc_binary.to_string()];
     cc.push(m.harness.display().to_string());
