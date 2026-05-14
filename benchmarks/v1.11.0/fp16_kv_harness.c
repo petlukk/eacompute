@@ -167,11 +167,16 @@ int main(void) {
     double rt_med = rt_ns[N_RUNS / 2];
     double nv_med = nv_ns[N_RUNS / 2];
 
-    printf("fp16_kv v1.11.0 — Pi 5 Cortex-A76 + FEAT_FP16 — n=%d, median of %d runs of %d calls\n",
-           N, N_RUNS, N_INNER);
-    printf("  kv_roundtrip (f32 compute, cvt_f16_f32 per load): %8.3f us/call\n", rt_med / 1000.0);
-    printf("  kv_native    (f16 compute end-to-end):            %8.3f us/call\n", nv_med / 1000.0);
-    printf("  speedup:                                          %.2fx\n", rt_med / nv_med);
-    printf("  sink: %g\n", (double)g_sink);
+    fprintf(stderr, "fp16_kv v1.11.0 — Pi 5 Cortex-A76 + FEAT_FP16 — n=%d, median of %d runs of %d calls\n",
+            N, N_RUNS, N_INNER);
+    fprintf(stderr, "  kv_roundtrip (f32 compute, cvt_f16_f32 per load): %8.3f us/call\n", rt_med / 1000.0);
+    fprintf(stderr, "  kv_native    (f16 compute end-to-end):            %8.3f us/call\n", nv_med / 1000.0);
+    fprintf(stderr, "  speedup:                                          %.2fx\n", rt_med / nv_med);
+    fprintf(stderr, "  sink: %g\n", (double)g_sink);
+
+    printf("{\"kernel\":\"kv_roundtrip\",\"median_ns\":%lu,\"n_inner\":%d,\"n_runs\":%d}\n",
+           (unsigned long)rt_med, N_INNER, N_RUNS);
+    printf("{\"kernel\":\"kv_native\",\"median_ns\":%lu,\"n_inner\":%d,\"n_runs\":%d}\n",
+           (unsigned long)nv_med, N_INNER, N_RUNS);
     return 0;
 }
