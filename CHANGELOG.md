@@ -17,6 +17,7 @@ Standing benchmark suite for the v1.11.0 audit kernels. Converts performance reg
 
 - ARM-side baselines (`fp16_kv`, `gather_compose_arm`) ship without committed baselines — first run on aarch64 will print `no baseline yet`. These wait for the Pi 5 self-hosted runner work (separate v1.13.0 item).
 - Autoresearch archive integration and pre-v1.11.0 benchmark migration (`fma_kernel`, `horizontal_reduction`) are out of scope for v1.13.0. Both consume `ea bench` once it exists.
+- Committed baselines are host-specific; CI runner deltas (often 20%+ on libm-backed kernels) are expected and warn-only for v1.13.0.
 
 ## v1.12.0 — 2026-05-13 — deprecation infrastructure + u64 widening multiply + typed sat_add/sat_sub/abs_diff
 

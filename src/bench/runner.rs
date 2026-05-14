@@ -7,11 +7,14 @@ use std::process::Command;
 /// Plan-only: what commands would `run` invoke for this manifest + options?
 /// Used by tests; the real `run` builds these and executes them.
 #[derive(Debug)]
-pub struct RunPlan {
+pub(crate) struct RunPlan {
     pub ea_cmd: Vec<String>,
     pub cc_cmd: Vec<String>,
     pub harness_cmd: Vec<String>,
+    // kept for diagnostics; the paths feed *_cmd vectors in build_plan
+    #[allow(dead_code)]
     pub lib_path: PathBuf,
+    #[allow(dead_code)]
     pub exe_path: PathBuf,
 }
 
@@ -23,7 +26,7 @@ pub struct Options<'a> {
     pub use_taskset: bool,
 }
 
-pub fn build_plan(m: &Manifest, o: &Options<'_>) -> RunPlan {
+pub(crate) fn build_plan(m: &Manifest, o: &Options<'_>) -> RunPlan {
     let lib_name = format!("{}_bench", m.name);
     let lib_path = o.tempdir.join(format!("lib{lib_name}.so"));
     let exe_path = o.tempdir.join(format!("{}_bench", m.name));
