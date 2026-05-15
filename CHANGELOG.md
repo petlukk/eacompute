@@ -2,7 +2,7 @@
 
 ## v1.13.0 — UNRELEASED — ea bench subcommand
 
-Standing benchmark suite for the v1.11.0 audit kernels. Converts performance regression detection from vigilance-dependent to mechanical: `ea bench <manifest.toml>` builds an `.ea` kernel + C harness, runs the harness pinned to one core (`taskset` on Linux), captures JSONL measurements, wraps them with environment metadata, and diffs against a committed baseline JSON. Day-one manifests cover `exp_poly_f32` (cross-platform), `fp16_kv` (aarch64), and `gather_compose` (x86 + ARM variants). Warn-only regression gate at 10% in v1.13.0 — regressions print `WARNING:` but the process still exits 0 so we collect runner-variance signal for one release before deciding the threshold.
+Standing benchmark suite for the v1.11.0 audit kernels. Converts performance regression detection from vigilance-dependent to mechanical: `ea bench <manifest.toml>` builds an `.ea` kernel + C harness, runs the harness pinned to one core (`taskset` on Linux), captures JSONL measurements, wraps them with environment metadata, and diffs against a committed baseline JSON. Day-one manifests cover `exp_poly_f32` (x86_64 only — kernel uses `f32x8`), `fp16_kv` (aarch64), and `gather_compose` (x86 + ARM variants). Warn-only regression gate at 10% in v1.13.0 — regressions print `WARNING:` but the process still exits 0 so we collect runner-variance signal for one release before deciding the threshold.
 
 ### Added
 
@@ -10,12 +10,18 @@ Standing benchmark suite for the v1.11.0 audit kernels. Converts performance reg
 - **`ea bench <manifest.toml>` subcommand.** Builds an `.ea` kernel + C harness, runs the harness pinned to one core (`taskset`-gated on Linux), captures JSONL measurements on stdout, relays harness stderr with a `[harness] ` prefix, and emits a single result JSON to stdout (or `--out PATH`). Flags: `--target=`, `--avx512`, `--fp16`, `--i8mm`, `--dotprod`, `--opt-level=`, `--update-baseline`, `--no-diff`, `--out PATH`. See `docs/src/reference/bench.md` for the manifest schema and harness contract.
 - **JSONL harness contract.** The v1.11.0 audit harnesses (`exp_poly_f32_harness.c`, `fp16_kv_harness.c`, `gather_compose_harness.c`) now emit one `{"kernel":"...","median_ns":N,...}` line per measurement on stdout, with banners and verify messages on stderr. The existing methodology (deterministic LCG fill, warmup, median of N runs of M inner calls, volatile sink) is unchanged.
 - **Committed baselines for x86_64.** `benchmarks/v1.11.0/exp_poly_f32.baseline.json` and `gather_compose_x86.baseline.json` captured on the maintainer's dev host. Future runs diff against these.
+- **Committed baselines for aarch64 (Cortex-A76).** `benchmarks/v1.11.0/fp16_kv.baseline.json` and `gather_compose_arm.baseline.json` captured on Raspberry Pi 5 (`taskset`-pinned, `--fp16` / `--dotprod` enabled, eacompute `88da108`). Both surface design-spec gaps the bench was built to make visible — see Notes below.
 - **CI smoke step.** `.github/workflows/ci.yml` runs `ea bench benchmarks/v1.11.0/exp_poly_f32.bench.toml` on the x86 Linux job and uploads the result JSON as a build artifact. Warn-only this release (`|| true` guard).
 - **Reference doc.** `docs/src/reference/bench.md` documents the manifest schema, harness contract, output schema, diff/baseline semantics, and a "how to add a new benchmark" recipe.
 
+### Fixed
+
+- **`exp_poly_f32.bench.toml` arch declaration.** Manifest previously declared `arch = ["x86_64", "aarch64"]`, but the kernel uses `f32x8` throughout — strictly AVX2, rejected by the type checker on ARM (`f32x8 requires AVX2; use f32x4 on ARM`). Narrowed to `arch = ["x86_64"]`. A polynomial-exp variant for ARM would need an `f32x4`-width kernel and would ship as a separate `exp_poly_f32_arm.bench.toml`; no consumer has asked for it yet.
+
 ### Notes
 
-- ARM-side baselines (`fp16_kv`, `gather_compose_arm`) ship without committed baselines — first run on aarch64 will print `no baseline yet`. These wait for the Pi 5 self-hosted runner work (separate v1.13.0 item).
+- **aarch64 baselines surface design-spec gaps, not regressions.** `fp16_kv`'s `kv_native` runs at **0.85×** the speed of `kv_roundtrip` (4114 ns vs 3501 ns) — surprising because native f16 SIMD on Cortex-A76 with `+fullfp16` should at minimum match the f32-with-cvt path. `gather_compose_arm`'s `compose_x4` runs at **0.96×** of `scalar_loop` (98743 ns vs 94713 ns) — the harness self-annotates "spec target: ≥1.0×", so the SIMD path is failing its own design intent on A76. Tracked as follow-up issues; both are baselines, not regressions versus a prior release. This is exactly the kind of silent design-spec drift `ea bench` exists to surface.
+- **Pi 5 self-hosted runner deferred.** Maintainer access to the Pi (`peter@10.46.0.27`) is intermittent — a flaky self-hosted runner trains everyone to ignore CI signal. This release adopts a "run `ea bench` at release-cut" ritual instead of per-PR CI. See the release-checklist follow-up.
 - Autoresearch archive integration and pre-v1.11.0 benchmark migration (`fma_kernel`, `horizontal_reduction`) are out of scope for v1.13.0. Both consume `ea bench` once it exists.
 - Committed baselines are host-specific; CI runner deltas (often 20%+ on libm-backed kernels) are expected and warn-only for v1.13.0.
 

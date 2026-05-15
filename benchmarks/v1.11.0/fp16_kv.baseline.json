@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "fp16_kv",
+  "eacompute_version": "1.12.0",
+  "git_sha": "88da108",
+  "timestamp": "2026-05-15T06:23:32Z",
+  "env": {
+    "os": "linux",
+    "arch": "aarch64",
+    "host_cpu": "cortex-a76",
+    "target_cpu": "native",
+    "target_features": "",
+    "opt_level": 3,
+    "pinned": true
+  },
+  "measurements": [
+    {"kernel": "kv_roundtrip", "median_ns": 3501, "n_inner": 1000, "n_runs": 10},
+    {"kernel": "kv_native", "median_ns": 4114, "n_inner": 1000, "n_runs": 10}
+  ]
+}

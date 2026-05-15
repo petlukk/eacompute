@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "gather_compose_arm",
+  "eacompute_version": "1.12.0",
+  "git_sha": "88da108",
+  "timestamp": "2026-05-15T06:23:45Z",
+  "env": {
+    "os": "linux",
+    "arch": "aarch64",
+    "host_cpu": "cortex-a76",
+    "target_cpu": "native",
+    "target_features": "",
+    "opt_level": 3,
+    "pinned": true
+  },
+  "measurements": [
+    {"kernel": "scalar_loop", "median_ns": 94713, "n_inner": 500, "n_runs": 10},
+    {"kernel": "compose_x4", "median_ns": 98743, "n_inner": 500, "n_runs": 10}
+  ]
+}
