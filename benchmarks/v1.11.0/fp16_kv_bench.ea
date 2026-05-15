@@ -16,9 +16,15 @@
 //   rms_norm(x) = x / sqrt(sum(x^2)/N + eps) * scale,   over n / 8 lanes
 //   followed by   acc = fma(qv, kv, acc)   loop                          // for the dot
 //
-// Spec claim: "~1.5-2x speedup on the KV path" on Pi 5 Cortex-A76 with
-// FEAT_FP16. Reference: Olorin eabrain 2026-04-27 entry on Pi 5 NEON
-// enablement design.
+// Spec target: kv_native >= kv_roundtrip on Neoverse-V1/V2 or A78+ A-series,
+// where f16 SIMD ops issue at 2x the f32 rate (yielding the originally-
+// claimed 1.5-2x speedup on the KV path). On Cortex-A76 specifically
+// (Pi 5), f16 and f32 SIMD share the same per-cycle issue rate, so the
+// lane-doubling benefit doesn't materialize — v1.13.0 baseline measures
+// kv_native at ~0.85x of kv_roundtrip on Pi 5. Codegen is native fmla.8h
+// / fmul.8h on both microarch classes (verified via disassembly). See
+// eacompute issue #18 for the full investigation. Original reference:
+// Olorin eabrain 2026-04-27 entry on Pi 5 NEON enablement design.
 //
 // THIS FILE MUST BE BUILT FOR ARM:
 //   ea fp16_kv_bench.ea --lib --fp16 --target-triple=aarch64-unknown-linux-gnu
