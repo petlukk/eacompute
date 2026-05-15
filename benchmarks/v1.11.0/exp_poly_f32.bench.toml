@@ -2,6 +2,6 @@ name = "exp_poly_f32"
 kernel = "exp_poly_f32_bench.ea"
 harness = "exp_poly_f32_harness.c"
 baseline = "exp_poly_f32.baseline.json"
-arch = ["x86_64", "aarch64"]
+arch = ["x86_64"]
 ea_flags = []
 cc_flags = ["-O2", "-lm"]
