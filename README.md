@@ -6,6 +6,8 @@ No runtime. No garbage collector. No glue code.
 
 Targets x86-64 (AVX2, AVX-512) and AArch64 (NEON, FP16, dot-product, I8MM).
 
+**Specification:** [`docs/src/reference/index.md`](docs/src/reference/index.md) — the normative language and intrinsic-surface reference.
+
 ## The Performance Story
 
 Three workloads, measured honestly: warm-up discarded, 10 trials × 50 iterations, reporting peak throughput in GB/s. 16M float32 elements (64 MB). All Eä kernels are autoresearch-optimized (dual accumulators, FMA, restrict pointers). [Full benchmark script and methodology.](benchmarks/METHODOLOGY.md)

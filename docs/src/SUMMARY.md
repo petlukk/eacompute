@@ -17,6 +17,7 @@
 
 # Reference
 
+- [Specification](reference/index.md)
 - [Type System](reference/types.md)
 - [All Intrinsics](reference/intrinsics.md)
 - [CLI Reference](reference/cli.md)
