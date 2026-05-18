@@ -160,4 +160,49 @@ mod tests {
         "#;
         try_compile_arm(src).expect("two-source f32x4 should cross-compile to aarch64");
     }
+
+    // --- end-to-end semantics (Hard Rule #2) ---
+
+    #[cfg(target_arch = "x86_64")]
+    #[test]
+    fn two_source_interleave_real_kernel_runs() {
+        // Zip-interleave: produce [a[0], b[0], a[1], b[1], ...] for the first
+        // 8 elements (using two i32x4 loads + two-source shuffle to two i32x4
+        // stores). Must match scalar reference byte-for-byte.
+        let ea = r#"
+            export func zip_interleave(
+                a: *restrict i32,
+                b: *restrict i32,
+                out: *restrict mut i32
+            ) {
+                let va: i32x4 = load(a, 0)
+                let vb: i32x4 = load(b, 0)
+                let lo: i32x4 = shuffle(va, vb, [0, 4, 1, 5])
+                let hi: i32x4 = shuffle(va, vb, [2, 6, 3, 7])
+                store(out, 0, lo)
+                store(out, 4, hi)
+            }
+        "#;
+        let c = r#"
+            #include <stdio.h>
+            #include <string.h>
+            void zip_interleave(const int*, const int*, int*);
+            int main(void) {
+                int a[4] = {10, 20, 30, 40};
+                int b[4] = {11, 21, 31, 41};
+                int out[8] = {0};
+                int ref[8] = {10, 11, 20, 21, 30, 31, 40, 41};
+                zip_interleave(a, b, out);
+                if (memcmp(out, ref, sizeof(ref)) == 0) {
+                    printf("OK\n");
+                } else {
+                    for (int i = 0; i < 8; i++) {
+                        printf("out[%d]=%d ref=%d\n", i, out[i], ref[i]);
+                    }
+                }
+                return 0;
+            }
+        "#;
+        assert_c_interop(ea, c, "OK");
+    }
 }
