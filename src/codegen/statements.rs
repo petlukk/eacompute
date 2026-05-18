@@ -436,10 +436,13 @@ impl<'ctx> CodeGenerator<'ctx> {
                 condition: expr, ..
             } => check_arm_rejected_intrinsics_in_expr(expr),
             Stmt::Return(None, _)
-            | Stmt::IndexAssign { .. }
             | Stmt::Struct { .. }
             | Stmt::Const { .. }
             | Stmt::Function { .. } => Ok(()),
+            Stmt::IndexAssign { index, value, .. } => {
+                check_arm_rejected_intrinsics_in_expr(index)?;
+                check_arm_rejected_intrinsics_in_expr(value)
+            }
             Stmt::If {
                 condition,
                 then_body,
@@ -469,21 +472,50 @@ impl<'ctx> CodeGenerator<'ctx> {
 }
 
 /// Walk an expression and return an error if it contains an ARM-rejected
-/// intrinsic call (i.e. `permute_runtime`).  Free function to satisfy
-/// `clippy::only_used_in_recursion` — `self` is not needed here.
+/// intrinsic call (currently: `permute_runtime`). Recurses into all
+/// sub-expressions so the rejection fires regardless of where the call sits
+/// in the expression tree (operand of negate, arg of another call, RHS of
+/// assignment, etc.). Free function to satisfy clippy::only_used_in_recursion.
 fn check_arm_rejected_intrinsics_in_expr(expr: &Expr) -> crate::error::Result<()> {
-    if let Expr::Call { name, args, .. } = expr {
-        if name == "permute_runtime" {
-            return Err(crate::error::CompileError::codegen_error(
-                "permute_runtime has no NEON equivalent on ARM. For small \
-                 runtime LUTs (<= 8 entries) use a compare-and-select chain. \
-                 For byte-domain LUTs use shuffle_bytes. See \
-                 docs/idioms/neon-runtime-permute.md for canonical patterns.",
-            ));
+    match expr {
+        Expr::Literal(_, _) | Expr::Variable(_, _) => Ok(()),
+        Expr::Call { name, args, .. } => {
+            if name == "permute_runtime" {
+                return Err(crate::error::CompileError::codegen_error(
+                    "permute_runtime has no NEON equivalent on ARM. For small \
+                     runtime LUTs (<= 8 entries) use a compare-and-select chain. \
+                     For byte-domain LUTs use shuffle_bytes. See \
+                     docs/idioms/neon-runtime-permute.md for canonical patterns.",
+                ));
+            }
+            for arg in args {
+                check_arm_rejected_intrinsics_in_expr(arg)?;
+            }
+            Ok(())
         }
-        for arg in args {
-            check_arm_rejected_intrinsics_in_expr(arg)?;
+        Expr::Binary(lhs, _, rhs, _) => {
+            check_arm_rejected_intrinsics_in_expr(lhs)?;
+            check_arm_rejected_intrinsics_in_expr(rhs)
+        }
+        Expr::Not(inner, _) | Expr::Negate(inner, _) => {
+            check_arm_rejected_intrinsics_in_expr(inner)
+        }
+        Expr::Index { object, index, .. } => {
+            check_arm_rejected_intrinsics_in_expr(object)?;
+            check_arm_rejected_intrinsics_in_expr(index)
+        }
+        Expr::Vector { elements, .. } | Expr::ArrayLiteral(elements, _) => {
+            for e in elements {
+                check_arm_rejected_intrinsics_in_expr(e)?;
+            }
+            Ok(())
+        }
+        Expr::FieldAccess { object, .. } => check_arm_rejected_intrinsics_in_expr(object),
+        Expr::StructLiteral { fields, .. } => {
+            for (_, e) in fields {
+                check_arm_rejected_intrinsics_in_expr(e)?;
+            }
+            Ok(())
         }
     }
-    Ok(())
 }

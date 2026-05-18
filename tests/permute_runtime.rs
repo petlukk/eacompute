@@ -362,4 +362,61 @@ mod tests {
             "error must mention the docs file, got: {msg}"
         );
     }
+
+    #[test]
+    fn permute_runtime_arm_rejected_in_negate() {
+        // Regression: permute_runtime wrapped in a Negate expression must
+        // still be rejected on ARM (walker must recurse into Negate).
+        let src = r#"
+            export func k(t: *f32, idx: *i32, out: *mut f32) {
+                let tv: f32x8 = load(t, 0)
+                let iv: i32x8 = load(idx, 0)
+                let r: f32x8 = -permute_runtime(tv, iv)
+                store(out, 0, r)
+            }
+        "#;
+        let opts = ea_compiler::CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+        };
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("t.o");
+        let err = ea_compiler::compile_with_options(src, &obj, OutputMode::ObjectFile, &opts)
+            .expect_err("permute_runtime inside negate should still fail on ARM");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("neon-runtime-permute.md"),
+            "expected idiom-doc reference, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn permute_runtime_arm_rejected_in_call_arg() {
+        // Regression: permute_runtime nested inside another call's argument
+        // must still be rejected (walker must recurse into Call.args).
+        let src = r#"
+            export func k(t: *f32, idx: *i32, out: *mut f32) {
+                let tv: f32x8 = load(t, 0)
+                let iv: i32x8 = load(idx, 0)
+                store(out, 0, permute_runtime(tv, iv))
+            }
+        "#;
+        let opts = ea_compiler::CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+        };
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("t.o");
+        let err = ea_compiler::compile_with_options(src, &obj, OutputMode::ObjectFile, &opts)
+            .expect_err("permute_runtime inside store() arg should still fail on ARM");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("neon-runtime-permute.md"),
+            "expected idiom-doc reference, got: {msg}"
+        );
+    }
 }
