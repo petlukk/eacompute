@@ -65,9 +65,14 @@ platforms (x86 Linux, Linux ARM64, Windows) after the tag push.
 ## Tag
 
 ```bash
-git tag vX.Y.Z
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
 git push origin vX.Y.Z
 ```
+
+Use `-a` (annotated tag) — release tags carry a tagger name, date, and
+message, which is what `release.yml` and the GitHub Releases page expect.
+A lightweight tag (`git tag vX.Y.Z` with no `-a`) is just a ref to a
+commit and would lose that metadata.
 
 `.github/workflows/release.yml` takes over: builds release binaries on
 Linux x86_64, Linux aarch64, and Windows; uploads `.tar.gz` / `.zip`

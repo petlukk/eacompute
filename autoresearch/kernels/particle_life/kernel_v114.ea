@@ -1,0 +1,115 @@
+// N-body particle life: v1.14.0 SIMD variant using permute_runtime.
+//
+// Companion to kernel_v113.ea (preserved as the archive). The v1.13.0
+// kernel used a 6-step compare-and-select chain to emulate vpermps for
+// the matrix-row lookup `matrix[ti*K + types[j]]`. This version replaces
+// that 6-line idiom with a single `permute_runtime(row_v, types_j)`
+// call — the intrinsic that landed in eacompute v1.14.0 (PR #22).
+//
+// References:
+//   - docs/src/reference/intrinsics.md (#permute_runtime)
+//   - docs/idioms/neon-runtime-permute.md (NEON workaround)
+//   - kernel_v113.ea (the v1.13 select-chain variant kept for comparison)
+//
+// Hardcoded for num_types=6 (bench harness fixture). The matrix row is
+// loaded into an f32x8 via f32x8_from_scalars with lanes 6 and 7 zeroed —
+// types_j values are in [0..5] so the spilled lanes are don't-cares. The
+// 6 scalar loads + insertelement chain has the same per-particle cost as
+// the 6 splats it replaces, but the inner loop now executes a single
+// vpermps instead of a 6-step select chain.
+//
+// Outer i-loop kept scalar (loop-carried dep on px[i], py[i] per program.md).
+//
+// To reproduce:
+//   EA_BINARY=$(git rev-parse --show-toplevel)/target/release/ea \
+//   python3 bench_kernel.py kernel_v114.ea reference.so
+
+const LANE_8: i32 = 8
+
+export func particle_life_step(
+    px: *restrict mut f32, py: *restrict mut f32,
+    vx: *restrict mut f32, vy: *restrict mut f32,
+    types: *restrict i32,
+    matrix: *restrict f32,
+    n: i32, num_types: i32,
+    r_max: f32, dt: f32, friction: f32, size: f32
+) {
+    let r_max2: f32 = r_max * r_max
+    let r_max_inv: f32 = 1.0 / r_max
+    let r_max2_v: f32x8 = splat(r_max2)
+    let r_max_inv_v: f32x8 = splat(r_max_inv)
+    let zero_v: f32x8 = splat(0.0)
+
+    for i in 0..n {
+        let xi: f32 = px[i]
+        let yi: f32 = py[i]
+        let ti: i32 = types[i]
+        let ti_off: i32 = ti * num_types
+        let xi_v: f32x8 = splat(xi)
+        let yi_v: f32x8 = splat(yi)
+        let mut fx_v: f32x8 = splat(0.0)
+        let mut fy_v: f32x8 = splat(0.0)
+
+        let row_v: f32x8 = f32x8_from_scalars(
+            matrix[ti_off + 0],
+            matrix[ti_off + 1],
+            matrix[ti_off + 2],
+            matrix[ti_off + 3],
+            matrix[ti_off + 4],
+            matrix[ti_off + 5],
+            0.0,
+            0.0
+        )
+
+        let mut j: i32 = 0
+        while j + LANE_8 <= n {
+            let px_j: f32x8 = load(px, j)
+            let py_j: f32x8 = load(py, j)
+            let dx: f32x8 = px_j .- xi_v
+            let dy: f32x8 = py_j .- yi_v
+            let dist2: f32x8 = fma(dx, dx, dy .* dy)
+
+            let types_j: i32x8 = load(types, j)
+            let strength: f32x8 = permute_runtime(row_v, types_j)
+
+            let inv_dist: f32x8 = rsqrt(dist2)
+            let f_over_d: f32x8 = strength .* (inv_dist .- r_max_inv_v)
+
+            let masked1: f32x8 = select(dist2 .> zero_v, f_over_d, zero_v)
+            let f_over_d_masked: f32x8 = select(dist2 .< r_max2_v, masked1, zero_v)
+
+            fx_v = fma(f_over_d_masked, dx, fx_v)
+            fy_v = fma(f_over_d_masked, dy, fy_v)
+
+            j = j + LANE_8
+        }
+
+        let mut fx: f32 = reduce_add(fx_v)
+        let mut fy: f32 = reduce_add(fy_v)
+        while j < n {
+            let dx: f32 = px[j] - xi
+            let dy: f32 = py[j] - yi
+            let dist2: f32 = dx * dx + dy * dy
+            if dist2 > 0.0 && dist2 < r_max2 {
+                let dist: f32 = sqrt(dist2)
+                let strength: f32 = matrix[ti_off + types[j]]
+                let f_over_d: f32 = strength * (1.0 - dist * r_max_inv) / dist
+                fx = fx + f_over_d * dx
+                fy = fy + f_over_d * dy
+            }
+            j = j + 1
+        }
+
+        vx[i] = (vx[i] + fx * dt) * friction
+        vy[i] = (vy[i] + fy * dt) * friction
+        px[i] = px[i] + vx[i]
+        py[i] = py[i] + vy[i]
+
+        let cur_px: f32 = px[i]
+        let cur_py: f32 = py[i]
+        if cur_px < 0.0 { px[i] = cur_px + size }
+        if cur_px >= size { px[i] = cur_px - size }
+        if cur_py < 0.0 { py[i] = cur_py + size }
+        if cur_py >= size { py[i] = cur_py - size }
+    }
+}
