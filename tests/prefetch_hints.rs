@@ -128,4 +128,58 @@ mod tests {
         "#;
         assert_typecheck_error(src, "offset must be integer");
     }
+
+    // --- end-to-end semantics (Hard Rule #2) ---
+
+    #[cfg(target_arch = "x86_64")]
+    #[test]
+    fn prefetch_write_real_kernel_runs() {
+        // Write-bound kernel: copy and increment src[i] into dst[i],
+        // with prefetch_write hinting the next chunk of writes.
+        // Output must match the scalar reference byte-for-byte.
+        let ea = r#"
+            export func copy_inc(
+                src: *restrict i32,
+                dst: *restrict mut i32,
+                len: i32
+            ) {
+                let mut i: i32 = 0
+                while i + 8 <= len {
+                    prefetch_write(dst, i + 32)
+                    let v: i32x8 = load(src, i)
+                    let one: i32x8 = splat(1)
+                    store(dst, i, v .+ one)
+                    i = i + 8
+                }
+                while i < len {
+                    dst[i] = src[i] + 1
+                    i = i + 1
+                }
+            }
+        "#;
+        let c = r#"
+            #include <stdio.h>
+            #include <string.h>
+            void copy_inc(const int*, int*, int);
+            int main(void) {
+                int src[33];
+                int dst[33] = {0};
+                int ref[33];
+                for (int i = 0; i < 33; i++) {
+                    src[i] = i * 7;
+                    ref[i] = i * 7 + 1;
+                }
+                copy_inc(src, dst, 33);
+                if (memcmp(dst, ref, sizeof(ref)) == 0) {
+                    printf("OK\n");
+                } else {
+                    for (int i = 0; i < 33; i++) {
+                        printf("dst[%d]=%d ref=%d\n", i, dst[i], ref[i]);
+                    }
+                }
+                return 0;
+            }
+        "#;
+        assert_c_interop(ea, c, "OK");
+    }
 }
