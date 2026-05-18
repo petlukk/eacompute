@@ -185,17 +185,9 @@ impl<'ctx> CodeGenerator<'ctx> {
         args: &[Expr],
         function: FunctionValue<'ctx>,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
-        if self.is_arm {
-            return Err(CompileError::codegen_error(
-                "permute_runtime has no NEON equivalent on ARM. For small \
-                 runtime LUTs (<= 8 entries) use a compare-and-select chain. \
-                 For byte-domain LUTs use shuffle_bytes. See \
-                 docs/idioms/neon-runtime-permute.md for canonical patterns.",
-            ));
-        }
-        // Requires AVX2 on x86 (vpermps / vpermd).
-        // Eä targets AVX2 by default; if a future --no-avx2 mode is added,
-        // this must become a hard gate.
+        // ARM rejection fires earlier via check_arm_rejected_intrinsics_in_body
+        // in src/codegen/statements.rs (must run before validate_type_for_target).
+        // Here we only reach the x86 path. Requires AVX2 (default Eä target on x86).
         let table = self.compile_expr(&args[0], function)?.into_vector_value();
         let indices = self.compile_expr(&args[1], function)?.into_vector_value();
         let table_ty = table.get_type();
