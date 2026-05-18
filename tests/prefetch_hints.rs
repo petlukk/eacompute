@@ -91,4 +91,41 @@ mod tests {
         "#;
         try_compile_arm(src).expect("prefetch_nta should cross-compile to aarch64");
     }
+
+    // --- shape errors (reuses check_prefetch) ---
+
+    #[test]
+    fn prefetch_write_too_few_args_errors() {
+        let src = r#"
+            export func k(p: *i32) { prefetch_write(p) }
+        "#;
+        assert_typecheck_error(src, "prefetch expects 2 arguments");
+    }
+
+    #[test]
+    fn prefetch_nta_too_many_args_errors() {
+        let src = r#"
+            export func k(p: *i32) { prefetch_nta(p, 1, 2) }
+        "#;
+        assert_typecheck_error(src, "prefetch expects 2 arguments");
+    }
+
+    #[test]
+    fn prefetch_write_non_pointer_first_arg_errors() {
+        let src = r#"
+            export func k() { prefetch_write(42, 0) }
+        "#;
+        assert_typecheck_error(src, "must be a pointer");
+    }
+
+    #[test]
+    fn prefetch_nta_non_integer_offset_errors() {
+        let src = r#"
+            export func k(p: *i32) {
+                let f: f32 = 1.0
+                prefetch_nta(p, f)
+            }
+        "#;
+        assert_typecheck_error(src, "offset must be integer");
+    }
 }
