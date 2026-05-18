@@ -253,11 +253,23 @@ let v: f32x8 = splat(1.0);
 
 ### shuffle
 
-Reorder lanes of a vector according to an index tuple. The indices are compile-time constants.
+Compile-time index-driven vector shuffle. Two forms:
+
+**Single-source** — permute lanes within one vector.
 
 ```
-let reversed: f32x4 = shuffle(v, (3, 2, 1, 0));
+let reversed: f32x4 = shuffle(v, [3, 2, 1, 0])
 ```
+
+Each index is in `[0, width)`.
+
+**Two-source** — pick lanes from two vectors of the same type.
+
+```
+let zipped: f32x8 = shuffle(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
+```
+
+Indices in `[0, width)` select from `a`; indices in `[width, 2 * width)` select lane `i - width` from `b`. Common patterns: interleave (lower-half zip), blend (pick lanes by index), and concatenate-permute (lower-half from one source, upper from the other with permutation).
 
 ### permute_runtime
 

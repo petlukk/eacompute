@@ -12,6 +12,10 @@ Forward-looking notes. Ordered by leverage, not by effort.
 
 `prefetch_write(ptr, offset)` (rw=1, locality=3) and `prefetch_nta(ptr, offset)` (rw=0, locality=0), both cross-platform via `llvm.prefetch.p0`. Existing `prefetch` is unchanged. The original "prefetch as a statement" roadmap entry (commit `c879b45`) was based on a stale premise — `prefetch` already worked in function bodies; the real gap was hint-flavor coverage. See `docs/superpowers/specs/2026-05-18-prefetch-hints-design.md` for the post-mortem.
 
+### shuffle two-source form
+
+`shuffle(a, b, [indices])` overloads the existing `shuffle` intrinsic by arity. Two-source mask semantics match LLVM `shufflevector`: indices in `[0, width)` select from `a`, indices in `[width, 2 * width)` select from `b`. Single-source form unchanged. The original "Compile-time `shuffle` for width-8" Future entry (commit `c879b45`) was based on a stale premise — single-source width-8 shuffle already worked end-to-end; the real gap was the two-source mask form. See `docs/superpowers/specs/2026-05-18-shuffle-two-source-design.md` for the post-mortem.
+
 ## Shipped in v1.12.0 (2026-05-13)
 
 - **Deprecation-warning infrastructure** + `docs/migrations/` directory + `cargo public-api` CI gate (PR #6).
@@ -48,7 +52,6 @@ Today the language spec is spread across `docs/src/reference/*.md` (types, intri
 - **Scalar `f16` conversion** — `to_f16(f32)` and partner scalar variants of the cvt family. The current intrinsic surface is vector-only.
 - **`u16x32` token + sibling lane extractors** (`lo256_u16x32` / `hi256_u16x32`). Skipped in PR #10 because `u16x32` itself doesn't exist yet; add when a consumer asks.
 - **Wider `wmul_u64`** — `wmul_u64(u32x4, u32x4) -> u64x4` full widening via paired pmuludq + interleave, or AVX2/AVX-512 widths (`u32x8`/`u32x16` inputs). The current `_lo`/`_hi` pair is sufficient for Poly1305; add wider forms when a real consumer benchmarks the savings.
-- **Compile-time `shuffle` for width-8** — `shuffle(vec, tuple)` currently only accepts 4-element index tuples. Autoresearch logs show repeated `error[type]: shuffle indices length 4 != vector width 8` when trying AVX2 lane reorders (`vpshufps`-imm / `vpermps`-imm). Hardware supports it; intrinsic surface doesn't. v1.14.0's `permute_runtime` covers the *runtime*-indexed case, not compile-time. Either generalize `shuffle` to accept 8-element tuples or add a sibling intrinsic.
 
 ## Future additions
 
