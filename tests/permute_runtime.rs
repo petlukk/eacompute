@@ -260,4 +260,75 @@ mod tests {
         // (shared opcode, verified in Task 0 spike).
         assert_intrinsic_in_disassembly(src, &["vpermps", "vpermd"]);
     }
+
+    #[test]
+    fn permute_runtime_i32x8_identity() {
+        assert_c_interop(
+            r#"
+            export func test(t: *i32, idx: *i32, out: *mut i32) {
+                let tv: i32x8 = load(t, 0)
+                let iv: i32x8 = load(idx, 0)
+                let r: i32x8 = permute_runtime(tv, iv)
+                store(out, 0, r)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            extern void test(const int*, const int*, int*);
+            int main() {
+                int t[8] = {100, 101, 102, 103, 104, 105, 106, 107};
+                int idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+                int out[8];
+                test(t, idx, out);
+                for (int i = 0; i < 8; ++i) printf("%d ", out[i]);
+                printf("\n");
+                return 0;
+            }
+            "#,
+            "100 101 102 103 104 105 106 107",
+        );
+    }
+
+    #[test]
+    fn permute_runtime_i32x8_reverse() {
+        assert_c_interop(
+            r#"
+            export func test(t: *i32, idx: *i32, out: *mut i32) {
+                let tv: i32x8 = load(t, 0)
+                let iv: i32x8 = load(idx, 0)
+                let r: i32x8 = permute_runtime(tv, iv)
+                store(out, 0, r)
+            }
+            "#,
+            r#"
+            #include <stdio.h>
+            extern void test(const int*, const int*, int*);
+            int main() {
+                int t[8] = {100, 101, 102, 103, 104, 105, 106, 107};
+                int idx[8] = {7, 6, 5, 4, 3, 2, 1, 0};
+                int out[8];
+                test(t, idx, out);
+                for (int i = 0; i < 8; ++i) printf("%d ", out[i]);
+                printf("\n");
+                return 0;
+            }
+            "#,
+            "107 106 105 104 103 102 101 100",
+        );
+    }
+
+    #[test]
+    fn permute_runtime_i32x8_emits_vpermd() {
+        let src = r#"
+            export func k(t: *i32, idx: *i32, out: *mut i32) {
+                let tv: i32x8 = load(t, 0)
+                let iv: i32x8 = load(idx, 0)
+                let r: i32x8 = permute_runtime(tv, iv)
+                store(out, 0, r)
+            }
+        "#;
+        // LLVM 18 emits vpermps for both .permps and .permd intrinsics
+        // (shared opcode, verified in Task 0 spike). Accept either.
+        assert_intrinsic_in_disassembly(src, &["vpermps", "vpermd"]);
+    }
 }
