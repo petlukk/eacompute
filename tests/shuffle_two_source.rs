@@ -47,7 +47,9 @@ mod tests {
         // or potentially vpermi2d / vpermt2d on AVX-512. Accept the family.
         assert_intrinsic_in_disassembly(
             src,
-            &["pblendw", "vpblendd", "vblendps", "vpblendw", "vpermi2d", "vpermt2d"],
+            &[
+                "pblendw", "vpblendd", "vblendps", "vpblendw", "vpermi2d", "vpermt2d",
+            ],
         );
     }
 
