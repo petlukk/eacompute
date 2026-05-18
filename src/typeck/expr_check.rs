@@ -359,6 +359,8 @@ impl TypeChecker {
                         "shuffle",
                         "select",
                         "prefetch",
+                        "prefetch_write",
+                        "prefetch_nta",
                         "gather",
                         "scatter",
                         "load_masked",
