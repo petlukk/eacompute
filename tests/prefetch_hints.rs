@@ -30,4 +30,19 @@ mod tests {
         "#;
         assert_intrinsic_in_disassembly(src, &["prefetchw"]);
     }
+
+    #[cfg(target_arch = "x86_64")]
+    #[test]
+    fn prefetch_nta_emits_prefetchnta_on_x86() {
+        let src = r#"
+            export func k(p: *i32, len: i32) {
+                let mut i: i32 = 0
+                while i < len {
+                    prefetch_nta(p, i + 64)
+                    i = i + 1
+                }
+            }
+        "#;
+        assert_intrinsic_in_disassembly(src, &["prefetchnta"]);
+    }
 }
