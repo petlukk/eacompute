@@ -1,10 +1,12 @@
 //! Codegen for lane-movement intrinsics. See intrinsics_lane.rs for the
 //! type-checker side and the plan document for the full rationale.
 //!
-//! All helpers in this file emit LLVM `shufflevector` IR with compile-time
-//! constant masks. No x86-specific LLVM intrinsics are used — LLVM 18
-//! pattern-matches the shufflevectors to vinserti32x8 / vextracti128 /
-//! vpshufd automatically at ISEL time.
+//! Most helpers in this file emit LLVM `shufflevector` IR with compile-time
+//! constant masks, which LLVM 18 pattern-matches to vinserti32x8 /
+//! vextracti128 / vpshufd automatically at ISEL time. The exception is
+//! `compile_permute_runtime`, which calls `llvm.x86.avx2.permps` /
+//! `llvm.x86.avx2.permd` directly because `vpermps` has no shufflevector
+//! encoding (indices are runtime values, not compile-time constants).
 
 use inkwell::types::{BasicTypeEnum, VectorType};
 use inkwell::values::{BasicValueEnum, FunctionValue};

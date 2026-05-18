@@ -156,7 +156,6 @@ pub fn compile_to_ir(source: &str) -> String {
 /// `call` to an external symbol (LLVM-7+ deprecation case from PR #8 / PR #9).
 #[allow(dead_code)]
 pub fn assert_intrinsic_in_disassembly(ea_source: &str, expected_mnemonics: &[&str]) {
-    use std::process::Command;
     let dir = TempDir::new().unwrap();
     let obj = dir.path().join("t.o");
     ea_compiler::compile(ea_source, &obj, ea_compiler::OutputMode::ObjectFile)
