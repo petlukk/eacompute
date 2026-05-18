@@ -1,6 +1,6 @@
 use inkwell::values::FunctionValue;
 
-use crate::ast::{Stmt, TypeAnnotation};
+use crate::ast::{Expr, Stmt, TypeAnnotation};
 use crate::error::CompileError;
 use crate::typeck::Type;
 
@@ -18,6 +18,14 @@ impl<'ctx> CodeGenerator<'ctx> {
             .functions
             .get(name)
             .ok_or_else(|| CompileError::codegen_error(format!("undeclared function '{name}'")))?;
+
+        // Early ARM rejection for intrinsics that have no NEON equivalent.
+        // This scan fires before validate_type_for_target so that the
+        // intrinsic-specific idiom message (e.g. neon-runtime-permute.md)
+        // is surfaced instead of the generic "f32x8 requires AVX2" message.
+        if self.is_arm {
+            self.check_arm_rejected_intrinsics_in_body(body)?;
+        }
 
         let entry = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(entry);
@@ -404,4 +412,78 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
         Ok(terminated)
     }
+
+    /// Pre-scan a function body for intrinsic calls that are rejected on ARM.
+    /// Called before `validate_type_for_target` so that the intrinsic-specific
+    /// idiom message is surfaced rather than the generic 256-bit width error.
+    fn check_arm_rejected_intrinsics_in_body(&self, body: &[Stmt]) -> crate::error::Result<()> {
+        for stmt in body {
+            self.check_arm_rejected_intrinsics_in_stmt(stmt)?;
+        }
+        Ok(())
+    }
+
+    fn check_arm_rejected_intrinsics_in_stmt(&self, stmt: &Stmt) -> crate::error::Result<()> {
+        match stmt {
+            Stmt::Let { value, .. } | Stmt::ExprStmt(value, _) => {
+                check_arm_rejected_intrinsics_in_expr(value)
+            }
+            Stmt::Assign { value, .. } | Stmt::FieldAssign { value, .. } => {
+                check_arm_rejected_intrinsics_in_expr(value)
+            }
+            Stmt::Return(Some(expr), _)
+            | Stmt::StaticAssert {
+                condition: expr, ..
+            } => check_arm_rejected_intrinsics_in_expr(expr),
+            Stmt::Return(None, _)
+            | Stmt::IndexAssign { .. }
+            | Stmt::Struct { .. }
+            | Stmt::Const { .. }
+            | Stmt::Function { .. } => Ok(()),
+            Stmt::If {
+                condition,
+                then_body,
+                else_body,
+                ..
+            } => {
+                check_arm_rejected_intrinsics_in_expr(condition)?;
+                self.check_arm_rejected_intrinsics_in_body(then_body)?;
+                if let Some(eb) = else_body {
+                    self.check_arm_rejected_intrinsics_in_body(eb)?;
+                }
+                Ok(())
+            }
+            Stmt::While {
+                condition, body, ..
+            } => {
+                check_arm_rejected_intrinsics_in_expr(condition)?;
+                self.check_arm_rejected_intrinsics_in_body(body)
+            }
+            Stmt::For { body, .. } | Stmt::ForEach { body, .. } => {
+                self.check_arm_rejected_intrinsics_in_body(body)
+            }
+            Stmt::Unroll { body, .. } => self.check_arm_rejected_intrinsics_in_stmt(body),
+            Stmt::Kernel { body, .. } => self.check_arm_rejected_intrinsics_in_body(body),
+        }
+    }
+}
+
+/// Walk an expression and return an error if it contains an ARM-rejected
+/// intrinsic call (i.e. `permute_runtime`).  Free function to satisfy
+/// `clippy::only_used_in_recursion` — `self` is not needed here.
+fn check_arm_rejected_intrinsics_in_expr(expr: &Expr) -> crate::error::Result<()> {
+    if let Expr::Call { name, args, .. } = expr {
+        if name == "permute_runtime" {
+            return Err(crate::error::CompileError::codegen_error(
+                "permute_runtime has no NEON equivalent on ARM. For small \
+                 runtime LUTs (<= 8 entries) use a compare-and-select chain. \
+                 For byte-domain LUTs use shuffle_bytes. See \
+                 docs/idioms/neon-runtime-permute.md for canonical patterns.",
+            ));
+        }
+        for arg in args {
+            check_arm_rejected_intrinsics_in_expr(arg)?;
+        }
+    }
+    Ok(())
 }

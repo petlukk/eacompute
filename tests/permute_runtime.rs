@@ -331,4 +331,35 @@ mod tests {
         // (shared opcode, verified in Task 0 spike). Accept either.
         assert_intrinsic_in_disassembly(src, &["vpermps", "vpermd"]);
     }
+
+    #[test]
+    fn permute_runtime_arm_rejected() {
+        let src = r#"
+            export func k(t: *f32, idx: *i32, out: *mut f32) {
+                let tv: f32x8 = load(t, 0)
+                let iv: i32x8 = load(idx, 0)
+                let r: f32x8 = permute_runtime(tv, iv)
+                store(out, 0, r)
+            }
+        "#;
+        let opts = ea_compiler::CompileOptions {
+            opt_level: 0,
+            target_cpu: None,
+            extra_features: String::new(),
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+        };
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("t.o");
+        let err = ea_compiler::compile_with_options(src, &obj, OutputMode::ObjectFile, &opts)
+            .expect_err("permute_runtime on ARM should fail");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("NEON"),
+            "error should mention NEON, got: {msg}"
+        );
+        assert!(
+            msg.contains("neon-runtime-permute.md"),
+            "error must mention the docs file, got: {msg}"
+        );
+    }
 }
