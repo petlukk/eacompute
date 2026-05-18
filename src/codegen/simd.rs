@@ -76,6 +76,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "to_i32"
                 | "to_i64"
                 | "prefetch"
+                | "prefetch_write"
+                | "prefetch_nta"
                 | "movemask"
                 | "min"
                 | "max"
@@ -295,7 +297,9 @@ impl<'ctx> CodeGenerator<'ctx> {
             "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" => {
                 self.compile_conversion(name, args, function)
             }
-            "prefetch" => self.compile_prefetch(args, function),
+            "prefetch" => self.compile_prefetch(args, function, 0, 3),
+            "prefetch_write" => self.compile_prefetch(args, function, 1, 3),
+            "prefetch_nta" => self.compile_prefetch(args, function, 0, 0),
             "movemask" => self.compile_movemask(args, function),
             "min" | "max" => self.compile_min_max(args, name, function),
             "sat_add" | "sat_add_i8x16" | "sat_add_u8x16" | "sat_add_i16x8" | "sat_add_u16x8" => {

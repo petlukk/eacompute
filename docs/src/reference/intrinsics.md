@@ -102,11 +102,52 @@ scatter(ptr, indices, values);
 
 ### prefetch
 
-Issue a prefetch hint to bring data into cache.
+Issue a read-intent prefetch hint to bring data into all cache levels (T0).
 
 ```
-prefetch(ptr, i);
+prefetch(ptr, i)
 ```
+
+Lowers to `prefetcht0` on x86 / `prfm pldl1keep` on aarch64.
+
+### prefetch_write
+
+Issue a write-intent prefetch hint. Signals the cache coherence protocol to
+acquire the target line in modified state ahead of the store, avoiding a
+read-for-ownership stall when the store retires. Use on the upcoming write
+target of memory-bound store-heavy kernels (e.g. chacha20 ciphertext output,
+dequantize destinations).
+
+```
+prefetch_write(ptr, i)
+```
+
+Lowers to `prefetchw` on x86 (requires `PRFCHW` CPUID; falls back to
+`prefetcht0` on older CPUs) / `prfm pstl1keep` on aarch64.
+
+### prefetch_nta
+
+Issue a non-temporal prefetch hint — bring the line into L1 only and mark it
+for early eviction. Use for streaming reads the kernel touches exactly once
+and shouldn't pollute L1/L2 with (e.g. Q4 dequantize input, large one-pass
+scans).
+
+```
+prefetch_nta(ptr, i)
+```
+
+Lowers to `prefetchnta` on x86 / `prfm pldl1strm` on aarch64.
+
+### Prefetch hint summary
+
+| Intrinsic | (rw, locality) | x86 | aarch64 |
+|---|---|---|---|
+| `prefetch` | (0, 3) | `prefetcht0` | `prfm pldl1keep` |
+| `prefetch_write` | (1, 3) | `prefetchw` | `prfm pstl1keep` |
+| `prefetch_nta` | (0, 0) | `prefetchnta` | `prfm pldl1strm` |
+
+All three accept `(ptr, integer-offset)`, return `void`, and are valid in
+any expression-statement position inside a function body.
 
 ## Math
 

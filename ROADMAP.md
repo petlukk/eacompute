@@ -8,6 +8,10 @@ Forward-looking notes. Ordered by leverage, not by effort.
 
 `permute_runtime(f32x8, i32x8) -> f32x8` and `permute_runtime(i32x8, i32x8) -> i32x8`. Lowers to `vpermps` / `vpermd` on AVX2. ARM rejected with `codegen_error` referencing the NEON idiom doc. Shipped in v1.14.0.
 
+### Prefetch hint variants
+
+`prefetch_write(ptr, offset)` (rw=1, locality=3) and `prefetch_nta(ptr, offset)` (rw=0, locality=0), both cross-platform via `llvm.prefetch.p0`. Existing `prefetch` is unchanged. The original "prefetch as a statement" roadmap entry (commit `c879b45`) was based on a stale premise — `prefetch` already worked in function bodies; the real gap was hint-flavor coverage. See `docs/superpowers/specs/2026-05-18-prefetch-hints-design.md` for the post-mortem.
+
 ## Shipped in v1.12.0 (2026-05-13)
 
 - **Deprecation-warning infrastructure** + `docs/migrations/` directory + `cargo public-api` CI gate (PR #6).
@@ -44,7 +48,6 @@ Today the language spec is spread across `docs/src/reference/*.md` (types, intri
 - **Scalar `f16` conversion** — `to_f16(f32)` and partner scalar variants of the cvt family. The current intrinsic surface is vector-only.
 - **`u16x32` token + sibling lane extractors** (`lo256_u16x32` / `hi256_u16x32`). Skipped in PR #10 because `u16x32` itself doesn't exist yet; add when a consumer asks.
 - **Wider `wmul_u64`** — `wmul_u64(u32x4, u32x4) -> u64x4` full widening via paired pmuludq + interleave, or AVX2/AVX-512 widths (`u32x8`/`u32x16` inputs). The current `_lo`/`_hi` pair is sufficient for Poly1305; add wider forms when a real consumer benchmarks the savings.
-- **`prefetch` as a statement** — currently the parser only accepts `prefetch` in declaration position. An attempt to use `prefetch(ptr, offset)` inside a function body errors with `expected declaration (func, kernel, struct, or const), found 'prefetch'`. The chacha20 autoresearch logs (`autoresearch/chacha20_autoresearch.log`) from 2026-03-19 show the agent reaching for this idiom repeatedly and bouncing off the syntax. Memory-bound kernels (chacha, Poly1305, eakv dequantize) currently can't reach for the most basic memory-latency tool. Likely a small parser-level fix; large autoresearch unlock for memory-bound workloads.
 - **Compile-time `shuffle` for width-8** — `shuffle(vec, tuple)` currently only accepts 4-element index tuples. Autoresearch logs show repeated `error[type]: shuffle indices length 4 != vector width 8` when trying AVX2 lane reorders (`vpshufps`-imm / `vpermps`-imm). Hardware supports it; intrinsic surface doesn't. v1.14.0's `permute_runtime` covers the *runtime*-indexed case, not compile-time. Either generalize `shuffle` to accept 8-element tuples or add a sibling intrinsic.
 
 ## Future additions
