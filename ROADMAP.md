@@ -49,7 +49,6 @@ Today the language spec is spread across `docs/src/reference/*.md` (types, intri
 ## Future API consistency
 
 - **`tanh_approx_f32`, `log_approx_f32`, `sin_cos_approx_f32`** — polynomial approximations following the `exp_poly_f32` pattern. `tanh_approx_f32` is most-requested (currently expressed via `tanh(x) = (exp(2x) - 1) / (exp(2x) + 1)` over `exp_poly_f32`).
-- **Scalar `f16` conversion** — `to_f16(f32)` and partner scalar variants of the cvt family. The current intrinsic surface is vector-only.
 - **`u16x32` token + sibling lane extractors** (`lo256_u16x32` / `hi256_u16x32`). Skipped in PR #10 because `u16x32` itself doesn't exist yet; add when a consumer asks.
 - **Wider `wmul_u64`** — `wmul_u64(u32x4, u32x4) -> u64x4` full widening via paired pmuludq + interleave, or AVX2/AVX-512 widths (`u32x8`/`u32x16` inputs). The current `_lo`/`_hi` pair is sufficient for Poly1305; add wider forms when a real consumer benchmarks the savings.
 
