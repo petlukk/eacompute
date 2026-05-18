@@ -170,6 +170,7 @@ impl TypeChecker {
             "wmul_u64_hi" => Some(self.check_wmul_u64_hi(args, locals, span)),
             "prefetch" => Some(self.check_prefetch(args, locals, span)),
             "gather" => Some(self.check_gather(args, locals, span)),
+            "permute_runtime" => Some(self.check_permute_runtime(args, locals, span)),
             "scatter" => Some(self.check_scatter(args, locals, span)),
             "load_masked" => Some(self.check_load_masked(args, locals, type_hint, span)),
             "stream_store" => Some(self.check_store(args, locals, span)),
