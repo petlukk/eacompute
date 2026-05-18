@@ -299,9 +299,24 @@ impl<'ctx> CodeGenerator<'ctx> {
         args: &[Expr],
         function: FunctionValue<'ctx>,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
-        let vec = self.compile_expr(&args[0], function)?.into_vector_value();
+        let (a, b, indices_expr) = match args.len() {
+            2 => {
+                let v = self.compile_expr(&args[0], function)?.into_vector_value();
+                (v, v, &args[1])
+            }
+            3 => {
+                let av = self.compile_expr(&args[0], function)?.into_vector_value();
+                let bv = self.compile_expr(&args[1], function)?.into_vector_value();
+                (av, bv, &args[2])
+            }
+            _ => {
+                return Err(CompileError::codegen_error(
+                    "shuffle expects 2 or 3 arguments",
+                ));
+            }
+        };
 
-        let indices = match &args[1] {
+        let indices = match indices_expr {
             Expr::ArrayLiteral(elems, _) => elems
                 .iter()
                 .map(|e| match e {
@@ -323,7 +338,7 @@ impl<'ctx> CodeGenerator<'ctx> {
         let mask = VectorType::const_vector(&indices);
         let result = self
             .builder
-            .build_shuffle_vector(vec, vec, mask, "shuffle")
+            .build_shuffle_vector(a, b, mask, "shuffle")
             .map_err(|e| CompileError::codegen_error(e.to_string()))?;
         Ok(BasicValueEnum::VectorValue(result))
     }

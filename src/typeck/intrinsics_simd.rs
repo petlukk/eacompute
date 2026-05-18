@@ -67,24 +67,52 @@ impl TypeChecker {
         locals: &HashMap<String, (Type, bool)>,
         span: &Span,
     ) -> crate::error::Result<Type> {
-        if args.len() != 2 {
-            return Err(CompileError::type_error(
-                "shuffle expects 2 arguments (vector, indices)",
-                span.clone(),
-            ));
-        }
-        let vec_type = self.check_expr(&args[0], locals)?;
-        let width = match &vec_type {
-            Type::Vector { width, .. } => *width,
+        let (vec_type, indices_expr, width, index_max) = match args.len() {
+            2 => {
+                let vec_type = self.check_expr(&args[0], locals)?;
+                let width = match &vec_type {
+                    Type::Vector { width, .. } => *width,
+                    _ => {
+                        return Err(CompileError::type_error(
+                            format!("shuffle first argument must be vector, got {vec_type}"),
+                            args[0].span().clone(),
+                        ));
+                    }
+                };
+                (vec_type, &args[1], width, width)
+            }
+            3 => {
+                let a_type = self.check_expr(&args[0], locals)?;
+                let b_type = self.check_expr(&args[1], locals)?;
+                let width = match &a_type {
+                    Type::Vector { width, .. } => *width,
+                    _ => {
+                        return Err(CompileError::type_error(
+                            format!("shuffle first argument must be vector, got {a_type}"),
+                            args[0].span().clone(),
+                        ));
+                    }
+                };
+                if a_type != b_type {
+                    return Err(CompileError::type_error(
+                        format!(
+                            "shuffle two-source arguments must have the same type: \
+                             {a_type} vs {b_type}"
+                        ),
+                        args[1].span().clone(),
+                    ));
+                }
+                (a_type, &args[2], width, width * 2)
+            }
             _ => {
                 return Err(CompileError::type_error(
-                    format!("shuffle first argument must be vector, got {vec_type}"),
-                    args[0].span().clone(),
+                    "shuffle expects 2 or 3 arguments: (vector, indices) or (a, b, indices)",
+                    span.clone(),
                 ));
             }
         };
 
-        match &args[1] {
+        match indices_expr {
             Expr::ArrayLiteral(indices, arr_span) => {
                 if indices.len() != width {
                     return Err(CompileError::type_error(
@@ -98,9 +126,12 @@ impl TypeChecker {
                 for (i, idx) in indices.iter().enumerate() {
                     match idx {
                         Expr::Literal(crate::ast::Literal::Integer(n), idx_span) => {
-                            if *n < 0 || *n >= width as i64 {
+                            if *n < 0 || *n >= index_max as i64 {
                                 return Err(CompileError::type_error(
-                                    format!("shuffle index {i} out of range: {n} (width {width})"),
+                                    format!(
+                                        "shuffle index {i} out of range: {n} \
+                                         (must be in [0, {index_max}))"
+                                    ),
                                     idx_span.clone(),
                                 ));
                             }
@@ -116,8 +147,8 @@ impl TypeChecker {
             }
             _ => {
                 return Err(CompileError::type_error(
-                    "shuffle second argument must be [index, ...] array literal",
-                    args[1].span().clone(),
+                    "shuffle indices argument must be [index, ...] array literal",
+                    indices_expr.span().clone(),
                 ));
             }
         }
