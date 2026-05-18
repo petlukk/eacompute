@@ -50,4 +50,73 @@ mod tests {
             &["pblendw", "vpblendd", "vblendps", "vpblendw", "vpermi2d", "vpermt2d"],
         );
     }
+
+    // --- shape errors ---
+
+    #[test]
+    fn two_source_indices_wrong_length_errors() {
+        let src = r#"
+            export func k(p: *i32, q: *mut i32) {
+                let a: i32x4 = load(p, 0)
+                let b: i32x4 = load(p, 4)
+                let r: i32x4 = shuffle(a, b, [0, 1, 2])
+                store(q, 0, r)
+            }
+        "#;
+        assert_typecheck_error(src, "shuffle indices length 3 != vector width 4");
+    }
+
+    #[test]
+    fn two_source_indices_out_of_range_errors() {
+        // width=4, two-source allows indices [0, 8); 8 itself is out of range.
+        let src = r#"
+            export func k(p: *i32, q: *mut i32) {
+                let a: i32x4 = load(p, 0)
+                let b: i32x4 = load(p, 4)
+                let r: i32x4 = shuffle(a, b, [0, 8, 1, 2])
+                store(q, 0, r)
+            }
+        "#;
+        assert_typecheck_error(src, "must be in [0, 8)");
+    }
+
+    #[test]
+    fn two_source_type_mismatch_errors() {
+        let src = r#"
+            export func k(p: *i32, q: *f32, out: *mut i32) {
+                let a: i32x4 = load(p, 0)
+                let b: f32x4 = load(q, 0)
+                let r: i32x4 = shuffle(a, b, [0, 4, 1, 5])
+                store(out, 0, r)
+            }
+        "#;
+        assert_typecheck_error(src, "must have the same type");
+    }
+
+    #[test]
+    fn two_source_arg2_must_be_vector_errors() {
+        let src = r#"
+            export func k(p: *i32, q: *mut i32) {
+                let a: i32x4 = load(p, 0)
+                let r: i32x4 = shuffle(a, 42, [0, 1, 2, 3])
+                store(q, 0, r)
+            }
+        "#;
+        // Non-vector second arg falls into the type-mismatch branch (42 is i64,
+        // not a vector).
+        assert_typecheck_error(src, "must have the same type");
+    }
+
+    #[test]
+    fn arg_count_error_message_lists_both_forms() {
+        // Single-argument call should produce the new error mentioning both forms.
+        let src = r#"
+            export func k(p: *i32, q: *mut i32) {
+                let v: i32x4 = load(p, 0)
+                let r: i32x4 = shuffle(v)
+                store(q, 0, r)
+            }
+        "#;
+        assert_typecheck_error(src, "shuffle expects 2 or 3 arguments");
+    }
 }
