@@ -218,6 +218,24 @@ Reorder lanes of a vector according to an index tuple. The indices are compile-t
 let reversed: f32x4 = shuffle(v, (3, 2, 1, 0));
 ```
 
+### permute_runtime
+
+Runtime-indexed permute of an 8-lane vector. `result[k] = table[indices[k] & 0x7]`. Index lanes are 3-bit-masked by the hardware — the upper 29 bits of each `i32` index are ignored. Out-of-range indices wrap; they do not trap.
+
+- **x86:** single instruction (`vpermps` for f32, `vpermd` for i32). Requires AVX2.
+- **ARM (NEON):** not supported. Compile-time error pointing at the [NEON runtime-permute idiom](../cookbook/neon-runtime-permute-workaround.md).
+
+```
+let table: f32x8 = load(matrix_row, 0)   // 6 active + 2 don't-care
+let indices: i32x8 = load(types_v, 0)    // values in [0..5]
+let strengths: f32x8 = permute_runtime(table, indices)
+```
+
+| Signature | `(f32x8, i32x8) -> f32x8`, `(i32x8, i32x8) -> i32x8` |
+|-----------|-------------------------------------------------------|
+
+See also: [`shuffle`](#shuffle) (compile-time indices), [`gather`](#gather) (pointer-indexed), [`shuffle_bytes`](#shuffle_bytes) (byte-level, 16-byte table, cross-platform).
+
 ### select
 
 Per-lane conditional select. Where the mask is true, take from `a`; where false, take from `b`.

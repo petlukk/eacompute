@@ -1,12 +1,14 @@
 //! Codegen for lane-movement intrinsics. See intrinsics_lane.rs for the
 //! type-checker side and the plan document for the full rationale.
 //!
-//! All helpers in this file emit LLVM `shufflevector` IR with compile-time
-//! constant masks. No x86-specific LLVM intrinsics are used — LLVM 18
-//! pattern-matches the shufflevectors to vinserti32x8 / vextracti128 /
-//! vpshufd automatically at ISEL time.
+//! Most helpers in this file emit LLVM `shufflevector` IR with compile-time
+//! constant masks, which LLVM 18 pattern-matches to vinserti32x8 /
+//! vextracti128 / vpshufd automatically at ISEL time. The exception is
+//! `compile_permute_runtime`, which calls `llvm.x86.avx2.permps` /
+//! `llvm.x86.avx2.permd` directly because `vpermps` has no shufflevector
+//! encoding (indices are runtime values, not compile-time constants).
 
-use inkwell::types::VectorType;
+use inkwell::types::{BasicTypeEnum, VectorType};
 use inkwell::values::{BasicValueEnum, FunctionValue};
 
 use crate::ast::{Expr, Literal};
@@ -176,6 +178,47 @@ impl<'ctx> CodeGenerator<'ctx> {
                 .into();
         }
         Ok(v)
+    }
+
+    pub(super) fn compile_permute_runtime(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        // ARM rejection fires earlier via check_arm_rejected_intrinsics_in_body
+        // in src/codegen/statements.rs (must run before validate_type_for_target).
+        // Here we only reach the x86 path. Requires AVX2 (default Eä target on x86).
+        let table = self.compile_expr(&args[0], function)?.into_vector_value();
+        let indices = self.compile_expr(&args[1], function)?.into_vector_value();
+        let table_ty = table.get_type();
+        let elem_ty = table_ty.get_element_type();
+        let i32x8_ty = self.context.i32_type().vec_type(8);
+        let name = match elem_ty {
+            BasicTypeEnum::FloatType(_) => "llvm.x86.avx2.permps",
+            BasicTypeEnum::IntType(_) => "llvm.x86.avx2.permd",
+            _ => {
+                return Err(CompileError::codegen_error(
+                    "unsupported permute_runtime element type (internal error)",
+                ));
+            }
+        };
+        let fn_type = table_ty.fn_type(&[table_ty.into(), i32x8_ty.into()], false);
+        let intrinsic = self
+            .module
+            .get_function(name)
+            .unwrap_or_else(|| self.module.add_function(name, fn_type, None));
+        let result = self
+            .builder
+            .build_call(
+                intrinsic,
+                &[table.into(), indices.into()],
+                "permute_runtime",
+            )
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .try_as_basic_value()
+            .basic()
+            .ok_or_else(|| CompileError::codegen_error("permute_runtime did not return a value"))?;
+        Ok(result)
     }
 
     /// Emit a per-sublane 32-bit broadcast shufflevector.

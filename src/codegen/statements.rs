@@ -19,6 +19,14 @@ impl<'ctx> CodeGenerator<'ctx> {
             .get(name)
             .ok_or_else(|| CompileError::codegen_error(format!("undeclared function '{name}'")))?;
 
+        // Early ARM rejection for intrinsics that have no NEON equivalent.
+        // This scan fires before validate_type_for_target so that the
+        // intrinsic-specific idiom message (e.g. neon-runtime-permute.md)
+        // is surfaced instead of the generic "f32x8 requires AVX2" message.
+        if self.is_arm {
+            super::arm_rejection::check_body(body)?;
+        }
+
         let entry = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(entry);
 

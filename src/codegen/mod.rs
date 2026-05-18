@@ -1,4 +1,6 @@
 #[cfg(feature = "llvm")]
+mod arm_rejection;
+#[cfg(feature = "llvm")]
 mod builtins;
 #[cfg(feature = "llvm")]
 mod comparisons;

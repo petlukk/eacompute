@@ -233,6 +233,62 @@ impl TypeChecker {
         })
     }
 
+    pub(super) fn check_permute_runtime(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "permute_runtime expects 2 arguments (table, indices)",
+                span.clone(),
+            ));
+        }
+        let table_type = self.check_expr(&args[0], locals)?;
+        let indices_type = self.check_expr(&args[1], locals)?;
+        let (table_elem, table_width) = match &table_type {
+            Type::Vector { elem, width } => (elem.as_ref().clone(), *width),
+            _ => {
+                return Err(CompileError::type_error(
+                    format!("permute_runtime table must be a vector, got {table_type}"),
+                    args[0].span().clone(),
+                ));
+            }
+        };
+        match table_elem {
+            Type::F32 | Type::I32 => {}
+            _ => {
+                return Err(CompileError::type_error(
+                    format!("permute_runtime table element must be f32 or i32, got {table_elem}"),
+                    args[0].span().clone(),
+                ));
+            }
+        }
+        if table_width != 8 {
+            return Err(CompileError::type_error(
+                format!("permute_runtime table must have width 8, got width {table_width}"),
+                args[0].span().clone(),
+            ));
+        }
+        let idx_width = match &indices_type {
+            Type::Vector { elem, width } if matches!(elem.as_ref(), Type::I32) => *width,
+            _ => {
+                return Err(CompileError::type_error(
+                    format!("permute_runtime indices must be i32 vector, got {indices_type}"),
+                    args[1].span().clone(),
+                ));
+            }
+        };
+        if idx_width != 8 {
+            return Err(CompileError::type_error(
+                format!("permute_runtime indices must have width 8, got width {idx_width}"),
+                args[1].span().clone(),
+            ));
+        }
+        Ok(table_type)
+    }
+
     pub(super) fn check_movemask(
         &self,
         args: &[Expr],
