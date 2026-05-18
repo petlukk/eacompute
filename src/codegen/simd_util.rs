@@ -230,6 +230,8 @@ impl<'ctx> CodeGenerator<'ctx> {
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,
+        rw: u8,
+        locality: u8,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         if args.len() != 2 {
             return Err(CompileError::codegen_error(
@@ -279,8 +281,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                 prefetch_fn,
                 &[
                     gep.into(),
-                    i32_type.const_int(0, false).into(),
-                    i32_type.const_int(3, false).into(),
+                    i32_type.const_int(rw as u64, false).into(),
+                    i32_type.const_int(locality as u64, false).into(),
                     i32_type.const_int(1, false).into(),
                 ],
                 "",
