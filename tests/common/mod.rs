@@ -91,6 +91,19 @@ pub fn assert_c_interop(ea_source: &str, c_source: &str, expected: &str) {
 }
 
 #[allow(dead_code)]
+pub fn assert_typecheck_error(src: &str, expected_substr: &str) {
+    let dir = TempDir::new().unwrap();
+    let obj = dir.path().join("t.o");
+    let err = ea_compiler::compile(src, &obj, ea_compiler::OutputMode::ObjectFile)
+        .expect_err("expected type error");
+    let msg = format!("{err}");
+    assert!(
+        msg.contains(expected_substr),
+        "expected error to contain {expected_substr:?}, got: {msg}"
+    );
+}
+
+#[allow(dead_code)]
 pub fn assert_shared_lib_interop(ea_source: &str, c_source: &str, expected: &str) {
     let dir = TempDir::new().expect("failed to create temp dir");
     let so_path = dir.path().join("libkernel.so");

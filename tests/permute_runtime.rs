@@ -53,18 +53,6 @@ mod tests {
             .expect("i32x8 permute_runtime should typecheck");
     }
 
-    fn assert_typecheck_error(src: &str, expected_substr: &str) {
-        let dir = TempDir::new().unwrap();
-        let obj = dir.path().join("t.o");
-        let err = ea_compiler::compile(src, &obj, OutputMode::ObjectFile)
-            .expect_err("expected type error");
-        let msg = format!("{err}");
-        assert!(
-            msg.contains(expected_substr),
-            "expected error to contain {expected_substr:?}, got: {msg}"
-        );
-    }
-
     #[test]
     fn typecheck_permute_runtime_rejects_width_4() {
         let src = r#"
@@ -75,7 +63,7 @@ mod tests {
                 store(out, 0, r)
             }
         "#;
-        assert_typecheck_error(src, "width 8");
+        assert_typecheck_error(src, "table must have width 8");
     }
 
     #[test]

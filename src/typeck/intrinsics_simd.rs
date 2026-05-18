@@ -260,18 +260,14 @@ impl TypeChecker {
             Type::F32 | Type::I32 => {}
             _ => {
                 return Err(CompileError::type_error(
-                    format!(
-                        "permute_runtime table element must be f32 or i32, got {table_elem}"
-                    ),
+                    format!("permute_runtime table element must be f32 or i32, got {table_elem}"),
                     args[0].span().clone(),
                 ));
             }
         }
         if table_width != 8 {
             return Err(CompileError::type_error(
-                format!(
-                    "permute_runtime table must have width 8, got width {table_width}"
-                ),
+                format!("permute_runtime table must have width 8, got width {table_width}"),
                 args[0].span().clone(),
             ));
         }
@@ -279,18 +275,14 @@ impl TypeChecker {
             Type::Vector { elem, width } if matches!(elem.as_ref(), Type::I32) => *width,
             _ => {
                 return Err(CompileError::type_error(
-                    format!(
-                        "permute_runtime indices must be i32 vector, got {indices_type}"
-                    ),
+                    format!("permute_runtime indices must be i32 vector, got {indices_type}"),
                     args[1].span().clone(),
                 ));
             }
         };
         if idx_width != 8 {
             return Err(CompileError::type_error(
-                format!(
-                    "permute_runtime indices must have width 8, got width {idx_width}"
-                ),
+                format!("permute_runtime indices must have width 8, got width {idx_width}"),
                 args[1].span().clone(),
             ));
         }
