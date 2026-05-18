@@ -159,6 +159,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "bitcast_i32x8"
                 | "f32x4_from_scalars"
                 | "f32x8_from_scalars"
+                | "permute_runtime"
         ) || typeck_types::parse_typed_load(name).is_some()
     }
 
@@ -237,6 +238,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             }
             "stream_store" => self.compile_stream_store(args, function),
             "gather" => self.compile_gather(args, type_hint, function),
+            "permute_runtime" => self.compile_permute_runtime(args, function),
             "scatter" => self.compile_scatter(args, function),
             "load_masked" => self.compile_load_masked(args, type_hint, function),
             "store_masked" => self.compile_store_masked(args, function),

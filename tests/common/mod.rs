@@ -145,3 +145,33 @@ pub fn assert_shared_lib_interop(ea_source: &str, c_source: &str, expected: &str
 pub fn compile_to_ir(source: &str) -> String {
     ea_compiler::compile_to_ir(source).expect("compilation failed")
 }
+
+/// Asserts that at least one of `expected_mnemonics` appears in the disassembly
+/// of the object file produced by compiling `ea_source`.
+///
+/// Why a list: LLVM 18 lowers both `llvm.x86.avx2.permps` and `llvm.x86.avx2.permd`
+/// to `vpermps` because they share an opcode (`66 0F 38 16`) and execute identically
+/// on 32-bit lanes. Either mnemonic is a valid live-intrinsic signal. The assertion
+/// only fails when NEITHER appears — which would mean the intrinsic compiled to a
+/// `call` to an external symbol (LLVM-7+ deprecation case from PR #8 / PR #9).
+#[allow(dead_code)]
+pub fn assert_intrinsic_in_disassembly(ea_source: &str, expected_mnemonics: &[&str]) {
+    use std::process::Command;
+    let dir = TempDir::new().unwrap();
+    let obj = dir.path().join("t.o");
+    ea_compiler::compile(ea_source, &obj, ea_compiler::OutputMode::ObjectFile)
+        .expect("compile to object file");
+    let output = Command::new("objdump")
+        .args(["-d", "-Mintel"])
+        .arg(&obj)
+        .output()
+        .expect("run objdump");
+    let asm = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        expected_mnemonics.iter().any(|m| asm.contains(m)),
+        "expected one of {expected_mnemonics:?} in disassembly. \
+         If you see 'call' to an external symbol instead, the LLVM \
+         intrinsic name has been deprecated and codegen must switch \
+         to a pattern-matched fallback. Disassembly:\n{asm}"
+    );
+}

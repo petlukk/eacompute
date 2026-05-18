@@ -6,7 +6,7 @@
 //! pattern-matches the shufflevectors to vinserti32x8 / vextracti128 /
 //! vpshufd automatically at ISEL time.
 
-use inkwell::types::VectorType;
+use inkwell::types::{BasicTypeEnum, VectorType};
 use inkwell::values::{BasicValueEnum, FunctionValue};
 
 use crate::ast::{Expr, Literal};
@@ -176,6 +176,55 @@ impl<'ctx> CodeGenerator<'ctx> {
                 .into();
         }
         Ok(v)
+    }
+
+    pub(super) fn compile_permute_runtime(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        if self.is_arm {
+            return Err(CompileError::codegen_error(
+                "permute_runtime has no NEON equivalent on ARM. For small \
+                 runtime LUTs (<= 8 entries) use a compare-and-select chain. \
+                 For byte-domain LUTs use shuffle_bytes. See \
+                 docs/idioms/neon-runtime-permute.md for canonical patterns.",
+            ));
+        }
+        // Requires AVX2 on x86 (vpermps / vpermd).
+        // Eä targets AVX2 by default; if a future --no-avx2 mode is added,
+        // this must become a hard gate.
+        let table = self.compile_expr(&args[0], function)?.into_vector_value();
+        let indices = self.compile_expr(&args[1], function)?.into_vector_value();
+        let table_ty = table.get_type();
+        let elem_ty = table_ty.get_element_type();
+        let i32x8_ty = self.context.i32_type().vec_type(8);
+        let name = match elem_ty {
+            BasicTypeEnum::FloatType(_) => "llvm.x86.avx2.permps",
+            BasicTypeEnum::IntType(_) => "llvm.x86.avx2.permd",
+            _ => {
+                return Err(CompileError::codegen_error(
+                    "unsupported permute_runtime element type (internal error)",
+                ));
+            }
+        };
+        let fn_type = table_ty.fn_type(&[table_ty.into(), i32x8_ty.into()], false);
+        let intrinsic = self
+            .module
+            .get_function(name)
+            .unwrap_or_else(|| self.module.add_function(name, fn_type, None));
+        let result = self
+            .builder
+            .build_call(
+                intrinsic,
+                &[table.into(), indices.into()],
+                "permute_runtime",
+            )
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .try_as_basic_value()
+            .basic()
+            .ok_or_else(|| CompileError::codegen_error("permute_runtime did not return a value"))?;
+        Ok(result)
     }
 
     /// Emit a per-sublane 32-bit broadcast shufflevector.
