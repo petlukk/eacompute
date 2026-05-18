@@ -1,6 +1,6 @@
 use inkwell::values::FunctionValue;
 
-use crate::ast::{Expr, Stmt, TypeAnnotation};
+use crate::ast::{Stmt, TypeAnnotation};
 use crate::error::CompileError;
 use crate::typeck::Type;
 
@@ -24,7 +24,7 @@ impl<'ctx> CodeGenerator<'ctx> {
         // intrinsic-specific idiom message (e.g. neon-runtime-permute.md)
         // is surfaced instead of the generic "f32x8 requires AVX2" message.
         if self.is_arm {
-            self.check_arm_rejected_intrinsics_in_body(body)?;
+            super::arm_rejection::check_body(body)?;
         }
 
         let entry = self.context.append_basic_block(function, "entry");
@@ -411,111 +411,5 @@ impl<'ctx> CodeGenerator<'ctx> {
             terminated = self.compile_stmt(s, function)?;
         }
         Ok(terminated)
-    }
-
-    /// Pre-scan a function body for intrinsic calls that are rejected on ARM.
-    /// Called before `validate_type_for_target` so that the intrinsic-specific
-    /// idiom message is surfaced rather than the generic 256-bit width error.
-    fn check_arm_rejected_intrinsics_in_body(&self, body: &[Stmt]) -> crate::error::Result<()> {
-        for stmt in body {
-            self.check_arm_rejected_intrinsics_in_stmt(stmt)?;
-        }
-        Ok(())
-    }
-
-    fn check_arm_rejected_intrinsics_in_stmt(&self, stmt: &Stmt) -> crate::error::Result<()> {
-        match stmt {
-            Stmt::Let { value, .. } | Stmt::ExprStmt(value, _) => {
-                check_arm_rejected_intrinsics_in_expr(value)
-            }
-            Stmt::Assign { value, .. } | Stmt::FieldAssign { value, .. } => {
-                check_arm_rejected_intrinsics_in_expr(value)
-            }
-            Stmt::Return(Some(expr), _)
-            | Stmt::StaticAssert {
-                condition: expr, ..
-            } => check_arm_rejected_intrinsics_in_expr(expr),
-            Stmt::Return(None, _)
-            | Stmt::Struct { .. }
-            | Stmt::Const { .. }
-            | Stmt::Function { .. } => Ok(()),
-            Stmt::IndexAssign { index, value, .. } => {
-                check_arm_rejected_intrinsics_in_expr(index)?;
-                check_arm_rejected_intrinsics_in_expr(value)
-            }
-            Stmt::If {
-                condition,
-                then_body,
-                else_body,
-                ..
-            } => {
-                check_arm_rejected_intrinsics_in_expr(condition)?;
-                self.check_arm_rejected_intrinsics_in_body(then_body)?;
-                if let Some(eb) = else_body {
-                    self.check_arm_rejected_intrinsics_in_body(eb)?;
-                }
-                Ok(())
-            }
-            Stmt::While {
-                condition, body, ..
-            } => {
-                check_arm_rejected_intrinsics_in_expr(condition)?;
-                self.check_arm_rejected_intrinsics_in_body(body)
-            }
-            Stmt::For { body, .. } | Stmt::ForEach { body, .. } => {
-                self.check_arm_rejected_intrinsics_in_body(body)
-            }
-            Stmt::Unroll { body, .. } => self.check_arm_rejected_intrinsics_in_stmt(body),
-            Stmt::Kernel { body, .. } => self.check_arm_rejected_intrinsics_in_body(body),
-        }
-    }
-}
-
-/// Walk an expression and return an error if it contains an ARM-rejected
-/// intrinsic call (currently: `permute_runtime`). Recurses into all
-/// sub-expressions so the rejection fires regardless of where the call sits
-/// in the expression tree (operand of negate, arg of another call, RHS of
-/// assignment, etc.). Free function to satisfy clippy::only_used_in_recursion.
-fn check_arm_rejected_intrinsics_in_expr(expr: &Expr) -> crate::error::Result<()> {
-    match expr {
-        Expr::Literal(_, _) | Expr::Variable(_, _) => Ok(()),
-        Expr::Call { name, args, .. } => {
-            if name == "permute_runtime" {
-                return Err(crate::error::CompileError::codegen_error(
-                    "permute_runtime has no NEON equivalent on ARM. For small \
-                     runtime LUTs (<= 8 entries) use a compare-and-select chain. \
-                     For byte-domain LUTs use shuffle_bytes. See \
-                     docs/idioms/neon-runtime-permute.md for canonical patterns.",
-                ));
-            }
-            for arg in args {
-                check_arm_rejected_intrinsics_in_expr(arg)?;
-            }
-            Ok(())
-        }
-        Expr::Binary(lhs, _, rhs, _) => {
-            check_arm_rejected_intrinsics_in_expr(lhs)?;
-            check_arm_rejected_intrinsics_in_expr(rhs)
-        }
-        Expr::Not(inner, _) | Expr::Negate(inner, _) => {
-            check_arm_rejected_intrinsics_in_expr(inner)
-        }
-        Expr::Index { object, index, .. } => {
-            check_arm_rejected_intrinsics_in_expr(object)?;
-            check_arm_rejected_intrinsics_in_expr(index)
-        }
-        Expr::Vector { elements, .. } | Expr::ArrayLiteral(elements, _) => {
-            for e in elements {
-                check_arm_rejected_intrinsics_in_expr(e)?;
-            }
-            Ok(())
-        }
-        Expr::FieldAccess { object, .. } => check_arm_rejected_intrinsics_in_expr(object),
-        Expr::StructLiteral { fields, .. } => {
-            for (_, e) in fields {
-                check_arm_rejected_intrinsics_in_expr(e)?;
-            }
-            Ok(())
-        }
     }
 }
