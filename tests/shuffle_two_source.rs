@@ -163,6 +163,28 @@ mod tests {
         try_compile_arm(src).expect("two-source f32x4 should cross-compile to aarch64");
     }
 
+    #[cfg(target_arch = "x86_64")]
+    #[test]
+    fn two_source_i8x16_compiles() {
+        // Byte-level two-source pattern — width 16, indices [0, 32).
+        // Spec-required happy-path test for byte-element shuffles.
+        let src = r#"
+            export func k(p: *i8, q: *mut i8) {
+                let a: i8x16 = load(p, 0)
+                let b: i8x16 = load(p, 16)
+                let r: i8x16 = shuffle(a, b, [
+                    0, 16, 1, 17, 2, 18, 3, 19,
+                    4, 20, 5, 21, 6, 22, 7, 23
+                ])
+                store(q, 0, r)
+            }
+        "#;
+        let dir = TempDir::new().unwrap();
+        let obj = dir.path().join("t.o");
+        ea_compiler::compile(src, &obj, OutputMode::ObjectFile)
+            .expect("two-source i8x16 zip-lower should compile");
+    }
+
     // --- end-to-end semantics (Hard Rule #2) ---
 
     #[cfg(target_arch = "x86_64")]
