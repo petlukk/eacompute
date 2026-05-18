@@ -2,6 +2,12 @@
 
 Forward-looking notes. Ordered by leverage, not by effort.
 
+## Shipped in v1.14.0 (UNRELEASED)
+
+### Runtime SIMD permute
+
+`permute_runtime(f32x8, i32x8) -> f32x8` and `permute_runtime(i32x8, i32x8) -> i32x8`. Lowers to `vpermps` / `vpermd` on AVX2. ARM rejected with `codegen_error` referencing the NEON idiom doc. Shipped in v1.14.0.
+
 ## Shipped in v1.12.0 (2026-05-13)
 
 - **Deprecation-warning infrastructure** + `docs/migrations/` directory + `cargo public-api` CI gate (PR #6).
@@ -38,8 +44,6 @@ Today the language spec is spread across `docs/src/reference/*.md` (types, intri
 - **Scalar `f16` conversion** — `to_f16(f32)` and partner scalar variants of the cvt family. The current intrinsic surface is vector-only.
 - **`u16x32` token + sibling lane extractors** (`lo256_u16x32` / `hi256_u16x32`). Skipped in PR #10 because `u16x32` itself doesn't exist yet; add when a consumer asks.
 - **Wider `wmul_u64`** — `wmul_u64(u32x4, u32x4) -> u64x4` full widening via paired pmuludq + interleave, or AVX2/AVX-512 widths (`u32x8`/`u32x16` inputs). The current `_lo`/`_hi` pair is sufficient for Poly1305; add wider forms when a real consumer benchmarks the savings.
-- **Runtime SIMD permute** — `permute_runtime(table: f32x8, indices: i32x8) -> f32x8` (plus `i32x8` and AVX-512 widths `f32x16`/`i32x16`). x86 lowers to `vpermps` / `vpermd` (single instruction). ARM emulation via `tbl.16b` is awkward; x86-only initially is acceptable. Currently spelled as a compare-and-select chain (one `select` per LUT entry) — see `autoresearch/kernels/particle_life/kernel_v113.ea`, where a 6-element chain gave **2.93× over scalar** (vs 1.34× with the obvious `gather`-based attempt) on the particle_life kernel. The experiment demonstrates that hardware `vgather` loses to a short select-chain for small runtime LUTs on AVX-512 (Zen 4 measured); crossover where gather wins is around num_types ≥ 12-16. A real permute intrinsic would compress the 6-line chain to 1 line and likely outperform it.
-
 ## Future additions
 
 ### Autoresearch ↔ perf-regression feedback

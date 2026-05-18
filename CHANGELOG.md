@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.14.0 — UNRELEASED
+
+### Added
+
+- `permute_runtime(f32x8, i32x8) -> f32x8` and `permute_runtime(i32x8, i32x8) -> i32x8` intrinsics. Lowers to `vpermps` / `vpermd` on x86 (AVX2). ARM is rejected with a codegen error pointing at the [NEON runtime-permute workaround](docs/src/cookbook/neon-runtime-permute-workaround.md). Motivating consumer: `autoresearch/kernels/particle_life/kernel_v113.ea` (measured 2.93× over scalar on Zen 4). See `docs/src/reference/intrinsics.md` for the full spec.
+
 ## v1.13.0 — 2026-05-15 — ea bench + first aarch64 baselines + Specification umbrella
 
 Standing benchmark suite for the v1.11.0 audit kernels. Converts performance regression detection from vigilance-dependent to mechanical: `ea bench <manifest.toml>` builds an `.ea` kernel + C harness, runs the harness pinned to one core (`taskset` on Linux), captures JSONL measurements, wraps them with environment metadata, and diffs against a committed baseline JSON. Day-one manifests cover `exp_poly_f32` (x86_64 only — kernel uses `f32x8`), `fp16_kv` (aarch64), and `gather_compose` (x86 + ARM variants), with baselines captured on the maintainer's x86_64 dev host and the Raspberry Pi 5 (Cortex-A76). Warn-only regression gate at 10% in v1.13.0 — regressions print `WARNING:` but the process still exits 0 so we collect runner-variance signal for one release before deciding the threshold. Companion docs: a new Specification umbrella at `docs/src/reference/index.md` gives the language reference a single canonical entry point, and `RELEASING.md` documents the maintainer pre-tag ritual.
