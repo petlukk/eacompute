@@ -21,6 +21,7 @@ mod tests {
 
     // --- Type-check happy paths (compile to object, no run) ---
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn typecheck_permute_runtime_f32x8_compiles() {
         let src = r#"
@@ -37,6 +38,7 @@ mod tests {
             .expect("f32x8 permute_runtime should typecheck");
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn typecheck_permute_runtime_i32x8_compiles() {
         let src = r#"
@@ -102,6 +104,7 @@ mod tests {
 
     // --- Functional correctness (x86, host runner) ---
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn permute_runtime_f32x8_identity() {
         assert_c_interop(
@@ -130,6 +133,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn permute_runtime_f32x8_reverse() {
         assert_c_interop(
@@ -158,6 +162,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn permute_runtime_f32x8_broadcast_lane0() {
         assert_c_interop(
@@ -186,6 +191,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn permute_runtime_f32x8_small_lut_six_active() {
         // Models the kernel_v113.ea pattern: 6 active LUT entries
@@ -217,6 +223,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn permute_runtime_f32x8_high_bits_ignored() {
         // Hardware masks index to low 3 bits. Index 8 wraps to 0, 9 to 1, etc.
@@ -246,6 +253,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn permute_runtime_f32x8_emits_vpermps() {
         let src = r#"
@@ -261,6 +269,7 @@ mod tests {
         assert_intrinsic_in_disassembly(src, &["vpermps", "vpermd"]);
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn permute_runtime_i32x8_identity() {
         assert_c_interop(
@@ -289,6 +298,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn permute_runtime_i32x8_reverse() {
         assert_c_interop(
@@ -317,6 +327,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn permute_runtime_i32x8_emits_vpermd() {
         let src = r#"
