@@ -30,4 +30,24 @@ mod tests {
         // (all valid two-source shuffle instructions).
         assert_intrinsic_in_disassembly(src, &["vunpcklps", "vpunpckldq", "vpermi2ps"]);
     }
+
+    #[cfg(target_arch = "x86_64")]
+    #[test]
+    fn blend_i32x4_emits_blend_family() {
+        // Pick lanes [a[0], b[1], a[2], b[3]] — lane-by-lane blend.
+        let src = r#"
+            export func k(a: *i32, b: *i32, out: *mut i32) {
+                let va: i32x4 = load(a, 0)
+                let vb: i32x4 = load(b, 0)
+                let r: i32x4 = shuffle(va, vb, [0, 5, 2, 7])
+                store(out, 0, r)
+            }
+        "#;
+        // LLVM may pick pblendw, vpblendd, vblendps, or vpblendw on AVX2,
+        // or potentially vpermi2d / vpermt2d on AVX-512. Accept the family.
+        assert_intrinsic_in_disassembly(
+            src,
+            &["pblendw", "vpblendd", "vblendps", "vpblendw", "vpermi2d", "vpermt2d"],
+        );
+    }
 }
