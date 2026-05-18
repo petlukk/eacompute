@@ -119,4 +119,45 @@ mod tests {
         "#;
         assert_typecheck_error(src, "shuffle expects 2 or 3 arguments");
     }
+
+    // --- aarch64 cross-compile sanity (no asm grep) ---
+
+    fn arm_opts() -> CompileOptions {
+        CompileOptions {
+            target_triple: Some("aarch64-unknown-linux-gnu".to_string()),
+            ..CompileOptions::default()
+        }
+    }
+
+    fn try_compile_arm(source: &str) -> Result<(), ea_compiler::error::CompileError> {
+        let dir = TempDir::new().unwrap();
+        let obj_path = dir.path().join("t.o");
+        ea_compiler::compile_with_options(source, &obj_path, OutputMode::ObjectFile, &arm_opts())
+    }
+
+    #[test]
+    fn two_source_i32x4_compiles_aarch64() {
+        let src = r#"
+            export func k(p: *i32, q: *mut i32) {
+                let a: i32x4 = load(p, 0)
+                let b: i32x4 = load(p, 4)
+                let r: i32x4 = shuffle(a, b, [0, 4, 1, 5])
+                store(q, 0, r)
+            }
+        "#;
+        try_compile_arm(src).expect("two-source shuffle should cross-compile to aarch64");
+    }
+
+    #[test]
+    fn two_source_f32x4_compiles_aarch64() {
+        let src = r#"
+            export func k(p: *f32, q: *mut f32) {
+                let a: f32x4 = load(p, 0)
+                let b: f32x4 = load(p, 4)
+                let r: f32x4 = shuffle(a, b, [0, 4, 1, 5])
+                store(q, 0, r)
+            }
+        "#;
+        try_compile_arm(src).expect("two-source f32x4 should cross-compile to aarch64");
+    }
 }
