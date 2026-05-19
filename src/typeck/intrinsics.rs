@@ -47,6 +47,12 @@ impl TypeChecker {
             "exp_poly_f32" => Some(self.check_exp_poly_f32(args, locals, span)),
             "tanh_approx_f32" => Some(self.check_tanh_approx_f32(args, locals, span)),
             "log_approx_f32" => Some(self.check_log_approx_f32(args, locals, span)),
+            "sin_approx_f32" => {
+                Some(self.check_sin_cos_approx_f32("sin_approx_f32", args, locals, span))
+            }
+            "cos_approx_f32" => {
+                Some(self.check_sin_cos_approx_f32("cos_approx_f32", args, locals, span))
+            }
             "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" => {
                 Some(self.check_conversion(name, args, locals, span))
             }
@@ -463,6 +469,48 @@ impl TypeChecker {
             )),
             _ => Err(CompileError::type_error(
                 format!("log_approx_f32 expects float vector, got {t}"),
+                span.clone(),
+            )),
+        }
+    }
+
+    /// Type-check `sin_approx_f32(v: f32xN) -> f32xN` and
+    /// `cos_approx_f32(v: f32xN) -> f32xN`. Same f32-vector-only shape as
+    /// `exp_poly_f32` — scalar / f64 / f16 / integer all rejected. Error
+    /// text varies by intrinsic name to point at the right libm fallback.
+    fn check_sin_cos_approx_f32(
+        &self,
+        name: &str,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 1 argument, got {}", args.len()),
+                span.clone(),
+            ));
+        }
+        let libm_fallback = if name == "cos_approx_f32" {
+            "cos"
+        } else {
+            "sin"
+        };
+        let t = self.check_expr(&args[0], locals)?;
+        match &t {
+            Type::Vector { elem, .. } if **elem == Type::F32 => Ok(t),
+            Type::Vector { elem, .. } => Err(CompileError::type_error(
+                format!("{name} expects f32 element type, got {elem}"),
+                span.clone(),
+            )),
+            Type::F32 | Type::FloatLiteral => Err(CompileError::type_error(
+                format!(
+                    "{name} expects f32 vector, got scalar; use {libm_fallback}() for scalar libm-precision"
+                ),
+                span.clone(),
+            )),
+            _ => Err(CompileError::type_error(
+                format!("{name} expects float vector, got {t}"),
                 span.clone(),
             )),
         }
