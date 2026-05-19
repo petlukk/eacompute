@@ -204,6 +204,8 @@ impl TypeChecker {
             "hi128_u16x16" => Some(self.check_hi_extract(name, args, locals, span, Type::U16, 16)),
             "lo256_i16x32" => Some(self.check_lo_extract(name, args, locals, span, Type::I16, 32)),
             "hi256_i16x32" => Some(self.check_hi_extract(name, args, locals, span, Type::I16, 32)),
+            "lo256_u16x32" => Some(self.check_lo_extract(name, args, locals, span, Type::U16, 32)),
+            "hi256_u16x32" => Some(self.check_hi_extract(name, args, locals, span, Type::U16, 32)),
             "shuffle_i32x8" => Some(self.check_shuffle_i32(name, args, locals, span, 8)),
             "shuffle_i32x16" => Some(self.check_shuffle_i32(name, args, locals, span, 16)),
             "blend_i32" => Some(self.check_blend_i32(name, args, locals, span)),
