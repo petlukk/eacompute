@@ -169,6 +169,7 @@ impl TypeChecker {
             "wmul_u32" => Some(self.check_wmul_u32(args, locals, span)),
             "wmul_u64_lo" => Some(self.check_wmul_u64_lo(args, locals, span)),
             "wmul_u64_hi" => Some(self.check_wmul_u64_hi(args, locals, span)),
+            "wmul_u64" => Some(self.check_wmul_u64(args, locals, span)),
             "prefetch" | "prefetch_write" | "prefetch_nta" => {
                 Some(self.check_prefetch(args, locals, span))
             }

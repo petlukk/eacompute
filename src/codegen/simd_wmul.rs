@@ -317,4 +317,34 @@ impl<'ctx> CodeGenerator<'ctx> {
             Ok(BasicValueEnum::VectorValue(result))
         }
     }
+
+    /// wmul_u64(a: u32x4, b: u32x4) -> u64x4 — full-width widening multiply
+    /// of all four lanes in a single call. x86-only: u64x4 (256-bit) is
+    /// rejected by the ARM >128-bit guard at the codegen vector-type
+    /// validation site, which fires before this function runs. The
+    /// canonical IR pattern `mul(zext, zext)` on a full u64x4 is what the
+    /// LLVM x86 backend pattern-matches to two `vpmuludq` instructions
+    /// plus the interleave shuffle.
+    pub(super) fn compile_wmul_u64(
+        &mut self,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        let a = self.compile_expr(&args[0], function)?.into_vector_value();
+        let b = self.compile_expr(&args[1], function)?.into_vector_value();
+        let u64x4_ty = self.context.i64_type().vec_type(4);
+        let a_64 = self
+            .builder
+            .build_int_z_extend(a, u64x4_ty, "wmul_u64_a_zext")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+        let b_64 = self
+            .builder
+            .build_int_z_extend(b, u64x4_ty, "wmul_u64_b_zext")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+        let result = self
+            .builder
+            .build_int_mul(a_64, b_64, "wmul_u64")
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+        Ok(BasicValueEnum::VectorValue(result))
+    }
 }

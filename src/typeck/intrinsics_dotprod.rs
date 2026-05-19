@@ -452,4 +452,42 @@ impl TypeChecker {
             )),
         }
     }
+
+    /// wmul_u64(a: u32x4, b: u32x4) -> u64x4
+    ///
+    /// Unsigned widening multiply of all four lanes. Output lane i =
+    /// u64(a[i]) * u64(b[i]) for i in 0..4. Lowers to two `vpmuludq` +
+    /// interleave on x86 (LLVM 7+ pattern-matches `mul(zext, zext)` over
+    /// a u32x4 → u64x4 zext). x86-only: the u64x4 return type is 256-bit
+    /// and rejected by the existing ARM >128-bit guard. For ARM, use the
+    /// `wmul_u64_lo` / `wmul_u64_hi` pair returning u64x2 each.
+    pub(super) fn check_wmul_u64(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                "wmul_u64 expects 2 arguments: (u32x4, u32x4)",
+                span.clone(),
+            ));
+        }
+        let a = self.check_expr(&args[0], locals)?;
+        let b = self.check_expr(&args[1], locals)?;
+        match (&a, &b) {
+            (Type::Vector { elem: ea, width: 4 }, Type::Vector { elem: eb, width: 4 })
+                if matches!(ea.as_ref(), Type::U32) && matches!(eb.as_ref(), Type::U32) =>
+            {
+                Ok(Type::Vector {
+                    elem: Box::new(Type::U64),
+                    width: 4,
+                })
+            }
+            _ => Err(CompileError::type_error(
+                format!("wmul_u64 expects (u32x4, u32x4), got ({a}, {b})"),
+                span.clone(),
+            )),
+        }
+    }
 }

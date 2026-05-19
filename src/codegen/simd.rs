@@ -107,6 +107,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "wmul_u32"
                 | "wmul_u64_lo"
                 | "wmul_u64_hi"
+                | "wmul_u64"
                 | "round_f32x8_i32x8"
                 | "pack_sat_i32x8"
                 | "pack_sat_i16x16"
@@ -324,6 +325,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "wmul_u32" => self.compile_wmul_u32(args, function),
             "wmul_u64_lo" => self.compile_wmul_u64_lo(args, function),
             "wmul_u64_hi" => self.compile_wmul_u64_hi(args, function),
+            "wmul_u64" => self.compile_wmul_u64(args, function),
             "round_f32x4_i32x4" => self.compile_round_f32x4_i32x4(args, function),
             "round_f32x8_i32x8" => self.compile_round_f32x8_i32x8(args, function),
             "pack_sat_i16x8" => self.compile_pack_sat_i16x8(args, function),
