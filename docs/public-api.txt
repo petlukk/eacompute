@@ -803,6 +803,7 @@ pub ea_compiler::lexer::TokenKind::Struct
 pub ea_compiler::lexer::TokenKind::True
 pub ea_compiler::lexer::TokenKind::U16
 pub ea_compiler::lexer::TokenKind::U16x16
+pub ea_compiler::lexer::TokenKind::U16x32
 pub ea_compiler::lexer::TokenKind::U16x4
 pub ea_compiler::lexer::TokenKind::U16x8
 pub ea_compiler::lexer::TokenKind::U32x4
