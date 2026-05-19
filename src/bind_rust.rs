@@ -1,16 +1,12 @@
 use crate::bind_common::{
     ExportFunc, find_collapsed_args, is_mut_pointer, parse_exports, parse_string_field,
-    pointer_inner,
+    pointer_inner, rust_link_stem,
 };
 
 pub fn generate(json_str: &str, module_stem: &str) -> Result<String, String> {
     let exports = parse_exports(json_str)?;
     let lib_name = parse_string_field(json_str, "library")
-        .map(|l| {
-            l.trim_end_matches(".so")
-                .trim_end_matches(".dll")
-                .to_string()
-        })
+        .map(|l| rust_link_stem(&l))
         .unwrap_or_else(|| module_stem.to_string());
 
     let mut out = String::new();

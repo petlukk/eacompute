@@ -573,6 +573,8 @@ pub fn ea_compiler::bind_common::is_pointer(ty: &str) -> bool
 pub fn ea_compiler::bind_common::parse_exports(json: &str) -> core::result::Result<alloc::vec::Vec<ea_compiler::bind_common::ExportFunc>, alloc::string::String>
 pub fn ea_compiler::bind_common::parse_string_field(json: &str, key: &str) -> core::option::Option<alloc::string::String>
 pub fn ea_compiler::bind_common::pointer_inner(ty: &str) -> core::option::Option<&str>
+pub fn ea_compiler::bind_common::python_lib_path_expr(lib_name: &str) -> alloc::string::String
+pub fn ea_compiler::bind_common::rust_link_stem(lib_name: &str) -> alloc::string::String
 pub mod ea_compiler::bind_cpp
 pub fn ea_compiler::bind_cpp::generate(json_str: &str, module_stem: &str) -> core::result::Result<alloc::string::String, alloc::string::String>
 pub mod ea_compiler::bind_python

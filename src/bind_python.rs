@@ -1,6 +1,6 @@
 use crate::bind_common::{
     ExportFunc, find_collapsed_args, has_out_params, parse_exports, parse_string_field,
-    pointer_inner,
+    pointer_inner, python_lib_path_expr,
 };
 
 pub fn generate(json_str: &str, module_stem: &str) -> Result<String, String> {
@@ -16,7 +16,8 @@ pub fn generate(json_str: &str, module_stem: &str) -> Result<String, String> {
     out.push_str("import numpy as _np\n");
     out.push_str("from pathlib import Path as _Path\n\n");
     out.push_str(&format!(
-        "_lib = _ct.CDLL(str(_Path(__file__).with_name(\"{lib_name}\")))\n\n"
+        "_lib = _ct.CDLL(str({}))\n\n",
+        python_lib_path_expr(&lib_name)
     ));
 
     let has_parallel = exports.iter().any(crate::bind_common::is_parallelizable);
