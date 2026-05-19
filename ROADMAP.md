@@ -24,6 +24,10 @@ Forward-looking notes. Ordered by leverage, not by effort.
 
 `u16x32` vector token (lexer, parser, type-annotation list, vector-literal suffix list) plus `lo256_u16x32(u16x32) -> u16x16` and `hi256_u16x32(u16x32) -> u16x16` lane extractors completing the i16/u16 symmetry. Dispatch-only additions — typeck reuses `check_lo_extract` / `check_hi_extract`, codegen reuses width-generic `compile_lo_extract` / `compile_hi_extract`. ARM rejection inherits from the existing >128-bit guard at the codegen vector-type validation site. PR #10 (v1.12.0) deferred this pair pending the `u16x32` token; v1.14.0 closes both at once.
 
+### Fused wmul_u64 full-width form
+
+`wmul_u64(u32x4, u32x4) -> u64x4` widens all four lanes in a single intrinsic call, replacing the manual `wmul_u64_lo` + `wmul_u64_hi` + concat dance. Lowers to two `vpmuludq` + interleave via LLVM's `mul(zext, zext)` pattern-match. x86-only: the `u64x4` return type is 256-bit and rejected by the existing ARM >128-bit guard before the intrinsic dispatcher runs. ARM callers continue to use the lo/hi pair (each returning the NEON-fitting `u64x2`). Wider-input variants (`wmul_u64(u32x8, ...) -> u64x8`) explicitly deferred — they require new `u32x8` / `u32x16` lexer tokens and have no documented consumer yet. See `docs/superpowers/specs/2026-05-19-wmul-u64-fused-design.md`.
+
 ## Shipped in v1.12.0 (2026-05-13)
 
 - **Deprecation-warning infrastructure** + `docs/migrations/` directory + `cargo public-api` CI gate (PR #6).
@@ -57,7 +61,7 @@ Today the language spec is spread across `docs/src/reference/*.md` (types, intri
 ## Future API consistency
 
 - **`log_approx_f32`, `sin_cos_approx_f32`** — polynomial approximations following the `exp_poly_f32` pattern. `tanh_approx_f32` shipped in v1.14.0; the remaining two are speculative until a real consumer asks.
-- **Wider `wmul_u64`** — `wmul_u64(u32x4, u32x4) -> u64x4` full widening via paired pmuludq + interleave, or AVX2/AVX-512 widths (`u32x8`/`u32x16` inputs). The current `_lo`/`_hi` pair is sufficient for Poly1305; add wider forms when a real consumer benchmarks the savings.
+- **Wider-input `wmul_u64` variants** — AVX2/AVX-512 widths (`wmul_u64(u32x8, u32x8) -> u64x8` on AVX-512, etc.). Requires `u32x8` / `u32x16` lexer tokens which don't exist yet. The fused `wmul_u64(u32x4, u32x4) -> u64x4` shipped in v1.14.0; wider widths gated on a consumer asking *and* providing the input tokens.
 
 ## Future additions
 
