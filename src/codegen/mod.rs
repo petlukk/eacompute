@@ -23,6 +23,8 @@ mod simd_fp16;
 #[cfg(feature = "llvm")]
 mod simd_lane;
 #[cfg(feature = "llvm")]
+mod simd_log_approx;
+#[cfg(feature = "llvm")]
 mod simd_masked;
 #[cfg(feature = "llvm")]
 mod simd_math;
