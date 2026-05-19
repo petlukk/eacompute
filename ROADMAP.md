@@ -28,6 +28,10 @@ Forward-looking notes. Ordered by leverage, not by effort.
 
 `wmul_u64(u32x4, u32x4) -> u64x4` widens all four lanes in a single intrinsic call, replacing the manual `wmul_u64_lo` + `wmul_u64_hi` + concat dance. Lowers to two `vpmuludq` + interleave via LLVM's `mul(zext, zext)` pattern-match. x86-only: the `u64x4` return type is 256-bit and rejected by the existing ARM >128-bit guard before the intrinsic dispatcher runs. ARM callers continue to use the lo/hi pair (each returning the NEON-fitting `u64x2`). Wider-input variants (`wmul_u64(u32x8, ...) -> u64x8`) explicitly deferred — they require new `u32x8` / `u32x16` lexer tokens and have no documented consumer yet. See `docs/superpowers/specs/2026-05-19-wmul-u64-fused-design.md`.
 
+### log_approx_f32
+
+`log_approx_f32(v: f32xN) -> f32xN`. Bit-level decomposition of `x = m · 2^e` (frexp convention, `m ∈ [0.5, 1)`), √2/2 rebalance to center the polynomial range, degree-8 Eigen-coefficient Horner in `(m - 1)`, then Cody-Waite recombine with `e · ln(2)`. Avoids `@llvm.log.v*f32`, which LLVM scalarizes to per-lane libm `logf`. Max absolute error ~3e-6 across `(0, +∞)`; matches `exp_poly_f32`'s 2⁻¹⁸ relative target. Composes cleanly with `exp_poly_f32` — pin-tested via a 4-input roundtrip kernel (`exp_poly_f32(log_approx_f32(x)) ≈ x` to ~1e-4 relative). See `docs/superpowers/specs/2026-05-19-log-approx-f32-design.md`.
+
 ## Shipped in v1.12.0 (2026-05-13)
 
 - **Deprecation-warning infrastructure** + `docs/migrations/` directory + `cargo public-api` CI gate (PR #6).
@@ -60,7 +64,7 @@ Today the language spec is spread across `docs/src/reference/*.md` (types, intri
 
 ## Future API consistency
 
-- **`log_approx_f32`, `sin_cos_approx_f32`** — polynomial approximations following the `exp_poly_f32` pattern. `tanh_approx_f32` shipped in v1.14.0; the remaining two are speculative until a real consumer asks.
+- **`sin_cos_approx_f32`** — polynomial approximation following the `exp_poly_f32` / `tanh_approx_f32` / `log_approx_f32` pattern. The remaining transcendental in the original "Future API consistency" trio after `tanh_approx_f32` and `log_approx_f32` shipped in v1.14.0. Speculative until a real consumer asks — angle range, periodicity strategy, and sin-vs-cos-vs-pair API shape all open design questions.
 - **Wider-input `wmul_u64` variants** — AVX2/AVX-512 widths (`wmul_u64(u32x8, u32x8) -> u64x8` on AVX-512, etc.). Requires `u32x8` / `u32x16` lexer tokens which don't exist yet. The fused `wmul_u64(u32x4, u32x4) -> u64x4` shipped in v1.14.0; wider widths gated on a consumer asking *and* providing the input tokens.
 
 ## Future additions
