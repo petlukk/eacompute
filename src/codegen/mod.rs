@@ -37,6 +37,8 @@ mod simd_pack_unsigned;
 #[cfg(feature = "llvm")]
 mod simd_saturating;
 #[cfg(feature = "llvm")]
+mod simd_sin_cos_approx;
+#[cfg(feature = "llvm")]
 mod simd_tanh_approx;
 #[cfg(feature = "llvm")]
 mod simd_util;
