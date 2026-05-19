@@ -16,6 +16,10 @@ Forward-looking notes. Ordered by leverage, not by effort.
 
 `shuffle(a, b, [indices])` overloads the existing `shuffle` intrinsic by arity. Two-source mask semantics match LLVM `shufflevector`: indices in `[0, width)` select from `a`, indices in `[width, 2 * width)` select from `b`. Single-source form unchanged. The original "Compile-time `shuffle` for width-8" Future entry (commit `c879b45`) was based on a stale premise — single-source width-8 shuffle already worked end-to-end; the real gap was the two-source mask form. See `docs/superpowers/specs/2026-05-18-shuffle-two-source-design.md` for the post-mortem.
 
+### tanh_approx_f32
+
+`tanh_approx_f32(v: f32xN) -> f32xN`. Rational `P(x²) · x / Q(x²)` approximation in the Eigen / TensorFlow / JAX fast-tanh family — degree-13 numerator (odd in x), degree-6 denominator (even in x²), one fdiv per call. Clamped to [-9, 9] for saturation. Max absolute error ~3e-7 across the body. Replaces the `(exp_poly_f32(2x) - 1) / (exp_poly_f32(2x) + 1)` workaround that the cookbook previously documented for tanh-GELU; the workaround suffers catastrophic cancellation near zero and is now obsolete. See `docs/superpowers/specs/2026-05-19-tanh-approx-f32-design.md`.
+
 ## Shipped in v1.12.0 (2026-05-13)
 
 - **Deprecation-warning infrastructure** + `docs/migrations/` directory + `cargo public-api` CI gate (PR #6).
@@ -48,7 +52,7 @@ Today the language spec is spread across `docs/src/reference/*.md` (types, intri
 
 ## Future API consistency
 
-- **`tanh_approx_f32`, `log_approx_f32`, `sin_cos_approx_f32`** — polynomial approximations following the `exp_poly_f32` pattern. `tanh_approx_f32` is most-requested (currently expressed via `tanh(x) = (exp(2x) - 1) / (exp(2x) + 1)` over `exp_poly_f32`).
+- **`log_approx_f32`, `sin_cos_approx_f32`** — polynomial approximations following the `exp_poly_f32` pattern. `tanh_approx_f32` shipped in v1.14.0; the remaining two are speculative until a real consumer asks.
 - **`u16x32` token + sibling lane extractors** (`lo256_u16x32` / `hi256_u16x32`). Skipped in PR #10 because `u16x32` itself doesn't exist yet; add when a consumer asks.
 - **Wider `wmul_u64`** — `wmul_u64(u32x4, u32x4) -> u64x4` full widening via paired pmuludq + interleave, or AVX2/AVX-512 widths (`u32x8`/`u32x16` inputs). The current `_lo`/`_hi` pair is sufficient for Poly1305; add wider forms when a real consumer benchmarks the savings.
 
