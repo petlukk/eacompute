@@ -1,6 +1,8 @@
 # Changelog
 
-## v1.14.0 — UNRELEASED
+## v1.14.0 — 2026-05-19 — f32 transcendental family complete + Olorin-driven SIMD primitives
+
+Closes the v1.11.0-era "Future API consistency" list. The f32 transcendental approximation family is feature-complete: `tanh_approx_f32`, `log_approx_f32`, `sin_approx_f32`, and `cos_approx_f32` join `exp_poly_f32` (v1.11.0), all sharing the same f32-vector-only contract and ~3e-6 absolute error budget. `u16x32` + `lo256_u16x32` / `hi256_u16x32` close the i16/u16 lane-extractor symmetry deferred in v1.12.0 PR #10. `wmul_u64(u32x4, u32x4) -> u64x4` ships as a fused alternative to the v1.12.0 `wmul_u64_lo` / `wmul_u64_hi` pair. Olorin-driven SIMD primitives: `permute_runtime` (AVX2 runtime data permute), `prefetch_write` / `prefetch_nta` (write-intent + non-temporal cache hints), and two-source `shuffle(a, b, [indices])`. Doc-side: the types reference now lists every lexer-accepted vector type — closing a multi-release gap that included the AVX-512BW byte/word types — and the cookbook tanh-GELU recipe was rewritten to use the new `tanh_approx_f32` instead of the catastrophic-cancellation-prone `(exp_poly_f32(2x) - 1) / (exp_poly_f32(2x) + 1)` identity.
 
 ### Added
 
