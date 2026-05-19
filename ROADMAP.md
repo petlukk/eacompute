@@ -32,6 +32,12 @@ Forward-looking notes. Ordered by leverage, not by effort.
 
 `log_approx_f32(v: f32xN) -> f32xN`. Bit-level decomposition of `x = m · 2^e` (frexp convention, `m ∈ [0.5, 1)`), √2/2 rebalance to center the polynomial range, degree-8 Eigen-coefficient Horner in `(m - 1)`, then Cody-Waite recombine with `e · ln(2)`. Avoids `@llvm.log.v*f32`, which LLVM scalarizes to per-lane libm `logf`. Max absolute error ~3e-6 across `(0, +∞)`; matches `exp_poly_f32`'s 2⁻¹⁸ relative target. Composes cleanly with `exp_poly_f32` — pin-tested via a 4-input roundtrip kernel (`exp_poly_f32(log_approx_f32(x)) ≈ x` to ~1e-4 relative). See `docs/superpowers/specs/2026-05-19-log-approx-f32-design.md`.
 
+### sin_approx_f32 + cos_approx_f32
+
+`sin_approx_f32(v: f32xN) -> f32xN` and `cos_approx_f32(v: f32xN) -> f32xN`. Shared core: reduce mod π/2 via 2-piece Cody-Waite split with FMA-preserved precision, compute both sin and cos polynomials over the reduced argument `d' ∈ [-π/4, π/4]` (degree 3 in `s = d'²` for sin, degree 4 for cos), then quadrant-blend at the end. The `cos` variant reuses the same core with `q += 1` — a precision-free integer shift expressing the mathematical identity `cos(x) = sin(x + π/2)`. Max abs error ~3e-6 across `[-1e7, 1e7]`. Closes the original "Future API consistency" trio entry. Spec at `docs/superpowers/specs/2026-05-19-sin-cos-approx-f32-design.md`.
+
+The roadmap entry was titled "sin_cos_approx_f32" suggesting a pair-return, but Eä has no precedent for multi-return intrinsics. Shipping two separate intrinsics matches the established pattern (`exp_poly_f32` / `tanh_approx_f32` / `log_approx_f32`) and lets LLVM CSE handle any caller-side range-reduction redundancy.
+
 ## Shipped in v1.12.0 (2026-05-13)
 
 - **Deprecation-warning infrastructure** + `docs/migrations/` directory + `cargo public-api` CI gate (PR #6).
@@ -64,7 +70,6 @@ Today the language spec is spread across `docs/src/reference/*.md` (types, intri
 
 ## Future API consistency
 
-- **`sin_cos_approx_f32`** — polynomial approximation following the `exp_poly_f32` / `tanh_approx_f32` / `log_approx_f32` pattern. The remaining transcendental in the original "Future API consistency" trio after `tanh_approx_f32` and `log_approx_f32` shipped in v1.14.0. Speculative until a real consumer asks — angle range, periodicity strategy, and sin-vs-cos-vs-pair API shape all open design questions.
 - **Wider-input `wmul_u64` variants** — AVX2/AVX-512 widths (`wmul_u64(u32x8, u32x8) -> u64x8` on AVX-512, etc.). Requires `u32x8` / `u32x16` lexer tokens which don't exist yet. The fused `wmul_u64(u32x4, u32x4) -> u64x4` shipped in v1.14.0; wider widths gated on a consumer asking *and* providing the input tokens.
 
 ## Future additions
