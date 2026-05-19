@@ -54,6 +54,7 @@ pub fn token_name(kind: &TokenKind) -> &'static str {
         TokenKind::U8x64 => "u8x64",
         TokenKind::I8x64 => "i8x64",
         TokenKind::I16x32 => "i16x32",
+        TokenKind::U16x32 => "u16x32",
         TokenKind::U32x4 => "u32x4",
         TokenKind::F64x2 => "f64x2",
         TokenKind::F64x4 => "f64x4",

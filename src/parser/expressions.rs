@@ -445,6 +445,7 @@ impl Parser {
                 (TokenKind::U8x64, "u8", 64),
                 (TokenKind::I8x64, "i8", 64),
                 (TokenKind::I16x32, "i16", 32),
+                (TokenKind::U16x32, "u16", 32),
             ];
             for (tk, elem_name, width) in vec_suffixes {
                 if self.check(tk.clone()) {
