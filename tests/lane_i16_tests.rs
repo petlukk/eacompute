@@ -1,6 +1,8 @@
 //! `lo128_i16x16` / `hi128_i16x16` / `lo128_u16x16` / `hi128_u16x16` /
-//! `lo256_i16x32` / `hi256_i16x32` — fills the i16/u16 gap in the existing
-//! lo*/hi* lane-extractor family (which previously covered only i8/u8/i32/f32).
+//! `lo256_i16x32` / `hi256_i16x32` / `lo256_u16x32` / `hi256_u16x32` —
+//! fills the i16/u16 gap in the existing lo*/hi* lane-extractor family
+//! (which previously covered only i8/u8/i32/f32). The `u16x32` token
+//! itself was added in v1.14.0 alongside the unsigned 512-bit lane pair.
 //!
 //! Motivating use: the Phase 3 `madd_i16` ARM-recipe currently has to walk
 //! around the missing i16 lane extractors. ROADMAP.md entry under
@@ -162,6 +164,50 @@ mod tests {
             .expect("hi256_i16x32 must compile on x86");
     }
 
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn u16x32_parses_as_vector_type() {
+        // Smoke: u16x32 must be a recognized vector type annotation. Pure
+        // parser exercise — codegen needs AVX-512 to actually run a u16x32
+        // load/store, so the function body just passes the value through.
+        try_compile("export func f(a: u16x32) -> u16x32 { return a }\n")
+            .expect("u16x32 must parse as a vector type");
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn lo256_u16x32_compiles_on_x86() {
+        try_compile("export func f(a: u16x32) -> u16x16 { return lo256_u16x32(a) }\n")
+            .expect("lo256_u16x32 must compile on x86");
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn hi256_u16x32_compiles_on_x86() {
+        try_compile("export func f(a: u16x32) -> u16x16 { return hi256_u16x32(a) }\n")
+            .expect("hi256_u16x32 must compile on x86");
+    }
+
+    #[test]
+    fn lo256_u16x32_rejects_signed() {
+        let err = try_compile("export func f(a: i16x32) -> i16x16 { return lo256_u16x32(a) }\n")
+            .expect_err("i16x32 input should fail u16x32 typeck");
+        assert!(
+            format!("{err}").contains("lo256_u16x32 expects u16x32"),
+            "got: {err}"
+        );
+    }
+
+    #[test]
+    fn hi256_u16x32_rejects_signed() {
+        let err = try_compile("export func f(a: i16x32) -> i16x16 { return hi256_u16x32(a) }\n")
+            .expect_err("i16x32 input should fail u16x32 typeck");
+        assert!(
+            format!("{err}").contains("hi256_u16x32 expects u16x32"),
+            "got: {err}"
+        );
+    }
+
     // --- Type-mismatch rejections ---
 
     #[test]
@@ -218,6 +264,17 @@ mod tests {
                 .expect_err("i16x32 input must fail on ARM");
         assert!(
             format!("{err}").contains("i16x32") && format!("{err}").contains("ARM"),
+            "expected ARM/narrowing message, got: {err}"
+        );
+    }
+
+    #[test]
+    fn lo256_u16x32_rejected_on_arm() {
+        let err =
+            try_compile_arm("export func f(a: u16x32) -> u16x16 { return lo256_u16x32(a) }\n")
+                .expect_err("u16x32 input must fail on ARM");
+        assert!(
+            format!("{err}").contains("u16x32") && format!("{err}").contains("ARM"),
             "expected ARM/narrowing message, got: {err}"
         );
     }

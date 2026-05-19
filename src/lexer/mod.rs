@@ -179,6 +179,8 @@ pub enum TokenKind {
     I8x64,
     #[token("i16x32")]
     I16x32,
+    #[token("u16x32")]
+    U16x32,
     #[token("u32x4")]
     U32x4,
     #[token("f64x2")]
