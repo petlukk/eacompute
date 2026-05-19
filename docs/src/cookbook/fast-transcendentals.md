@@ -77,20 +77,16 @@ error compounds through reduce_add, but the normalize-by-sum still
 collapses it to a tolerance that's well below softmax's typical
 numerical envelope.
 
-## tanh-GELU via algebraic identity
-
-Eä has no `tanh_poly_f32` (yet — adding one would be a separate
-minimax fit). Instead, you express tanh in terms of exp:
-
-```
-tanh(x) = (exp(2x) - 1) / (exp(2x) + 1)
-```
+## tanh-GELU via `tanh_approx_f32`
 
 The GELU activation `gelu(x) ≈ 0.5 · x · (1 + tanh(c · (x + 0.044715 · x³)))`
-with `c = sqrt(2/π)` then becomes a single `exp_poly_f32` plus arithmetic:
+with `c = sqrt(2/π)` is the canonical use of a fast vector tanh.
+`tanh_approx_f32(f32xN) -> f32xN` (new in v1.14.0) lowers to a rational
+`P(x²) · x / Q(x²)` minimax-tuned for f32, branchless and bounded to
+~3e-7 absolute error across the body, with internal clamping at ±9
+handling saturation:
 
 ```ea
-// tanh-GELU via algebraic identity: tanh(x) = (exp(2x) - 1) / (exp(2x) + 1)
 // GELU(x) ≈ 0.5 * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3)))
 export func gelu_tanh(input: *f32, output: *mut f32) {
     let x: f32x8 = load(input, 0)
@@ -102,35 +98,24 @@ export func gelu_tanh(input: *f32, output: *mut f32) {
     let xcube: f32x8 = xsq .* x
     let inner: f32x8 = c0 .* fma(c1, xcube, x)
 
-    // Clamp inner to [-50, 50] so exp_poly_f32's bounded contract holds.
-    let hi: f32x8 = splat(50.0)
-    let lo: f32x8 = splat(-50.0)
-    let clamped: f32x8 = min(max(inner, lo), hi)
-
-    // tanh(inner) = (exp(2*inner) - 1) / (exp(2*inner) + 1)
-    let two: f32x8 = splat(2.0)
-    let one: f32x8 = splat(1.0)
-    let e2x: f32x8 = exp_poly_f32(clamped .* two)
-    let num: f32x8 = e2x .- one
-    let den: f32x8 = e2x .+ one
-    let t: f32x8 = num ./ den
+    // tanh_approx_f32 clamps internally; no defensive bound needed.
+    let t: f32x8 = tanh_approx_f32(inner)
 
     // gelu = 0.5 * x * (1 + t)
     let half: f32x8 = splat(0.5)
+    let one: f32x8 = splat(1.0)
     let result: f32x8 = half .* x .* (one .+ t)
     store(output, 0, result)
 }
 ```
 
-Two things to notice in the kernel:
-
-- **The `min(max(...))` clamp.** GELU inputs in practice live in
-  ~[-3, 3], far from the contract edge. The clamp costs two
-  instructions and removes the failure mode if anything outside that
-  expected range slips in. It's a cheap and explicit safety belt.
-- **The single `exp_poly_f32` call.** The identity `tanh(x) = (e^{2x} -
-  1) / (e^{2x} + 1)` lets one polynomial evaluation cover both halves
-  of the tanh — no separate sinh/cosh, no second exp call.
+This replaces the earlier `(exp_poly_f32(2x) - 1) / (exp_poly_f32(2x) + 1)`
+algebraic-identity workaround. The workaround suffers catastrophic
+cancellation in the numerator for small |x| (`e^{2·1e-3} - 1` loses
+~3 digits of precision in f32), degrading to ~10⁻³ relative error near
+zero where GELU is most sensitive. The dedicated intrinsic skips both
+that pitfall and the second arithmetic chain, while costing one fdiv
+instead of one fdiv plus the `exp_poly_f32` polynomial.
 
 ## Safely clamping in-range
 
