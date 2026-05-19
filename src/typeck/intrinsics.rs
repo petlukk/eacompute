@@ -46,6 +46,7 @@ impl TypeChecker {
             "sqrt" | "rsqrt" | "exp" => Some(self.check_sqrt(name, args, locals, span)),
             "exp_poly_f32" => Some(self.check_exp_poly_f32(args, locals, span)),
             "tanh_approx_f32" => Some(self.check_tanh_approx_f32(args, locals, span)),
+            "log_approx_f32" => Some(self.check_log_approx_f32(args, locals, span)),
             "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" => {
                 Some(self.check_conversion(name, args, locals, span))
             }
@@ -429,6 +430,39 @@ impl TypeChecker {
             )),
             _ => Err(CompileError::type_error(
                 format!("tanh_approx_f32 expects float vector, got {t}"),
+                span.clone(),
+            )),
+        }
+    }
+
+    /// Type-check `log_approx_f32(v: f32xN) -> f32xN`. Same f32-vector-only
+    /// shape as `exp_poly_f32`; scalar / f64 / f16 / integer all rejected.
+    fn check_log_approx_f32(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 1 {
+            return Err(CompileError::type_error(
+                format!("log_approx_f32 expects 1 argument, got {}", args.len()),
+                span.clone(),
+            ));
+        }
+        let t = self.check_expr(&args[0], locals)?;
+        match &t {
+            Type::Vector { elem, .. } if **elem == Type::F32 => Ok(t),
+            Type::Vector { elem, .. } => Err(CompileError::type_error(
+                format!("log_approx_f32 expects f32 element type, got {elem}"),
+                span.clone(),
+            )),
+            Type::F32 | Type::FloatLiteral => Err(CompileError::type_error(
+                "log_approx_f32 expects f32 vector, got scalar; use log() for scalar libm-precision"
+                    .to_string(),
+                span.clone(),
+            )),
+            _ => Err(CompileError::type_error(
+                format!("log_approx_f32 expects float vector, got {t}"),
                 span.clone(),
             )),
         }
