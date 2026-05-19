@@ -31,10 +31,12 @@ Vector types hold multiple lanes of the same scalar type. Element-wise operation
 | `f32x4` | 4 | `f32` | 16 bytes |
 | `f64x2` | 2 | `f64` | 16 bytes |
 | `i32x4` | 4 | `i32` | 16 bytes |
+| `u32x4` | 4 | `u32` | 16 bytes |
 | `i16x8` | 8 | `i16` | 16 bytes |
+| `u16x8` | 8 | `u16` | 16 bytes |
 | `i8x16` | 16 | `i8` | 16 bytes |
 | `u8x16` | 16 | `u8` | 16 bytes |
-| `u16x8` | 8 | `u16` | 16 bytes |
+| `u64x2` | 2 | `u64` | 16 bytes |
 
 ### 256-bit Vectors -- AVX2 (x86 only)
 
@@ -44,21 +46,44 @@ Vector types hold multiple lanes of the same scalar type. Element-wise operation
 | `f64x4` | 4 | `f64` | 32 bytes |
 | `i32x8` | 8 | `i32` | 32 bytes |
 | `i16x16` | 16 | `i16` | 32 bytes |
+| `u16x16` | 16 | `u16` | 32 bytes |
 | `i8x32` | 32 | `i8` | 32 bytes |
 | `u8x32` | 32 | `u8` | 32 bytes |
-| `u16x16` | 16 | `u16` | 32 bytes |
+| `u64x4` | 4 | `u64` | 32 bytes |
 
 These types produce a compile error on ARM targets.
 
 ### 512-bit Vectors -- AVX-512 (x86, `--avx512` flag required)
 
-| Type | Lanes | Element | Size |
-|------|-------|---------|------|
-| `f32x16` | 16 | `f32` | 64 bytes |
-| `f64x8` | 8 | `f64` | 64 bytes |
-| `i32x16` | 16 | `i32` | 64 bytes |
+`f32x16`, `f64x8`, `i32x16`, and `u64x8` lower to AVX-512F instructions.
+`i8x64`, `u8x64`, `i16x32`, and `u16x32` additionally require AVX-512BW
+(byte/word SIMD), which is present on Skylake-SP, Ice Lake, Zen 4, and
+later. Eä emits both feature flags when `--avx512` is set.
+
+| Type | Lanes | Element | Size | Feature |
+|------|-------|---------|------|---------|
+| `f32x16` | 16 | `f32` | 64 bytes | AVX-512F |
+| `f64x8` | 8 | `f64` | 64 bytes | AVX-512F |
+| `i32x16` | 16 | `i32` | 64 bytes | AVX-512F |
+| `u64x8` | 8 | `u64` | 64 bytes | AVX-512F |
+| `i16x32` | 32 | `i16` | 64 bytes | AVX-512BW |
+| `u16x32` | 32 | `u16` | 64 bytes | AVX-512BW |
+| `i8x64` | 64 | `i8` | 64 bytes | AVX-512BW |
+| `u8x64` | 64 | `u8` | 64 bytes | AVX-512BW |
 
 Using these types without `--avx512` produces a compile error.
+
+### Half-precision and sub-128-bit narrow widths
+
+The lexer also accepts `f16x4` / `f16x8` (half-precision float vectors) and
+sub-128-bit narrow widths used by ARM NEON widening intrinsics: `i8x4`,
+`i8x8`, `u8x8`, `i16x4`, `u16x4`, `i32x2`. These have target-specific
+constraints (`f16` requires `--fp16` on aarch64 and is unavailable on
+plain x86; the narrow widths exist primarily as inputs to widening
+multiplies like `wmul_i32(i16x4, i16x4) -> i32x4`) that are documented
+alongside the intrinsics that consume them rather than as standalone
+table rows. See [ARM / NEON reference](arm.md) for `f16` and
+[All Intrinsics](intrinsics.md) for the narrow-width consumers.
 
 ## Pointer Types
 
