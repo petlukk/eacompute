@@ -146,6 +146,116 @@ pub fn compile_to_ir(source: &str) -> String {
     ea_compiler::compile_to_ir(source).expect("compilation failed")
 }
 
+/// Run a transcendental approximation intrinsic over `inputs` lane-by-lane,
+/// compare each output to the corresponding libm reference, and assert that
+/// every absolute error is within `abs_tol`. Shared by the phase14
+/// transcendental test files (`tanh_approx`, `log_approx`, `sin_cos_approx`).
+///
+/// - `vector_type`: `"f32x4"` or `"f32x8"` (sets `lanes` to 4 or 8).
+/// - `intrinsic`: Eä intrinsic name, e.g. `"tanh_approx_f32"`.
+/// - `libm_ref`: C reference function, e.g. `"tanhf"`.
+/// - `padding`: value used to pad `inputs` up to a multiple of `lanes` so the
+///   kernel's `while i + lanes <= n` loop covers the original input range.
+///   Must satisfy `intrinsic(padding) ≈ libm_ref(padding)` within `abs_tol`
+///   (use `0.0` for tanh / sin, `1.0` for log, etc.).
+#[allow(dead_code)]
+pub fn assert_transcendental_accuracy(
+    inputs: &[f32],
+    vector_type: &str,
+    intrinsic: &str,
+    libm_ref: &str,
+    abs_tol: f32,
+    padding: f32,
+) {
+    use ea_compiler::{CompileOptions, OutputMode};
+
+    let lanes = if vector_type == "f32x4" { 4 } else { 8 };
+
+    let ea = format!(
+        r#"
+        export func k(input: *f32, output: *mut f32, n: i32) {{
+            let mut i: i32 = 0
+            while i + {lanes} <= n {{
+                let v: {vector_type} = load(input, i)
+                let r: {vector_type} = {intrinsic}(v)
+                store(output, i, r)
+                i = i + {lanes}
+            }}
+        }}
+        "#
+    );
+
+    let mut padded = inputs.to_vec();
+    while !padded.len().is_multiple_of(lanes) {
+        padded.push(padding);
+    }
+    let n = padded.len();
+    let original_n = inputs.len();
+
+    let inputs_str = padded
+        .iter()
+        .map(|f| format!("{f:.10e}f"))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let c = format!(
+        r#"
+        #include <stdio.h>
+        #include <math.h>
+        extern void k(const float *input, float *output, int n);
+        int main(void) {{
+            float in[{n}] = {{{inputs_str}}};
+            float out[{n}] = {{0}};
+            k(in, out, {n});
+            for (int i = 0; i < {original_n}; ++i) {{
+                float ref = {libm_ref}(in[i]);
+                float got = out[i];
+                float abs_err = fabsf(got - ref);
+                if (abs_err > {abs_tol}f) {{
+                    printf("FAIL i=%d in=%g got=%g ref=%g abs=%g\n", i, in[i], got, ref, abs_err);
+                    return 1;
+                }}
+            }}
+            printf("OK\n");
+            return 0;
+        }}
+        "#
+    );
+
+    let dir = TempDir::new().unwrap();
+    let obj = dir.path().join("k.o");
+    let cpath = dir.path().join("h.c");
+    let bin = dir.path().join("k_bin");
+    let opts = CompileOptions {
+        opt_level: 3,
+        target_cpu: None,
+        extra_features: String::new(),
+        target_triple: None,
+    };
+    ea_compiler::compile_with_options(&ea, &obj, OutputMode::ObjectFile, &opts)
+        .expect("compile failed");
+    std::fs::write(&cpath, c).expect("write c");
+    let status = Command::new("cc")
+        .args([
+            cpath.to_str().unwrap(),
+            obj.to_str().unwrap(),
+            "-o",
+            bin.to_str().unwrap(),
+            "-lm",
+        ])
+        .status()
+        .expect("link failed");
+    assert!(status.success(), "linker failed");
+    let out = Command::new(&bin).output().expect("run failed");
+    let stdout = String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n");
+    assert_eq!(
+        stdout.trim(),
+        "OK",
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
 /// Asserts that at least one of `expected_mnemonics` appears in the disassembly
 /// of the object file produced by compiling `ea_source`.
 ///

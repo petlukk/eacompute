@@ -11,7 +11,9 @@ mod intrinsics_lane;
 mod intrinsics_memory;
 mod intrinsics_neon;
 mod intrinsics_pack;
+mod intrinsics_prefetch;
 mod intrinsics_simd;
+mod intrinsics_transcendental;
 pub mod types;
 
 use std::cell::RefCell;

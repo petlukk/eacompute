@@ -1,5 +1,9 @@
 #[cfg(feature = "llvm")]
+mod common;
+
+#[cfg(feature = "llvm")]
 mod tests {
+    use super::common::assert_transcendental_accuracy;
     use ea_compiler::{CompileOptions, OutputMode};
     use std::process::Command;
     use tempfile::TempDir;
@@ -55,96 +59,19 @@ mod tests {
         assert_eq!(stdout.trim(), "0\n0\n0\n0");
     }
 
-    /// Compile a kernel that runs tanh_approx_f32 over `inputs` lane-by-lane,
-    /// link with C harness that calls tanhf, assert absolute error ≤ 5e-6.
-    ///
-    /// Absolute (not relative) error because tanh is bounded in [-1, 1] and
-    /// tanh(x)→0 as x→0 makes relative error blow up near the origin.
+    /// Helper wrapping `common::assert_transcendental_accuracy` with the
+    /// tanh-specific parameters. Absolute (not relative) error tolerance
+    /// because tanh is bounded in [-1, 1] and tanh(x)→0 as x→0 makes
+    /// relative error blow up near the origin.
     fn accuracy_test_impl(inputs: &[f32], vector_type: &str) {
-        let lanes = if vector_type == "f32x4" { 4 } else { 8 };
-
-        let ea = format!(
-            r#"
-            export func k(input: *f32, output: *mut f32, n: i32) {{
-                let mut i: i32 = 0
-                while i + {lanes} <= n {{
-                    let v: {vector_type} = load(input, i)
-                    let r: {vector_type} = tanh_approx_f32(v)
-                    store(output, i, r)
-                    i = i + {lanes}
-                }}
-            }}
-            "#
-        );
-
-        let mut padded = inputs.to_vec();
-        while !padded.len().is_multiple_of(lanes) {
-            padded.push(0.0);
-        }
-        let n = padded.len();
-        let original_n = inputs.len();
-
-        let inputs_str = padded
-            .iter()
-            .map(|f| format!("{f:.10e}f"))
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        let c = format!(
-            r#"
-            #include <stdio.h>
-            #include <math.h>
-            extern void k(const float *input, float *output, int n);
-            int main(void) {{
-                float in[{n}] = {{{inputs_str}}};
-                float out[{n}] = {{0}};
-                k(in, out, {n});
-                for (int i = 0; i < {original_n}; ++i) {{
-                    float ref = tanhf(in[i]);
-                    float got = out[i];
-                    float abs_err = fabsf(got - ref);
-                    if (abs_err > 5.0e-6f) {{
-                        printf("FAIL i=%d in=%g got=%g ref=%g abs=%g\n", i, in[i], got, ref, abs_err);
-                        return 1;
-                    }}
-                }}
-                printf("OK\n");
-                return 0;
-            }}
-            "#
-        );
-
-        let dir = TempDir::new().unwrap();
-        let obj = dir.path().join("k.o");
-        let cpath = dir.path().join("h.c");
-        let bin = dir.path().join("k_bin");
-        let opts = CompileOptions {
-            opt_level: 3,
-            target_cpu: None,
-            extra_features: String::new(),
-            target_triple: None,
-        };
-        ea_compiler::compile_with_options(&ea, &obj, OutputMode::ObjectFile, &opts)
-            .expect("compile failed");
-        std::fs::write(&cpath, c).expect("write c");
-        let status = Command::new("cc")
-            .args([
-                cpath.to_str().unwrap(),
-                obj.to_str().unwrap(),
-                "-o",
-                bin.to_str().unwrap(),
-                "-lm",
-            ])
-            .status()
-            .expect("link failed");
-        assert!(status.success(), "linker failed");
-        let out = Command::new(&bin).output().expect("run failed");
-        let stdout = String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n");
-        assert_eq!(
-            stdout.trim(),
-            "OK",
-            "stderr: {}",
-            String::from_utf8_lossy(&out.stderr)
+        // padding = 0.0 because tanh(0) = 0 — safe to pad input arrays with.
+        assert_transcendental_accuracy(
+            inputs,
+            vector_type,
+            "tanh_approx_f32",
+            "tanhf",
+            5.0e-6,
+            0.0,
         );
     }
 
