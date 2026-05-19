@@ -237,3 +237,27 @@ fn find_matching_brace(s: &str) -> Result<usize, String> {
     }
     Err("unmatched '{'".into())
 }
+
+/// Build a Python expression that resolves `lib_name` relative to the generated
+/// module's directory. Splits on `/` so directory components survive
+/// `pathlib.Path.with_name`'s no-slashes constraint (issue #1).
+pub fn python_lib_path_expr(lib_name: &str) -> String {
+    let mut expr = String::from("_Path(__file__).parent");
+    for segment in lib_name.split('/').filter(|s| !s.is_empty()) {
+        expr.push_str(" / \"");
+        expr.push_str(segment);
+        expr.push('"');
+    }
+    expr
+}
+
+/// Normalize a library path/filename into a Rust `#[link(name = ...)]` stem.
+/// Strips directory components, the trailing `.so`/`.dll`, and the Unix `lib`
+/// prefix — e.g. `lib/libfoo.so` -> `foo` (issue #1).
+pub fn rust_link_stem(lib_name: &str) -> String {
+    let basename = lib_name.rsplit('/').next().unwrap_or(lib_name);
+    let trimmed = basename
+        .trim_end_matches(".so")
+        .trim_end_matches(".dll");
+    trimmed.strip_prefix("lib").unwrap_or(trimmed).to_string()
+}

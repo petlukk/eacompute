@@ -360,6 +360,44 @@ fn test_pytorch_type_hints() {
 }
 
 #[test]
+fn test_pytorch_library_path_with_slash() {
+    // Issue #1: same `with_name` bug as bind_python — pytorch binding must split path segments.
+    let json = r#"{"library": "lib/libfoo.so", "exports": [{"name": "noop", "args": [], "return_type": null}], "structs": []}"#;
+    let py = ea_compiler::bind_pytorch::generate(json, "foo").unwrap();
+
+    assert!(
+        !py.contains("with_name(\"lib/libfoo.so\")"),
+        "must not pass slashed path to with_name, got:\n{py}"
+    );
+    assert!(
+        py.contains("_Path(__file__).parent / \"lib\" / \"libfoo.so\""),
+        "should build path by joining parent with each segment, got:\n{py}"
+    );
+}
+
+#[test]
+fn test_rust_library_path_with_slash() {
+    // Issue #1 (Rust variant): `#[link(name = "lib/libfoo")]` is invalid — Rust link
+    // names must be a bare library stem (no path, no `lib` prefix on Unix).
+    // For `library: "lib/libfoo.so"`, the link name should be `foo`.
+    let json = r#"{"library": "lib/libfoo.so", "exports": [{"name": "noop", "args": [], "return_type": null}], "structs": []}"#;
+    let rs = ea_compiler::bind_rust::generate(json, "foo").unwrap();
+
+    assert!(
+        !rs.contains("name = \"lib/libfoo\""),
+        "link name must not contain directory components, got:\n{rs}"
+    );
+    assert!(
+        !rs.contains("name = \"libfoo\""),
+        "link name must strip the `lib` prefix (Unix convention), got:\n{rs}"
+    );
+    assert!(
+        rs.contains("#[link(name = \"foo\")]"),
+        "expected stem-only link name `foo`, got:\n{rs}"
+    );
+}
+
+#[test]
 fn test_pytorch_friendly_docstring() {
     let json = r#"{"library": "k.so", "exports": [{"name": "dot", "args": [{"name": "a", "type": "*f32"}, {"name": "b", "type": "*f32"}, {"name": "n", "type": "i32"}], "return_type": "f32"}], "structs": []}"#;
     let py = ea_compiler::bind_pytorch::generate(json, "k").unwrap();

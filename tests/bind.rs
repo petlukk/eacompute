@@ -467,6 +467,36 @@ fn test_python_parallel_in_all() {
 }
 
 #[test]
+fn test_python_library_path_with_slash() {
+    // Issue #1: when `library` contains a directory component (e.g. `-o lib/libfoo.so`),
+    // generated Python used `Path.with_name("lib/libfoo.so")` which raises ValueError —
+    // `with_name` rejects any name containing `/`. Fix splits the path and joins it
+    // onto `_Path(__file__).parent`.
+    let json = r#"{"library": "lib/libfoo.so", "exports": [{"name": "noop", "args": [], "return_type": null}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "foo").unwrap();
+
+    assert!(
+        !py.contains("with_name(\"lib/libfoo.so\")"),
+        "must not pass slashed path to with_name (Python rejects it), got:\n{py}"
+    );
+    assert!(
+        py.contains("_Path(__file__).parent / \"lib\" / \"libfoo.so\""),
+        "should build path by joining parent with each segment, got:\n{py}"
+    );
+}
+
+#[test]
+fn test_python_library_plain_name_unchanged() {
+    // Plain (no-slash) library names should still work — emitted as a single parent/name join.
+    let json = r#"{"library": "kernel.so", "exports": [{"name": "noop", "args": [], "return_type": null}], "structs": []}"#;
+    let py = ea_compiler::bind_python::generate(json, "kernel").unwrap();
+    assert!(
+        py.contains("_Path(__file__).parent / \"kernel.so\""),
+        "should join parent with library name, got:\n{py}"
+    );
+}
+
+#[test]
 fn test_is_not_parallelizable_no_pointer() {
     use ea_compiler::bind_common::{Arg, ExportFunc, is_parallelizable};
 
