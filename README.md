@@ -1,5 +1,10 @@
 # Eä
 
+[![CI](https://github.com/petlukk/eacompute/actions/workflows/ci.yml/badge.svg)](https://github.com/petlukk/eacompute/actions/workflows/ci.yml)
+[![Docs](https://github.com/petlukk/eacompute/actions/workflows/docs.yml/badge.svg)](https://github.com/petlukk/eacompute/actions/workflows/docs.yml)
+[![Release](https://img.shields.io/github/v/release/petlukk/eacompute?sort=semver)](https://github.com/petlukk/eacompute/releases/latest)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 Write compute kernels in explicit, portable syntax. Compile to shared libraries. Generate native bindings for Python, Rust, C++, PyTorch, and CMake.
 
 No runtime. No garbage collector. No glue code.
