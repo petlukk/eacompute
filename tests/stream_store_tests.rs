@@ -135,4 +135,42 @@ mod tests {
             "50 60 0 0",
         );
     }
+
+    // --- stream_store: scalar value support (typeck acceptance) ---
+
+    #[test]
+    fn test_stream_store_scalar_i32_typecheck() {
+        // Scalar i32 stream_store must typecheck (extension over vector-only).
+        // Use typeck-only pipeline because scalar codegen lands in Task 2.
+        let source = r#"
+            export func test(out: *mut i32, v: i32) {
+                stream_store(out, 0, v)
+            }
+        "#;
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let stmts = ea_compiler::desugar(stmts).unwrap();
+        let result = ea_compiler::check_types(&stmts);
+        assert!(
+            result.is_ok(),
+            "scalar i32 stream_store should typecheck, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn test_stream_store_scalar_i64_typecheck() {
+        let source = r#"
+            export func test(out: *mut i64, v: i64) {
+                stream_store(out, 0, v)
+            }
+        "#;
+        let tokens = ea_compiler::tokenize(source).unwrap();
+        let stmts = ea_compiler::parse(tokens).unwrap();
+        let stmts = ea_compiler::desugar(stmts).unwrap();
+        let result = ea_compiler::check_types(&stmts);
+        assert!(
+            result.is_ok(),
+            "scalar i64 stream_store should typecheck, got: {result:?}"
+        );
+    }
 }
