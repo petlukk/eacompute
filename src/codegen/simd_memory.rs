@@ -170,7 +170,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 let vec_ty = v.get_type();
                 let elem_ty = vec_ty.get_element_type();
                 let elem_align = self.element_alignment(elem_ty);
-                let elem_count = vec_ty.get_size() as u32;
+                let elem_count = vec_ty.get_size();
                 (elem_align * elem_count).max(1)
             } else {
                 unreachable!()
