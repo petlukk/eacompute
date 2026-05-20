@@ -219,4 +219,26 @@ mod tests {
             "deadbeefcafebabe",
         );
     }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn test_stream_store_scalar_i64_runtime_aarch64() {
+        assert_c_interop(
+            r#"
+            export func test(out: *mut i64, v: i64) {
+                stream_store(out, 0, v)
+            }
+        "#,
+            r#"#include <stdio.h>
+            #include <stdint.h>
+            extern void test(int64_t*, int64_t);
+            int main() {
+                __attribute__((aligned(16))) int64_t out[1] = {0};
+                test(out, 0x0123456789ABCDEFLL);
+                printf("%llx\n", (unsigned long long)out[0]);
+                return 0;
+            }"#,
+            "123456789abcdef",
+        );
+    }
 }

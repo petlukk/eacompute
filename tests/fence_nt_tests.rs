@@ -80,4 +80,44 @@ mod tests {
             "42",
         );
     }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn test_fence_nt_runtime_aarch64() {
+        assert_c_interop(
+            r#"
+            export func test(out: *mut i32, v: i32, readback: *mut i32) {
+                stream_store(out, 0, v)
+                fence_nt()
+                readback[0] = out[0]
+            }
+        "#,
+            r#"#include <stdio.h>
+            extern void test(int*, int, int*);
+            int main() {
+                __attribute__((aligned(16))) int out[1] = {0};
+                int readback = 0;
+                test(out, 7777, &readback);
+                printf("%d\n", readback);
+                return 0;
+            }"#,
+            "7777",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn test_fence_nt_ir_calls_dmb_aarch64() {
+        let ir = compile_to_ir(
+            r#"
+            export func test() {
+                fence_nt()
+            }
+        "#,
+        );
+        assert!(
+            ir.contains("@llvm.aarch64.dmb"),
+            "fence_nt on aarch64 must call llvm.aarch64.dmb:\n{ir}"
+        );
+    }
 }
