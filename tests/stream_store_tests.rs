@@ -173,4 +173,50 @@ mod tests {
             "scalar i64 stream_store should typecheck, got: {result:?}"
         );
     }
+
+    // --- stream_store: scalar value support (codegen runtime) ---
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_stream_store_scalar_i32_runtime() {
+        assert_c_interop(
+            r#"
+            export func test(out: *mut i32, v: i32) {
+                stream_store(out, 0, v)
+                stream_store(out, 1, v + 100)
+            }
+        "#,
+            r#"#include <stdio.h>
+            extern void test(int*, int);
+            int main() {
+                __attribute__((aligned(8))) int out[2] = {0, 0};
+                test(out, 42);
+                printf("%d %d\n", out[0], out[1]);
+                return 0;
+            }"#,
+            "42 142",
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_stream_store_scalar_i64_runtime() {
+        assert_c_interop(
+            r#"
+            export func test(out: *mut i64, v: i64) {
+                stream_store(out, 0, v)
+            }
+        "#,
+            r#"#include <stdio.h>
+            #include <stdint.h>
+            extern void test(int64_t*, int64_t);
+            int main() {
+                __attribute__((aligned(8))) int64_t out[1] = {0};
+                test(out, 0xDEADBEEFCAFEBABELL);
+                printf("%llx\n", (unsigned long long)out[0]);
+                return 0;
+            }"#,
+            "deadbeefcafebabe",
+        );
+    }
 }
