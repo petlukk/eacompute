@@ -71,19 +71,36 @@ stream_store(out, i, v)              // vector form — v is f32xN, i32xN, etc.
 stream_store(out, i, scalar_value)   // scalar form (v1.15.0) — i16/u16/i32/u32/i64/u64
 ```
 
-**Target lowering:**
+**Target lowering** (verified on LLVM 18.1.8, x86_64 Zen 4 and aarch64 Cortex-A76):
 
 | Width / form | x86 | aarch64 |
 |---|---|---|
-| Vector 128-bit (f32x4, i32x4, ...) | `movntps` / `movntdq` | regular `str q` (LLVM 18 does not optimize `!nontemporal` for single-register NEON) |
+| Vector 128-bit (f32x4, i32x4, ...) | `movntps` / `movntdq` | `stnp d, d, [x]` (LLVM splits the 128-bit q-register into a d-pair to use the only available aarch64 NT store) |
 | Vector 256-bit (AVX2) | `vmovntps` / `vmovntdq` | n/a (256-bit not on NEON) |
 | Vector 512-bit (AVX-512) | `vmovntps` / `vmovntdq` zmm | n/a |
-| Scalar i32 / u32 | `movnti` (SSE2) | `str` / paired `stnp` when alignment permits |
-| Scalar i64 / u64 | `movnti` (SSE2, 64-bit mode) | `str` / paired `stnp` |
-| Scalar i16 / u16 | regular `mov` (no NT scalar at 16-bit width) | `strh` / paired `stnp` |
+| Scalar i64 / u64 | `movnti` (SSE2, 64-bit mode) | `stnp w, w, [x]` (LLVM splits the i64 into a w-pair to use `stnp`; emits an `lsr` for the high half) |
+| Scalar i32 / u32 | `movnti` (SSE2) | plain `str` — NT hint silently dropped |
+| Scalar i16 / u16 | regular `mov` — NT hint silently dropped | plain `strh` — NT hint silently dropped |
 
-The i16/u16 case ships for shape symmetry with the wider scalars — the
-non-temporal hint becomes a no-op on x86 at that width.
+**aarch64 has no scalar non-temporal store instruction.** The only NT store on
+aarch64 is `stnp` (Store Non-temporal Pair), which requires two operands. LLVM
+18 honors `!nontemporal` only when it can synthesize an `stnp`:
+
+- **64-bit scalars (i64/u64)** self-pair to a `w` register pair — NT hint preserved.
+- **128-bit vectors** self-pair to a `d` register pair — NT hint preserved.
+- **32-bit and 16-bit scalars** have no pair-friendly form — LLVM emits plain
+  `str` / `strh` and the NT hint is dropped silently.
+
+For aarch64 NT semantics, **prefer 64-bit or wider element widths.** The i32/u32
+and i16/u16 scalar overloads still type-check and run, but provide no cache-
+bypass benefit on aarch64; the same is true of i16/u16 on x86 (no `movnti16`
+exists). They ship for cross-platform shape symmetry — a single Eä kernel using
+`stream_store` compiles and runs on both targets without per-width branching.
+
+Note also that LLVM 18 does **not** fuse two adjacent `stream_store(*mut i32, ...)`
+calls into a single `stnp` pair on aarch64 — they lower to a regular `stp` with
+the NT hint dropped. If you need NT-paired stores on aarch64, write the data as
+i64 (two 32-bit values packed) or as a vector type.
 
 **Alignment contract:**
 

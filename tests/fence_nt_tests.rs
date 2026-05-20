@@ -131,4 +131,19 @@ mod tests {
             &["sfence"],
         );
     }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn test_fence_nt_emits_dmb_ishst_aarch64() {
+        // Pi 5-verified: fence_nt() lowers to `dmb ishst` via the
+        // @llvm.aarch64.dmb intrinsic with operand 10 (ishst encoding).
+        assert_intrinsic_in_disassembly(
+            r#"
+            export func test() {
+                fence_nt()
+            }
+        "#,
+            &["dmb\tishst"],
+        );
+    }
 }

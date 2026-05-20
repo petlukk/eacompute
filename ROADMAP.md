@@ -9,9 +9,20 @@ Forward-looking notes. Ordered by leverage, not by effort.
 `stream_store(*mut i16, offset, i16)`, `stream_store(*mut u16, offset, u16)`,
 `stream_store(*mut i32, offset, i32)`, `stream_store(*mut u32, offset, u32)`,
 `stream_store(*mut i64, offset, i64)`, `stream_store(*mut u64, offset, u64)`.
-Same `!nontemporal` metadata path as the existing vector form. Lowers to
-`movnti` on x86 SSE2 for i32/i64. Concrete consumer pulling: Olorin's
-`q4k_repack.ea` (pure-streaming block-layout repack blocked on scalar surface).
+Same `!nontemporal` metadata path as the existing vector form.
+
+Cross-target lowering (Pi 5-verified, LLVM 18.1.8): x86 emits `movnti` for
+i32/u32/i64/u64 (i16/u16 fall through to plain `mov`); aarch64 emits `stnp`
+only when LLVM can self-pair the value — i64/u64 splits to a `w`-pair via
+`lsr` and gets `stnp w, w`, while i32/u32 and i16/u16 lower to plain
+`str`/`strh` with the NT hint silently dropped. **For aarch64 NT semantics,
+prefer 64-bit-or-wider element widths.** See the target-lowering table in
+`docs/src/reference/intrinsics.md` for the full matrix and the
+why-no-scalar-stnp explanation.
+
+Concrete consumer pulling: Olorin's `q4k_repack.ea` (pure-streaming block-
+layout repack blocked on scalar surface; pairs 16-byte fields, so i64
+writes get the aarch64 win).
 
 ### `fence_nt()` intrinsic
 

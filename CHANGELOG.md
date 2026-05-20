@@ -6,9 +6,13 @@
 
 - **Scalar `stream_store` overloads** — `i16/u16/i32/u32/i64/u64` value
   types now accepted in addition to vectors. Lowers via the same
-  `!nontemporal` metadata path used for the vector form; emits `movnti`
-  on x86 SSE2 for i32/i64. Closes the scalar-write surface gap blocking
-  Olorin's `q4k_repack.ea` kernel.
+  `!nontemporal` metadata path used for the vector form. On x86, `movnti`
+  is emitted for i32/u32/i64/u64 (i16/u16 fall through to plain `mov`).
+  On aarch64, `stnp` is synthesized only when LLVM can self-pair (i64
+  splits to a `w`-pair; i32/i16 fall through to plain `str`/`strh` — see
+  the target-lowering table in the reference for the full matrix).
+  Closes the scalar-write surface gap blocking Olorin's `q4k_repack.ea`
+  kernel.
 - **`fence_nt()` intrinsic** — zero-argument store-store memory barrier
   for intra-kernel ordering of preceding `stream_store` operations.
   Lowers to `sfence` on x86 (via `@llvm.x86.sse.sfence`), `dmb ishst` on
@@ -42,10 +46,15 @@
 ### Test hardening
 
 - aarch64-gated runtime tests for scalar `stream_store` and `fence_nt`,
-  documenting actual LLVM 18 emission on the Cortex-A76 path.
+  verified on Pi 5 (Cortex-A76, LLVM 18.1.8) against expected mnemonics.
 - objdump-level assertions verifying `movnti` / `movntps` / `vmovntps` /
   `vmovntdq` / `sfence` actually emitted on x86 (not just present in IR
   metadata) — caught the vector alignment bug fixed above.
+- aarch64 objdump-level assertions for `dmb ishst` (`fence_nt`), the
+  i64-to-`stnp` w-pair split (scalar i64), and the q-to-`stnp` d-pair
+  split (vector 128-bit) — pin the actually-observed LLVM 18 behavior
+  so a future LLVM upgrade changing aarch64 NT-store synthesis lands
+  loudly rather than silently.
 - Alignment-failure crash test pinning the alignment contract via
   deliberate SIGSEGV from a 1-byte-misaligned `f32x8` `stream_store`.
 

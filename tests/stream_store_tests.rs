@@ -368,4 +368,74 @@ mod tests {
              is not silently substituting an aligned movups."
         );
     }
+
+    // --- aarch64 objdump assertions (Pi 5-verified mnemonics, LLVM 18.1.8) ---
+    //
+    // aarch64 has no scalar non-temporal store instruction. LLVM honors
+    // !nontemporal only when it can synthesize stnp (Store Non-temporal Pair) —
+    // that is, for 64-bit operands (self-pair to w-pair) and 128-bit vectors
+    // (q-register splits to d-pair). For 32-bit and 16-bit scalars, LLVM
+    // silently emits plain `str` / `strh` with the NT hint dropped. The four
+    // tests below pin the actually-observed LLVM 18 behavior; a future LLVM
+    // upgrade that changes any of these emissions will fail loudly rather than
+    // silently.
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn test_stream_store_scalar_i64_emits_stnp_aarch64() {
+        // i64 self-pairs to a w-register pair via lsr; emits `stnp w, w`.
+        assert_intrinsic_in_disassembly(
+            r#"
+            export func test(out: *mut i64, v: i64) {
+                stream_store(out, 0, v)
+            }
+        "#,
+            &["stnp"],
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn test_stream_store_f32x4_emits_stnp_aarch64() {
+        // 128-bit q-register splits to a d-pair; emits `stnp d, d`.
+        assert_intrinsic_in_disassembly(
+            r#"
+            export func test(data: *f32, out: *mut f32) {
+                let v: f32x4 = load(data, 0)
+                stream_store(out, 0, v)
+            }
+        "#,
+            &["stnp"],
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn test_stream_store_scalar_i32_emits_plain_str_aarch64() {
+        // PIN: NT hint silently dropped on aarch64 for 32-bit scalar stores.
+        // If LLVM ever starts synthesizing stnp for i32 stream_store, this
+        // test fails — forcing the docs to be updated to reflect new behavior.
+        assert_intrinsic_in_disassembly(
+            r#"
+            export func test(out: *mut i32, v: i32) {
+                stream_store(out, 0, v)
+            }
+        "#,
+            &["str\tw"],
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn test_stream_store_scalar_i16_emits_plain_strh_aarch64() {
+        // PIN: same as i32 — NT hint dropped, plain `strh w, [x]` emitted.
+        assert_intrinsic_in_disassembly(
+            r#"
+            export func test(out: *mut i16, v: i16) {
+                stream_store(out, 0, v)
+            }
+        "#,
+            &["strh"],
+        );
+    }
 }
