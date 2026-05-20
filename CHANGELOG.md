@@ -1,5 +1,67 @@
 # Changelog
 
+## v1.15.0 — 2026-05-20 — Non-temporal store family completion
+
+### Added
+
+- **Scalar `stream_store` overloads** — `i16/u16/i32/u32/i64/u64` value
+  types now accepted in addition to vectors. Lowers via the same
+  `!nontemporal` metadata path used for the vector form; emits `movnti`
+  on x86 SSE2 for i32/i64. Closes the scalar-write surface gap blocking
+  Olorin's `q4k_repack.ea` kernel.
+- **`fence_nt()` intrinsic** — zero-argument store-store memory barrier
+  for intra-kernel ordering of preceding `stream_store` operations.
+  Lowers to `sfence` on x86 (via `@llvm.x86.sse.sfence`), `dmb ishst` on
+  aarch64 (via `@llvm.aarch64.dmb`). Completes the `prefetch_nta` +
+  `stream_store` + `fence_nt` non-temporal memory-hint family.
+
+### Fixed
+
+- **Vector `stream_store` alignment** — pre-existing bug where the
+  `set_alignment` call used the element type's natural alignment (e.g.
+  4 bytes for `f32x4`) rather than the full vector width. LLVM was
+  silently decomposing 128/256-bit NT stores to scalar `movntsd`
+  sequences because the alignment metadata didn't authorize vector-width
+  stores. Caught by the new objdump assertions; alignment now set to
+  `element_size * lane_count`, so x86 emits `movntps`/`vmovntps`
+  /`movntdq`/`vmovntdq` directly. Behavior change: kernels passing
+  vector-aligned buffers see the intended fast path; kernels passing
+  misaligned buffers now SIGSEGV per the documented alignment contract
+  (previously they got slow scalarized stores).
+
+### Changed
+
+- **`stream_store` reference documentation** upgraded to `prefetch_nta`
+  parity. Adds target-specific lowering table covering all vector and
+  scalar widths, explicit alignment contract (general protection fault
+  on x86 misalignment), explicit ordering contract, and a "When NOT to
+  use" section calling out working-buffer anti-patterns (softmax
+  accumulators, FWHT scratch) to prevent adoption regressions.
+
+### Test hardening
+
+- aarch64-gated runtime tests for scalar `stream_store` and `fence_nt`,
+  documenting actual LLVM 18 emission on the Cortex-A76 path.
+- objdump-level assertions verifying `movnti` / `movntps` / `vmovntps` /
+  `vmovntdq` / `sfence` actually emitted on x86 (not just present in IR
+  metadata) — caught the vector alignment bug fixed above.
+- Alignment-failure crash test pinning the alignment contract via
+  deliberate SIGSEGV from a 1-byte-misaligned `f32x8` `stream_store`.
+
+### Out of scope (deferred)
+
+- In-language `parallel_for` keyword / binding-layer parallel dispatch —
+  deferred indefinitely. Audit of the highest-performance Eä consumers
+  (Olorin and Cougar) showed both already ship custom SpinBarrier-based
+  thread pools strictly more capable than any generic primitive Eä
+  could provide. See ROADMAP for amended entry.
+- Sub-byte bit-packing intrinsics (`load_packed_iN_to_*`) — deferred
+  indefinitely. Audit showed every shipped quantized-weight consumer
+  either fuses unpack into compute (Cougar BitNet), has already-clean
+  2-op unpacks (eakv Q4_1), or uses format-specific mixed-width
+  layouts that no generic intrinsic could capture (Olorin GGML Q4_K /
+  Q3_K).
+
 ## v1.14.0 — 2026-05-19 — f32 transcendental family complete + Olorin-driven SIMD primitives
 
 Closes the v1.11.0-era "Future API consistency" list. The f32 transcendental approximation family is feature-complete: `tanh_approx_f32`, `log_approx_f32`, `sin_approx_f32`, and `cos_approx_f32` join `exp_poly_f32` (v1.11.0), all sharing the same f32-vector-only contract and ~3e-6 absolute error budget. `u16x32` + `lo256_u16x32` / `hi256_u16x32` close the i16/u16 lane-extractor symmetry deferred in v1.12.0 PR #10. `wmul_u64(u32x4, u32x4) -> u64x4` ships as a fused alternative to the v1.12.0 `wmul_u64_lo` / `wmul_u64_hi` pair. Olorin-driven SIMD primitives: `permute_runtime` (AVX2 runtime data permute), `prefetch_write` / `prefetch_nta` (write-intent + non-temporal cache hints), and two-source `shuffle(a, b, [indices])`. Doc-side: the types reference now lists every lexer-accepted vector type — closing a multi-release gap that included the AVX-512BW byte/word types — and the cookbook tanh-GELU recipe was rewritten to use the new `tanh_approx_f32` instead of the catastrophic-cancellation-prone `(exp_poly_f32(2x) - 1) / (exp_poly_f32(2x) + 1)` identity.

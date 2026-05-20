@@ -2,7 +2,49 @@
 
 Forward-looking notes. Ordered by leverage, not by effort.
 
-## Shipped in v1.14.0 (UNRELEASED)
+## Shipped in v1.15.0
+
+### Scalar `stream_store` overloads
+
+`stream_store(*mut i16, offset, i16)`, `stream_store(*mut u16, offset, u16)`,
+`stream_store(*mut i32, offset, i32)`, `stream_store(*mut u32, offset, u32)`,
+`stream_store(*mut i64, offset, i64)`, `stream_store(*mut u64, offset, u64)`.
+Same `!nontemporal` metadata path as the existing vector form. Lowers to
+`movnti` on x86 SSE2 for i32/i64. Concrete consumer pulling: Olorin's
+`q4k_repack.ea` (pure-streaming block-layout repack blocked on scalar surface).
+
+### `fence_nt()` intrinsic
+
+Zero-argument store-store memory barrier. Lowers to `sfence` on x86 (via
+`@llvm.x86.sse.sfence`) and `dmb ishst` on aarch64 (via `@llvm.aarch64.dmb`
+with operand 10). Completes the `prefetch_nta` + `stream_store` + `fence_nt`
+non-temporal memory-hint family. Most callers will not need it — host-side
+sync primitives provide cross-thread release semantics — but for the rare
+intra-kernel ordering case it's the documented expression. Note: does NOT
+provide store-to-load ordering; a full barrier (`mfence`/`dmb sy`) is needed
+for write-then-read-back patterns.
+
+### Vector `stream_store` alignment fix
+
+Pre-existing bug surfaced by the new objdump test discipline: the
+`set_alignment` call on the store instruction passed element-width alignment
+rather than vector-width. LLVM 18 took this conservatively and decomposed
+NT vector stores into element-wise scalar `movntsd` sequences, defeating
+the entire point of the intrinsic. Fix: set alignment to
+`element_size * lane_count`. Behavior change visible to callers — fast path
+for aligned buffers, SIGSEGV per the documented contract for misaligned.
+Caught and pinned by the new alignment-failure crash test.
+
+### `stream_store` documentation upgrade
+
+Reference docs upgraded to `prefetch_nta` parity: target-specific lowering
+table, alignment contract, ordering contract, and "When NOT to use" anti-
+pattern guidance. The last item is most important — prevents adoption
+regressions in working-buffer kernels (softmax accumulators, FWHT scratch)
+where blanket-substituting `store → stream_store` would degrade by forcing
+DRAM round-trips on cache-resident data.
+
+## Shipped in v1.14.0
 
 ### Runtime SIMD permute
 
@@ -74,17 +116,33 @@ Today the language spec is spread across `docs/src/reference/*.md` (types, intri
 
 ## Future additions
 
-### Multi-core / `parallel_for` primitive
+### Multi-core / `parallel_for` primitive — deferred indefinitely (v1.15 audit)
 
-Eä is single-thread SIMD today; concurrency comes from outer-loop threading in the Rust / Python / Go caller. A `parallel_for(range, body)` primitive that spawns SIMD work across cores would change the per-call performance model from "kernel uses one core" to "kernel uses the machine." Pi 5 has 4 A76 cores; Zen 4 has 16+. With single-thread SIMD perf increasingly memory-bound (chacha20 hits 3.6 GB/s on Zen 4 = DRAM ceiling, not compute), multi-core is the unused dimension where the next 2–10× lives.
+Eä remains single-thread SIMD. Multi-core orchestration is the host's
+responsibility. The v1.15 brainstorm evaluated two candidate forms — an
+in-language `parallel_for` keyword and a binding-layer `parallel: true`
+metadata flag generating per-language wrappers — and dropped both after a
+consumer audit:
 
-Open design questions:
-- **Thread-pool model.** Static partition is simple but loses to imbalanced workloads; work-stealing (rayon-style) is robust but adds runtime dependency. Eä's "no implicit runtime" stance suggests caller-supplied pool injection.
-- **C ABI interaction.** Does the kernel signature change? `(thread_id, num_threads)` extra args, or hidden global?
-- **Determinism.** Reductions become non-associative under parallel execution; `reduce_add` semantics across threads need a documented contract.
-- **NUMA / cache discipline.** First-touch placement matters on Zen 4 and on multi-socket. Probably out-of-scope for v1.x, but the API shape shouldn't preclude it.
+- **Olorin** ships `src/inference/threadpool.rs`, a custom SpinBarrier-based
+  pool with `run_graph<F: Fn(usize, usize, &SpinBarrier, &AtomicI32) + Send
+  + Sync>`. Designed for ggml-style inference graphs with cross-kernel
+  barriers and atomic-int dynamic work counters. Strictly more capable than
+  anything generic Eä could provide; a binding-layer wrapper cannot express
+  cross-kernel barriers.
+- **Cougar** invokes Eä kernels (`q4k_4row_dot` — 4 rows per call) inside
+  `pool.run(n_threads, |tid, _| { ... })`, looping many times per thread
+  with per-thread accumulator state across calls. A "wrap in N threads,
+  one call each" binding wrapper would replace this with strictly worse
+  work distribution.
+- **eakv** has no parallelism today but the workaround for the dequant case
+  is 3 lines of `concurrent.futures.ThreadPoolExecutor` in eakv's own code
+  — not enough pull to justify permanent surface area in eacompute.
 
-Likely a v1.15+ initiative — too large for v1.14.0, but worth scoping early so the smaller carry-overs don't constrain the design space.
+Criteria for revisiting: a new consumer profile that custom Olorin/Cougar
+pools don't already serve — most likely a Python-first consumer with
+non-trivial host-side parallelism cost, or a consumer with simpler graph
+structure than ggml-style inference. None has surfaced.
 
 ### Autoresearch ↔ perf-regression feedback
 
