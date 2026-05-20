@@ -25,6 +25,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "load"
                 | "store"
                 | "stream_store"
+                | "fence_nt"
                 | "gather"
                 | "scatter"
                 | "load_masked"
@@ -246,6 +247,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 self.compile_store(args, function)
             }
             "stream_store" => self.compile_stream_store(args, function),
+            "fence_nt" => self.compile_fence_nt(args, function),
             "gather" => self.compile_gather(args, type_hint, function),
             "permute_runtime" => self.compile_permute_runtime(args, function),
             "scatter" => self.compile_scatter(args, function),

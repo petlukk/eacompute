@@ -382,4 +382,18 @@ impl TypeChecker {
             )),
         }
     }
+
+    pub(super) fn check_fence_nt(
+        &self,
+        args: &[Expr],
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if !args.is_empty() {
+            return Err(CompileError::type_error(
+                "fence_nt takes 0 arguments (no operands)",
+                span.clone(),
+            ));
+        }
+        Ok(Type::Void)
+    }
 }
