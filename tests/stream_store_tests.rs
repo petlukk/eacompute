@@ -141,7 +141,7 @@ mod tests {
     #[test]
     fn test_stream_store_scalar_i32_typecheck() {
         // Scalar i32 stream_store must typecheck (extension over vector-only).
-        // Use typeck-only pipeline because scalar codegen lands in Task 2.
+        // typeck-only path is sufficient; runtime coverage is in test_stream_store_scalar_i32_runtime.
         let source = r#"
             export func test(out: *mut i32, v: i32) {
                 stream_store(out, 0, v)

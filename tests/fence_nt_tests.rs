@@ -59,14 +59,12 @@ mod tests {
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn test_fence_nt_runtime_x86() {
-        // Kernel: write via stream_store, fence, then verify the read
-        // sees the value within the same kernel call (intra-kernel visibility).
+        // Kernel: write via stream_store, fence. C host reads back to verify visibility.
         assert_c_interop(
             r#"
             export func test(out: *mut i32, v: i32) {
                 stream_store(out, 0, v)
                 fence_nt()
-                // Read back after fence to verify visibility
             }
         "#,
             r#"#include <stdio.h>

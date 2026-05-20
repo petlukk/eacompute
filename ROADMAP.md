@@ -29,8 +29,8 @@ for write-then-read-back patterns.
 Pre-existing bug surfaced by the new objdump test discipline: the
 `set_alignment` call on the store instruction passed element-width alignment
 rather than vector-width. LLVM 18 took this conservatively and decomposed
-NT vector stores into element-wise scalar `movntsd` sequences, defeating
-the entire point of the intrinsic. Fix: set alignment to
+NT vector stores into a sequence of scalar (non-temporal-hinted) stores,
+defeating the entire point of the intrinsic. Fix: set alignment to
 `element_size * lane_count`. Behavior change visible to callers — fast path
 for aligned buffers, SIGSEGV per the documented contract for misaligned.
 Caught and pinned by the new alignment-failure crash test.

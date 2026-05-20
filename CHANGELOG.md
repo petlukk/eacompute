@@ -20,13 +20,14 @@
 - **Vector `stream_store` alignment** — pre-existing bug where the
   `set_alignment` call used the element type's natural alignment (e.g.
   4 bytes for `f32x4`) rather than the full vector width. LLVM was
-  silently decomposing 128/256-bit NT stores to scalar `movntsd`
-  sequences because the alignment metadata didn't authorize vector-width
-  stores. Caught by the new objdump assertions; alignment now set to
-  `element_size * lane_count`, so x86 emits `movntps`/`vmovntps`
-  /`movntdq`/`vmovntdq` directly. Behavior change: kernels passing
-  vector-aligned buffers see the intended fast path; kernels passing
-  misaligned buffers now SIGSEGV per the documented alignment contract
+  silently decomposing 128/256-bit NT stores to a sequence of scalar
+  (non-temporal-hinted) stores because the alignment metadata didn't
+  authorize vector-width stores. Caught by the new objdump assertions;
+  alignment now set to `element_size * lane_count`, so x86 emits
+  `movntps`/`vmovntps`/`movntdq`/`vmovntdq` directly. Behavior change:
+  kernels passing vector-aligned buffers see the intended fast path;
+  kernels passing misaligned buffers now SIGSEGV per the documented
+  alignment contract
   (previously they got slow scalarized stores).
 
 ### Changed
