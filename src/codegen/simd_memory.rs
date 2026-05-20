@@ -130,10 +130,25 @@ impl<'ctx> CodeGenerator<'ctx> {
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         let ptr_val = self.compile_expr(&args[0], function)?.into_pointer_value();
         let idx_val = self.compile_expr(&args[1], function)?.into_int_value();
-        let vec_val = self.compile_expr(&args[2], function)?.into_vector_value();
+        let val_basic = self.compile_expr(&args[2], function)?;
 
-        let vec_ty = vec_val.get_type();
-        let elem_ty = vec_ty.get_element_type();
+        // Determine element type for GEP and the value to store.
+        // Vector path keeps the existing behavior; scalar path is the v1.15 addition.
+        let (elem_ty, store_val, is_vector): (BasicTypeEnum<'ctx>, BasicValueEnum<'ctx>, bool) = match val_basic {
+            BasicValueEnum::VectorValue(vec_val) => {
+                let vec_ty = vec_val.get_type();
+                (vec_ty.get_element_type(), vec_val.into(), true)
+            }
+            BasicValueEnum::IntValue(int_val) => {
+                (int_val.get_type().into(), int_val.into(), false)
+            }
+            _ => {
+                return Err(CompileError::codegen_error(
+                    "stream_store value must be a vector or i16/u16/i32/u32/i64/u64 scalar",
+                ));
+            }
+        };
+
         let elem_ptr = unsafe {
             self.builder
                 .build_gep(elem_ty, ptr_val, &[idx_val], "nt_store_gep")
@@ -142,11 +157,29 @@ impl<'ctx> CodeGenerator<'ctx> {
 
         let store_inst = self
             .builder
-            .build_store(elem_ptr, vec_val)
+            .build_store(elem_ptr, store_val)
             .map_err(|e| CompileError::codegen_error(e.to_string()))?;
 
-        let element_alignment = self.element_alignment(vec_ty.get_element_type());
-        store_inst.set_alignment(element_alignment).map_err(|e| {
+        // Alignment: for vectors, use vector-width alignment (computed from element
+        // count and element size) to help LLVM emit vector stores. For scalars,
+        // use natural element alignment.
+        let alignment = if is_vector {
+            // For a vector, LLVM's !nontemporal hint works best when the alignment
+            // reflects the full vector width. Compute as element_size * element_count.
+            if let BasicValueEnum::VectorValue(v) = &val_basic {
+                let vec_ty = v.get_type();
+                let elem_ty = vec_ty.get_element_type();
+                let elem_align = self.element_alignment(elem_ty);
+                let elem_count = vec_ty.get_size();
+                (elem_align * elem_count).max(1)
+            } else {
+                unreachable!()
+            }
+        } else {
+            self.element_alignment(elem_ty)
+        };
+
+        store_inst.set_alignment(alignment).map_err(|e| {
             CompileError::codegen_error(format!("failed to set store alignment: {e}"))
         })?;
 

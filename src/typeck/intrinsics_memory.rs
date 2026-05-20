@@ -106,6 +106,76 @@ impl TypeChecker {
         }
     }
 
+    pub(super) fn check_stream_store(
+        &self,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 3 {
+            return Err(CompileError::type_error(
+                "stream_store expects 3 arguments (ptr, index, value)",
+                span.clone(),
+            ));
+        }
+        let ptr_type = self.check_expr(&args[0], locals)?;
+        let idx_type = self.check_expr(&args[1], locals)?;
+        let val_type = self.check_expr(&args[2], locals)?;
+
+        if !idx_type.is_integer() {
+            return Err(CompileError::type_error(
+                "stream_store index must be integer",
+                args[1].span().clone(),
+            ));
+        }
+        match (ptr_type, val_type) {
+            (
+                Type::Pointer {
+                    mutable: true,
+                    inner,
+                    ..
+                },
+                Type::Vector { elem, .. },
+            ) => {
+                if !types::types_compatible(&elem, &inner) {
+                    return Err(CompileError::type_error(
+                        format!(
+                            "stream_store type mismatch: pointer element type is {inner}, but vector element type is {elem}"
+                        ),
+                        span.clone(),
+                    ));
+                }
+                Ok(Type::Void)
+            }
+            (
+                Type::Pointer {
+                    mutable: true,
+                    inner,
+                    ..
+                },
+                scalar @ (Type::I16 | Type::U16 | Type::I32 | Type::U32 | Type::I64 | Type::U64),
+            ) => {
+                if !types::types_compatible(&scalar, &inner) {
+                    return Err(CompileError::type_error(
+                        format!(
+                            "stream_store type mismatch: pointer element type is {inner}, but scalar value type is {scalar}"
+                        ),
+                        span.clone(),
+                    ));
+                }
+                Ok(Type::Void)
+            }
+            (Type::Pointer { mutable: false, .. }, _) => Err(CompileError::type_error(
+                "stream_store requires mutable pointer. Declare as *mut to allow writes",
+                args[0].span().clone(),
+            )),
+            (_, _) => Err(CompileError::type_error(
+                "stream_store expects (mut ptr, index, vector or i16/u16/i32/u32/i64/u64 scalar)",
+                span.clone(),
+            )),
+        }
+    }
+
     pub(super) fn check_gather(
         &self,
         args: &[Expr],
@@ -311,5 +381,19 @@ impl TypeChecker {
                 span.clone(),
             )),
         }
+    }
+
+    pub(super) fn check_fence_nt(
+        &self,
+        args: &[Expr],
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if !args.is_empty() {
+            return Err(CompileError::type_error(
+                "fence_nt takes 0 arguments (no operands)",
+                span.clone(),
+            ));
+        }
+        Ok(Type::Void)
     }
 }
