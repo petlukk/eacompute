@@ -62,11 +62,115 @@ store(out, i, result);
 
 ### stream_store
 
-Non-temporal store that bypasses the CPU cache. Use for write-only output that will not be read back soon.
+Non-temporal store that bypasses the CPU cache. Use for write-only output
+the kernel will not read back soon. Pairs with `prefetch_nta` (the read-side
+non-temporal hint) and `fence_nt` (the ordering primitive).
 
 ```
-stream_store(out, i, result);
+stream_store(out, i, v)              // vector form — v is f32xN, i32xN, etc.
+stream_store(out, i, scalar_value)   // scalar form (v1.15.0) — i16/u16/i32/u32/i64/u64
 ```
+
+**Target lowering:**
+
+| Width / form | x86 | aarch64 |
+|---|---|---|
+| Vector 128-bit (f32x4, i32x4, ...) | `movntps` / `movntdq` | regular `str q` (LLVM 18 does not optimize `!nontemporal` for single-register NEON) |
+| Vector 256-bit (AVX2) | `vmovntps` / `vmovntdq` | n/a (256-bit not on NEON) |
+| Vector 512-bit (AVX-512) | `vmovntps` / `vmovntdq` zmm | n/a |
+| Scalar i32 / u32 | `movnti` (SSE2) | `str` / paired `stnp` when alignment permits |
+| Scalar i64 / u64 | `movnti` (SSE2, 64-bit mode) | `str` / paired `stnp` |
+| Scalar i16 / u16 | regular `mov` (no NT scalar at 16-bit width) | `strh` / paired `stnp` |
+
+The i16/u16 case ships for shape symmetry with the wider scalars — the
+non-temporal hint becomes a no-op on x86 at that width.
+
+**Alignment contract:**
+
+Vector `stream_store` requires the destination pointer plus byte offset to
+be aligned to the vector's natural size (16 bytes for 128-bit, 32 bytes for
+256-bit, 64 bytes for 512-bit). Misaligned NT vector stores raise a general
+protection fault on x86. Scalar `stream_store` requires natural alignment to
+the scalar size on x86 (4-byte for i32/u32, 8-byte for i64/u64). Callers
+must provide aligned buffers; Eä does not insert runtime alignment checks.
+
+**Ordering contract:**
+
+NT stores are weakly ordered on x86 (write-combining memory order). Other
+cores or subsequent reads in the same thread may observe them out of
+program order. For cross-thread visibility, the typical pathway is through
+a host-side synchronization primitive after the kernel returns
+(`pthread_join`, `rayon::scope`, `WaitGroup.Wait`) — these provide release
+semantics that flush WC buffers. For intra-kernel ordering (writing then
+reading the same memory in the same kernel call), use `fence_nt()`
+explicitly. Eä does not insert an implicit fence at kernel return.
+
+**When NOT to use:**
+
+Do not use `stream_store` for working buffers the same kernel reads back.
+The non-temporal hint asks the cache to *not* keep the line; if the kernel
+reads the data soon afterward, the read goes to DRAM and is slower than a
+regular `store` followed by a cache hit. Working-buffer examples that
+should use plain `store`:
+
+- Softmax accumulators (e.g. `scores_buf` in attention kernels)
+- FWHT scratch arrays (e.g. `scratch` in JL-projection kernels)
+- Per-iteration partial sums or running statistics
+
+`stream_store` is appropriate when the destination is a final output passed
+to the next kernel call, a memory region the current kernel never re-reads,
+or a buffer that will not be touched again until a downstream consumer
+pulls it from DRAM later.
+
+### fence_nt
+
+Store-store memory barrier providing intra-kernel ordering of preceding
+`stream_store` operations. Zero arguments, returns void.
+
+```
+fence_nt()
+```
+
+**Target lowering:**
+
+| Target | Instruction |
+|---|---|
+| x86 | `sfence` (via `@llvm.x86.sse.sfence`) |
+| aarch64 | `dmb ishst` (via `@llvm.aarch64.dmb` with operand `10`) |
+
+These are the narrowest available barriers for store-only ordering —
+explicit target intrinsics rather than the IR-level `fence release`, which
+would lower to `mfence` on x86 and `dmb ish` on aarch64 (both heavier than
+needed for NT-store ordering).
+
+**Semantics:**
+
+`fence_nt()` orders `stream_store` writes relative to each other and
+relative to subsequent regular stores. It does *not* order stores relative
+to subsequent loads — for a write-then-read-back pattern in the same kernel,
+a full barrier (`mfence` on x86, `dmb sy` on aarch64) is needed instead.
+Eä does not currently expose a full-barrier intrinsic.
+
+**When to use:**
+
+Use `fence_nt()` when the same kernel writes via `stream_store` to multiple
+non-overlapping regions in a defined order and a later kernel (or downstream
+reader) relies on observing those writes in the same order. This is
+uncommon — most callers don't need it, because cross-thread visibility
+comes from the host's sync primitive (`pthread_join`, `rayon::scope`,
+`WaitGroup.Wait`) which already provides release semantics that flush
+write-combining buffers between threads.
+
+**When NOT to use:**
+
+- Between successive `stream_store` calls to different addresses if no
+  store-ordering requirement exists — NT stores to the same address
+  complete in program order regardless of fences.
+- At the end of a kernel as "insurance" — the caller's sync primitive
+  handles cross-thread fencing more efficiently after the kernel returns.
+- For write-then-read-back patterns — `fence_nt()` does not provide store-
+  to-load ordering. Use a regular `store` for the working data, or do not
+  read NT-written data back in the same kernel.
 
 ### load_masked
 

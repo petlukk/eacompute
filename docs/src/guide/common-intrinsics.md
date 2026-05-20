@@ -38,14 +38,15 @@ These are equivalent to plain `load` but make the element type visible in the so
 
 ## stream_store
 
-Non-temporal store that bypasses the CPU cache. Use for write-only output buffers where you will not read the data back soon:
+Non-temporal store — bypasses cache, used for write-only output. Vector
+or scalar value (v1.15.0 added scalar i16/u16/i32/u32/i64/u64). See
+[reference](../reference/intrinsics.md#stream_store) for the full
+alignment contract, ordering contract, and anti-patterns.
 
 ```
-let result: f32x8 = a .* b
-stream_store(out, i, result)
+stream_store(out, i, result)         // vector
+stream_store(out, i, scalar_value)   // scalar (v1.15.0+)
 ```
-
-This avoids polluting the cache with output data, leaving more cache space for inputs. Only beneficial for large output arrays that will not be re-read immediately.
 
 ## fma
 
@@ -172,7 +173,8 @@ The `rem` parameter specifies how many elements (starting from lane 0) are valid
 | `splat(s)` | scalar | vector | Broadcast to all lanes |
 | `load(ptr, i)` | pointer, offset | vector | Load vector from memory |
 | `store(ptr, i, v)` | pointer, offset, vector | void | Write vector to memory |
-| `stream_store(ptr, i, v)` | pointer, offset, vector | void | Non-temporal write |
+| `stream_store(ptr, i, v)` | pointer, offset, vector or scalar | void | Non-temporal write |
+| `fence_nt()` | none | void | Store-store barrier for stream_store ordering |
 | `fma(a, b, c)` | 3 values | same type | `a * b + c` fused |
 | `reduce_add(v)` | vector | scalar | Sum all lanes |
 | `reduce_max(v)` | vector | scalar | Max across lanes |
