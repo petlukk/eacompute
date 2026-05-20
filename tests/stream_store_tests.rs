@@ -241,4 +241,131 @@ mod tests {
             "123456789abcdef",
         );
     }
+
+    // --- x86 objdump assertions: scalar and vector stream_store mnemonics ---
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_stream_store_scalar_i32_emits_movnti() {
+        assert_intrinsic_in_disassembly(
+            r#"
+            export func test(out: *mut i32, v: i32) {
+                stream_store(out, 0, v)
+            }
+        "#,
+            &["movnti"],
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_stream_store_scalar_i64_emits_movnti() {
+        assert_intrinsic_in_disassembly(
+            r#"
+            export func test(out: *mut i64, v: i64) {
+                stream_store(out, 0, v)
+            }
+        "#,
+            &["movnti"],
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_stream_store_f32x4_emits_movntps() {
+        assert_intrinsic_in_disassembly(
+            r#"
+            export func test(data: *f32, out: *mut f32) {
+                let v: f32x4 = load(data, 0)
+                stream_store(out, 0, v)
+            }
+        "#,
+            &["movntps", "movntdq"],
+        );
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_stream_store_f32x8_emits_vmovntps() {
+        assert_intrinsic_in_disassembly(
+            r#"
+            export func test(data: *f32, out: *mut f32) {
+                let v: f32x8 = load(data, 0)
+                stream_store(out, 0, v)
+            }
+        "#,
+            &["vmovntps", "vmovntdq"],
+        );
+    }
+
+    // --- x86 alignment-failure crash test ---
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_stream_store_misaligned_vector_crashes() {
+        // Deliberately misaligned (byte-offset 1 into an aligned array)
+        // pointer passed to stream_store of a 256-bit vector should
+        // raise SIGSEGV on x86 (vmovntps requires 32-byte alignment).
+        //
+        // This test documents the alignment contract by demonstrating
+        // the consequence of violating it. Uses a child-process pattern
+        // so the parent test runner doesn't crash.
+        use std::process::{Command, Stdio};
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let obj_path = dir.path().join("kernel.o");
+        let c_path = dir.path().join("harness.c");
+        let bin_path = dir.path().join("test_bin");
+
+        ea_compiler::compile(
+            r#"
+            export func test(out: *mut f32) {
+                let v: f32x8 = splat(1.0)
+                stream_store(out, 0, v)
+            }
+        "#,
+            &obj_path,
+            ea_compiler::OutputMode::ObjectFile,
+        )
+        .expect("compile");
+
+        std::fs::write(
+            &c_path,
+            r#"
+            #include <stdint.h>
+            extern void test(float*);
+            int main() {
+                // 32-byte alignment + 1-byte offset = guaranteed misalignment for f32x8
+                __attribute__((aligned(32))) static char buf[64];
+                float* misaligned = (float*)(buf + 1);
+                test(misaligned);
+                return 0;
+            }
+            "#,
+        )
+        .expect("write C harness");
+
+        Command::new("cc")
+            .arg(&c_path)
+            .arg(&obj_path)
+            .arg("-o")
+            .arg(&bin_path)
+            .status()
+            .expect("link");
+
+        let status = Command::new(&bin_path)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .expect("run binary");
+
+        // Process should NOT exit cleanly — expect signal-termination.
+        assert!(
+            !status.success(),
+            "misaligned vector stream_store unexpectedly succeeded — \
+             alignment contract violated without consequence. Check that \
+             codegen still attaches !nontemporal metadata and that LLVM \
+             is not silently substituting an aligned movups."
+        );
+    }
 }

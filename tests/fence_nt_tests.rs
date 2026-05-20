@@ -120,4 +120,17 @@ mod tests {
             "fence_nt on aarch64 must call llvm.aarch64.dmb:\n{ir}"
         );
     }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_fence_nt_emits_sfence() {
+        assert_intrinsic_in_disassembly(
+            r#"
+            export func test() {
+                fence_nt()
+            }
+        "#,
+            &["sfence"],
+        );
+    }
 }
