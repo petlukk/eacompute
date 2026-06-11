@@ -10,7 +10,7 @@ jobs:
   test-linux:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install LLVM 18 and system deps
         run: |
@@ -34,7 +34,7 @@ jobs:
             --out exp_poly_f32_result.json || true
 
       - name: Upload bench results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bench-result-ubuntu-24.04
           path: 'exp_poly_f32_result.json'
@@ -43,7 +43,7 @@ jobs:
   test-linux-arm:
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install LLVM 18 and system deps
         run: |
@@ -61,7 +61,7 @@ jobs:
   public-api-check:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install LLVM 18 and system deps
         run: |
@@ -95,7 +95,7 @@ jobs:
       LLVM_VERSION: "18.1.8"
       LLVM_SYS_181_PREFIX: C:\llvm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download and extract LLVM 18
         shell: pwsh

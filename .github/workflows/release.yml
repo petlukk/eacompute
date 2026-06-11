@@ -12,7 +12,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install LLVM 18 and system deps
         run: |
@@ -34,14 +34,14 @@ jobs:
           tar czf ea-linux-x86_64.tar.gz ea-linux-x86_64
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ea-linux-x86_64.tar.gz
 
   build-linux-arm:
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install LLVM 18 and system deps
         run: |
@@ -63,7 +63,7 @@ jobs:
           tar czf ea-linux-aarch64.tar.gz ea-linux-aarch64
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ea-linux-aarch64.tar.gz
 
@@ -73,7 +73,7 @@ jobs:
       LLVM_VERSION: "18.1.8"
       LLVM_SYS_181_PREFIX: C:\llvm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download and extract LLVM 18
         shell: pwsh
@@ -110,6 +110,6 @@ jobs:
           Compress-Archive -Path ea-windows-x86_64 -DestinationPath ea-windows-x86_64.zip
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ea-windows-x86_64.zip
