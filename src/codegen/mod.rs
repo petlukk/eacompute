@@ -262,6 +262,36 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
+    /// Allocate a stack slot in the function's entry block, regardless of where
+    /// the builder is currently positioned.
+    ///
+    /// `alloca` re-executes every time control reaches it, so an alloca emitted
+    /// inside a loop body allocates fresh stack on each iteration and is never
+    /// reclaimed until the function returns — the stack grows without bound.
+    /// mem2reg/SROA only seed promotion from the entry block, so such allocas
+    /// also survive optimization. Hoisting every alloca to the entry block (the
+    /// standard "static alloca" frontend pattern) makes it a single fixed slot
+    /// that promotes reliably at every opt level. Uses a throwaway builder so
+    /// the caller's insertion point is left untouched.
+    pub(crate) fn entry_block_alloca(
+        &self,
+        function: FunctionValue<'ctx>,
+        llvm_ty: BasicTypeEnum<'ctx>,
+        name: &str,
+    ) -> crate::error::Result<PointerValue<'ctx>> {
+        let builder = self.context.create_builder();
+        let entry = function.get_first_basic_block().ok_or_else(|| {
+            CompileError::codegen_error("function has no entry block for alloca".to_string())
+        })?;
+        match entry.get_first_instruction() {
+            Some(first) => builder.position_before(&first),
+            None => builder.position_at_end(entry),
+        }
+        builder
+            .build_alloca(llvm_ty, name)
+            .map_err(|e| CompileError::codegen_error(e.to_string()))
+    }
+
     pub(crate) fn type_alignment(ty: &Type) -> u32 {
         match ty {
             Type::Bool | Type::I8 | Type::U8 => 1,

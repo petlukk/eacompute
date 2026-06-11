@@ -96,10 +96,10 @@ impl<'ctx> CodeGenerator<'ctx> {
                 let declared = Self::resolve_annotation(ty);
                 self.validate_type_for_target(&declared)?;
                 let llvm_ty = self.llvm_type(&declared);
-                let alloca = self
-                    .builder
-                    .build_alloca(llvm_ty, name)
-                    .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+                // Hoist to the entry block so a `let` inside a loop body does
+                // not allocate fresh stack on every iteration. See
+                // CodeGenerator::entry_block_alloca.
+                let alloca = self.entry_block_alloca(function, llvm_ty, name)?;
                 let val = self.compile_expr_typed(value, Some(&declared), function)?;
                 self.builder
                     .build_store(alloca, val)
@@ -287,21 +287,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                 // Alloca in function entry block (not loop block) to avoid
                 // stack growth at O0 where mem2reg does not run.
                 let i32_type = self.context.i32_type();
-                let fn_entry = function.get_first_basic_block().unwrap();
-                let alloca = if let Some(first_instr) = fn_entry.get_first_instruction() {
-                    self.builder.position_before(&first_instr);
-                    let a = self
-                        .builder
-                        .build_alloca(i32_type, var)
-                        .map_err(|e| CompileError::codegen_error(e.to_string()))?;
-                    self.builder.position_at_end(cond_bb);
-                    a
-                } else {
-                    self.builder.position_at_end(cond_bb);
-                    self.builder
-                        .build_alloca(i32_type, var)
-                        .map_err(|e| CompileError::codegen_error(e.to_string()))?
-                };
+                let alloca = self.entry_block_alloca(function, i32_type.into(), var)?;
+                self.builder.position_at_end(cond_bb);
 
                 // Condition block with phi node
                 let phi = self

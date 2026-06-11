@@ -20,10 +20,9 @@ impl<'ctx> CodeGenerator<'ctx> {
         let field_map = self.struct_fields.get(name).cloned().ok_or_else(|| {
             CompileError::codegen_error(format!("unknown struct fields for '{name}'"))
         })?;
-        let alloca = self
-            .builder
-            .build_alloca(struct_type, "struct_tmp")
-            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+        // Entry-block alloca so a struct literal inside a loop body does not
+        // leak stack per iteration. See CodeGenerator::entry_block_alloca.
+        let alloca = self.entry_block_alloca(function, struct_type.into(), "struct_tmp")?;
 
         for (field_name, field_expr) in fields {
             let (idx, field_type) = field_map
