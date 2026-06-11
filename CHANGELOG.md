@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.15.1 — 2026-06-11 — Loop-body alloca stack-overflow fix
+
+### Fixed
+
+- **Loop-body `alloca` stack overflow** — `let` bindings (and struct
+  literals) inside a loop body emitted their `alloca` at the builder's
+  current insertion point, placing it *inside the loop block*. An LLVM
+  alloca in a non-entry block re-executes every iteration as a fresh
+  dynamic stack allocation that is never reclaimed until the function
+  returns, so the stack grew per iteration; `mem2reg`/`SROA` only promote
+  allocas seeded from the entry block, so loop-body allocas also survived
+  optimization. A SIMD kernel with ~50+ vector `let`s per loop iteration
+  (Olorin's `log_level_scan.ea`) overflowed the 8&nbsp;MB main-thread
+  stack on inputs ≥&nbsp;~1&nbsp;MB (~8 bytes of stack per input byte).
+  All `alloca`s are now hoisted to the function entry block via the new
+  `entry_block_alloca` helper (the standard "static alloca" frontend
+  pattern); the `for`-loop induction variable already did this inline and
+  is consolidated onto the helper. Generated `-O3` code for existing
+  kernels is unchanged (verified byte-identical asm across the x86_64 and
+  aarch64 benchmark kernels). (#39)
+
 ## v1.15.0 — 2026-05-20 — Non-temporal store family completion
 
 ### Added
