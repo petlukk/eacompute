@@ -6,6 +6,10 @@
 //!   ctz_u32, ctz_u64                                  both (tzcnt / rbit+clz); ctz(0) = bit width
 //!
 //! The polymorphic `movemask` still compiles but records a deprecation warning.
+//!
+//! Tests that compile for the x86 triple are gated to x86 hosts: the LLVM on
+//! the ubuntu-24.04-arm runner has no x86 backend (the x86 host's LLVM has
+//! AArch64, so ARM-triple tests run everywhere).
 
 #[cfg(feature = "llvm")]
 mod common;
@@ -18,6 +22,7 @@ mod tests {
     use ea_compiler::{CompileOptions, OutputMode};
     use tempfile::TempDir;
 
+    #[allow(dead_code)] // only used by tests gated to x86 hosts
     const X86: (&str, &str) = ("x86_64-unknown-linux-gnu", "x86-64-v3");
     const ARM: (&str, &str) = ("aarch64-unknown-linux-gnu", "generic");
 
@@ -65,16 +70,19 @@ mod tests {
     // --- Native lowering, checked per target from any host ---
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn movemask_u8x16_is_pmovmskb() {
         assert!(asm_for(MOVEMASK_U8X16, X86).contains("pmovmskb"));
     }
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn movemask_u8x32_is_vpmovmskb() {
         assert!(asm_for(MOVEMASK_U8X32, X86).contains("vpmovmskb"));
     }
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn movemask_u64x4_is_vmovmskpd() {
         assert!(asm_for(MOVEMASK_U64X4, X86).contains("vmovmskpd"));
     }
@@ -86,9 +94,16 @@ mod tests {
     }
 
     #[test]
-    fn ctz_is_tzcnt_on_x86_and_rbit_clz_on_arm() {
+    #[cfg(target_arch = "x86_64")]
+    fn ctz_is_tzcnt_on_x86() {
         for src in [CTZ_U32, CTZ_U64] {
             assert!(asm_for(src, X86).contains("tzcnt"));
+        }
+    }
+
+    #[test]
+    fn ctz_is_rbit_clz_on_arm() {
+        for src in [CTZ_U32, CTZ_U64] {
             let arm = asm_for(src, ARM);
             assert!(arm.contains("rbit") && arm.contains("clz"), "{arm}");
         }
@@ -112,6 +127,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn nibble_mask_on_x86_points_to_movemask() {
         let err = compile_for(NIBBLE_U8X16, X86).expect_err("ARM-only");
         let msg = format!("{err}");
@@ -124,6 +140,7 @@ mod tests {
     // --- Type checks ---
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn movemask_u8x16_rejects_a_four_lane_mask() {
         let src = "export func f(p: *u64) -> i32 {\n    let v: u64x4 = load(p, 0)\n    return movemask_u8x16(v .== v)\n}\n";
         let msg = format!("{}", compile_for(src, X86).expect_err("width mismatch"));
@@ -141,6 +158,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn ctz_u32_rejects_u64() {
         let src = "export func f(x: u64) -> i32 {\n    return ctz_u32(x)\n}\n";
         let msg = format!("{}", compile_for(src, X86).expect_err("type mismatch"));
@@ -257,6 +275,7 @@ mod tests {
     // --- Deprecation of the polymorphic spelling ---
 
     #[test]
+    #[cfg(target_arch = "x86_64")]
     fn polymorphic_movemask_still_compiles_and_warns() {
         let src = "export func f(p: *u8) -> i32 {\n    let v: u8x16 = load(p, 0)\n    let k: u8x16 = splat(97)\n    return movemask(v .== k)\n}\n";
         compile_for(src, X86).expect("polymorphic movemask must still compile");
