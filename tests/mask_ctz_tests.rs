@@ -61,6 +61,7 @@ mod tests {
     }
 
     const MOVEMASK_U8X16: &str = "export func f(p: *u8) -> u32 {\n    let v: u8x16 = load(p, 0)\n    let k: u8x16 = splat(97)\n    return movemask_u8x16(v .== k)\n}\n";
+    #[cfg(target_arch = "x86_64")] // only used by an x86-gated test
     const MOVEMASK_U8X32: &str = "export func f(p: *u8) -> u32 {\n    let v: u8x32 = load(p, 0)\n    let k: u8x32 = splat(97)\n    return movemask_u8x32(v .== k)\n}\n";
     const MOVEMASK_U64X4: &str = "export func f(p: *u64, m: u64) -> u32 {\n    let v: u64x4 = load(p, 0)\n    let k: u64x4 = splat(m)\n    return movemask_u64x4((v .& k) .== k)\n}\n";
     const NIBBLE_U8X16: &str = "export func f(p: *u8) -> u64 {\n    let v: u8x16 = load(p, 0)\n    let k: u8x16 = splat(97)\n    return nibble_mask_u8x16(v .== k)\n}\n";
