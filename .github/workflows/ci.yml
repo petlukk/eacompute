@@ -82,11 +82,11 @@ jobs:
 
       - name: Diff public API against checked-in snapshot
         run: |
-          cargo public-api --toolchain "$PUBLIC_API_NIGHTLY" --simplified > /tmp/public-api-current.txt
+          cargo +"$PUBLIC_API_NIGHTLY" public-api --simplified > /tmp/public-api-current.txt
           if ! diff -u docs/public-api.txt /tmp/public-api-current.txt; then
             echo
             echo "::error::Public API has changed. If this is intentional:"
-            echo "  cargo public-api --toolchain $PUBLIC_API_NIGHTLY --simplified > docs/public-api.txt"
+            echo "  cargo +$PUBLIC_API_NIGHTLY public-api --simplified > docs/public-api.txt"
             echo "  git commit docs/public-api.txt"
             echo "  Add a docs/migrations/vX.Y.Z.md entry for any breaking change."
             exit 1

@@ -50,7 +50,7 @@ Same drift criteria as step 1. Update baselines only on persistent >5% drift.
   `docs/migrations/vX.Y.Z.md` file exists per
   `docs/migrations/README.md`.
 - If public API drifted intentionally: regenerate the snapshot via
-  `cargo public-api --toolchain nightly-2026-06-11 --simplified > docs/public-api.txt`
+  `cargo +nightly-2026-06-11 public-api --simplified > docs/public-api.txt`
   (same nightly as `PUBLIC_API_NIGHTLY` in `.github/workflows/ci.yml`).
   CI's `public-api-check` job will fail otherwise.
 
