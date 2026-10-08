@@ -31,6 +31,9 @@ loud warnings before the hard break.
   documented here for historical migration support.)
 - [`v1.12.0.md`](v1.12.0.md) — upcoming: monomorphic-rename batch for
   `sat_add` / `sat_sub` / `abs_diff`. Deprecation cycle begins v1.12.0.
+- [`v1.16.0.md`](v1.16.0.md) — monomorphic rename of `movemask` →
+  `movemask_u8x16` / `movemask_u8x32` (x86) with ARM counterpart
+  `nibble_mask_u8x16`. Deprecation cycle begins v1.16.0.
 
 ## Authoring a new migration file
 

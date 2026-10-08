@@ -276,7 +276,8 @@ impl<'ctx> CodeGenerator<'ctx> {
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         if self.is_arm {
             return Err(CompileError::codegen_error(
-                "movemask is x86-only (SSE2/AVX2); no NEON equivalent",
+                "movemask_u8x16 / movemask_u8x32 are x86-only (SSE2/AVX2 pmovmskb); in a \
+                 *_arm.ea kernel use nibble_mask_u8x16 (4 bits per lane)",
             ));
         }
 

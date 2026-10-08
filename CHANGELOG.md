@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.16.0 — UNRELEASED — Native bitmask and bit-scan intrinsics
+
+### Added
+
+- **`movemask_u8x16` / `movemask_u8x32` / `movemask_u64x4`** (x86-only) —
+  typed bitmask extraction: bit `i` set when lane `i` of a comparison
+  result is true. Lower to `pmovmskb` / `vpmovmskb` / `vmovmskpd`. Return
+  `u32`, so masks compose with `ctz_u32` and `m & (m - 1)` without casts.
+  On ARM each is a compile error naming the ARM idiom.
+- **`nibble_mask_u8x16`** (ARM-only) — NEON's native counterpart:
+  `cmeq` → `shrn #4` → `fmov`, returning a `u64` with 4 bits per lane
+  (first match = `ctz_u64(m) / 4`). On x86 a compile error naming
+  `movemask_u8x16`. Eä does not emulate one architecture's idiom on the
+  other — kernels are per-arch (`*_arm.ea`) and each gets its native form.
+- **`ctz_u32` / `ctz_u64`** (cross-platform) — count trailing zeros,
+  defined at zero (32 / 64). `tzcnt` on x86-64-v3, `rbit` + `clz` on
+  AArch64.
+
+### Deprecated
+
+- **`movemask`** (polymorphic) → `movemask_u8x16` / `movemask_u8x32`; on
+  ARM `nibble_mask_u8x16`. Still compiles with a warning; removal in
+  v2.0.0. See `docs/migrations/v1.16.0.md`. Generated code for existing
+  callers is unchanged (byte-identical asm across 25 consumer kernels).
+
 ## v1.15.2 — 2026-10-08 — Integer type hints for pointer-index and u64 operands
 
 ### Fixed

@@ -75,6 +75,14 @@ pub const DEPRECATED_INTRINSICS: DeprecationTable = &[
                      abs_diff_u32x4 (ARM-only)",
         },
     ),
+    (
+        "movemask",
+        DeprecationInfo {
+            since: "1.16.0",
+            advice: "use the typed spelling: movemask_u8x16 / movemask_u8x32 (x86-only); \
+                     on ARM use nibble_mask_u8x16",
+        },
+    ),
 ];
 
 pub fn lookup(table: DeprecationTable, name: &str) -> Option<&'static DeprecationInfo> {

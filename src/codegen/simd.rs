@@ -171,6 +171,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "f32x8_from_scalars"
                 | "permute_runtime"
         ) || typeck_types::parse_typed_load(name).is_some()
+            || Self::is_bitmask_intrinsic(name)
     }
 
     /// Returns true if the expression is a variable whose type is an f16 vector.
@@ -395,6 +396,9 @@ impl<'ctx> CodeGenerator<'ctx> {
             _ if typeck_types::parse_typed_load(name).is_some() => {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)
+            }
+            _ if Self::is_bitmask_intrinsic(name) => {
+                self.compile_bitmask_intrinsic(name, args, function)
             }
             _ => Err(CompileError::codegen_error(format!(
                 "unknown SIMD intrinsic '{name}'"
