@@ -11,6 +11,8 @@ mod simd;
 #[cfg(feature = "llvm")]
 mod simd_arithmetic;
 #[cfg(feature = "llvm")]
+mod simd_bitmask;
+#[cfg(feature = "llvm")]
 mod simd_byteshift;
 #[cfg(feature = "llvm")]
 mod simd_conv;

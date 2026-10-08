@@ -418,12 +418,56 @@ Per-lane conditional select. Where the mask is true, take from `a`; where false,
 let result: f32x8 = select(mask, a, b);
 ```
 
-### movemask
+### movemask_u8x16 / movemask_u8x32 / movemask_u64x4
 
-Extract a comparison result bitmask from a boolean vector to a scalar `i32`. Each bit corresponds to the sign bit of one lane. **x86 only** -- not available on ARM.
+Extract a comparison result as a scalar bitmask: bit `i` is set when lane `i`
+is true. **x86-only** — on ARM these are a compile error pointing at
+`nibble_mask_u8x16` (bytes) or lane extraction on `u64x2` (`c[0]`, `c[1]`).
+
+| Intrinsic | Argument | Result | x86 |
+|---|---|---|---|
+| `movemask_u8x16(c)` | 16-lane comparison result, or `u8x16`/`i8x16` (MSB per byte) | `u32`, 16 bits | `pmovmskb` |
+| `movemask_u8x32(c)` | 32-lane comparison result, or `u8x32`/`i8x32` (MSB per byte) | `u32`, 32 bits | `vpmovmskb` (AVX2) |
+| `movemask_u64x4(c)` | 4-lane comparison result | `u32`, 4 bits | `vmovmskpd` (AVX2) |
 
 ```
-let bits: i32 = movemask(cmp_result);
+let hits: u32 = movemask_u8x32(bytes .== splat(60))   // '<'
+```
+
+The polymorphic `movemask(v)` (returns `i32`) is **deprecated since 1.16.0**;
+same lowering as `movemask_u8x16` / `movemask_u8x32`, which return `u32` so
+the mask composes directly with `ctz_u32`. See `docs/migrations/v1.16.0.md`.
+
+### nibble_mask_u8x16
+
+ARM's native counterpart of `movemask_u8x16`: `cmeq` result → `shrn #4` →
+`fmov`. Returns a `u64` with **4 bits per lane** — lane `i` occupies bits
+`4i..4i+3`, so the first matching lane is `ctz_u64(m) / 4`. **ARM-only** —
+on x86 it is a compile error pointing at `movemask_u8x16`.
+
+| Signature | `(16-lane comparison result) -> u64` |
+|-----------|---------------------------------------|
+
+```
+let m: u64 = nibble_mask_u8x16(bytes .== splat(60))
+if m != 0 { first = ctz_u64(m) / 4 }
+```
+
+## Bit Scan
+
+### ctz_u32 / ctz_u64
+
+Count trailing zero bits. Returns `i32`. Defined at zero: `ctz_u32(0) == 32`,
+`ctz_u64(0) == 64`. Cross-platform: x86 `tzcnt` (BMI1, part of x86-64-v3),
+ARM `rbit` + `clz`. Typical use: iterate the set bits of a mask.
+
+```
+let mut m: u32 = movemask_u8x32(bytes .== splat(38))  // '&'
+while m != 0 {
+    let lane: i32 = ctz_u32(m)
+    ...
+    m = m & (m - 1)
+}
 ```
 
 ## Conversion

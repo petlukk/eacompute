@@ -79,10 +79,23 @@ fn production_table_has_v1_12_0_rename_batch() {
             "expected {expected} in DEPRECATED_INTRINSICS, got {names:?}"
         );
     }
-    for (_, info) in ea_compiler::typeck::DEPRECATED_INTRINSICS {
-        assert_eq!(info.since, "1.12.0");
+    for (name, info) in ea_compiler::typeck::DEPRECATED_INTRINSICS {
+        if ["sat_add", "sat_sub", "abs_diff"].contains(name) {
+            assert_eq!(info.since, "1.12.0");
+        }
         assert!(info.advice.contains("typed spelling"));
     }
+}
+
+#[test]
+fn production_table_has_v1_16_0_movemask_deprecation() {
+    let info = ea_compiler::typeck::DEPRECATED_INTRINSICS
+        .iter()
+        .find(|(n, _)| *n == "movemask")
+        .map(|(_, i)| i)
+        .expect("movemask deprecated in v1.16.0");
+    assert_eq!(info.since, "1.16.0");
+    assert!(info.advice.contains("movemask_u8x16") && info.advice.contains("nibble_mask_u8x16"));
 }
 
 #[test]

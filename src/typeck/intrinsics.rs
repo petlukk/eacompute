@@ -226,7 +226,7 @@ impl TypeChecker {
                 let vec_type = types::parse_typed_load(name).unwrap();
                 Some(self.check_load(args, locals, Some(&vec_type), span))
             }
-            _ => None,
+            _ => self.check_bitmask_intrinsic(name, args, locals, span),
         }
     }
 
