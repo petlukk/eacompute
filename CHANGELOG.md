@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.15.2 — 2026-10-08 — Integer type hints for pointer-index and u64 operands
+
+### Fixed
+
+- **Integer literals and signedness lost on `p[i]` and `u64` operands** —
+  codegen's `infer_expr_type` had no arm for `Expr::Index`, and its scalar
+  filter omitted `Type::U64`. A binary expression whose typed operand was a
+  pointer/vector index or a `u64` value therefore got no type hint: integer
+  literals defaulted to `i32`, and the signedness flag defaulted to signed.
+  `p[0] == 1` with `p: *u8/*i8/*u16/*i16/*i64/*u64` (and `x == 1` with
+  `x: u64`) emitted e.g. `icmp eq i8 %elem, i32 1` and failed LLVM
+  verification; worse, `p[0] > q[0]` on `*u8` and `a > b` on `u64`
+  compiled silently to *signed* predicates (`200 > 100` was false; values
+  ≥&nbsp;2<sup>63</sup> compared wrong). `Index` now resolves the pointee /
+  vector element type the same way `compile_expr` does, and `U64` joins the
+  filter. Generated `-O3` code for the benchmark kernels is unchanged
+  (verified byte-identical asm on x86_64 and aarch64). Kernels that worked
+  around the bug (e.g. `!(a < b) && !(b < a)` for `u8` equality) can use
+  plain `==` again. (#41)
+
+### CI
+
+- `public-api-check` is pinned to `nightly-2026-06-11` (`PUBLIC_API_NIGHTLY`
+  in `ci.yml`, selected via `cargo +<toolchain> public-api`). The unpinned
+  nightly had changed rustdoc-JSON rendering (`-> Self`,
+  `core::io::Error`) and failed the snapshot diff with no API change.
+  `RELEASING.md` uses the same pin. (#42)
+- GitHub Actions bumped from Node-20 to Node-24 majors. (#40)
+
 ## v1.15.1 — 2026-06-11 — Loop-body alloca stack-overflow fix
 
 ### Fixed
