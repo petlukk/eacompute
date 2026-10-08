@@ -344,6 +344,16 @@ impl<'ctx> CodeGenerator<'ctx> {
                 .infer_expr_type(lhs)
                 .or_else(|| self.infer_expr_type(rhs)),
             Expr::Negate(inner, _) => self.infer_expr_type(inner),
+            // Element type of `p[i]` / `v[i]`, resolved like compile_expr does
+            // (object must be a variable).
+            Expr::Index { object, .. } => match object.as_ref() {
+                Expr::Variable(name, _) => match self.variables.get(name).map(|(_, t)| t) {
+                    Some(Type::Pointer { inner, .. }) => Some((**inner).clone()),
+                    Some(Type::Vector { elem, .. }) => Some((**elem).clone()),
+                    _ => None,
+                },
+                _ => None,
+            },
             _ => None,
         };
         // Only return scalar numeric or vector types — struct types are not useful hints
@@ -359,6 +369,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                     | Type::U8
                     | Type::U16
                     | Type::U32
+                    | Type::U64
                     | Type::Vector { .. }
             )
         })
