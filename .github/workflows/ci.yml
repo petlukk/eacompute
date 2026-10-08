@@ -60,6 +60,10 @@ jobs:
 
   public-api-check:
     runs-on: ubuntu-24.04
+    env:
+      # Pinned: rustdoc JSON rendering changes between nightlies (e.g. `-> Self`,
+      # `core::io::Error`), which breaks the snapshot diff without any API change.
+      PUBLIC_API_NIGHTLY: nightly-2026-06-11
     steps:
       - uses: actions/checkout@v6
 
@@ -71,18 +75,18 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Install nightly toolchain (needed for rustdoc JSON)
-        run: rustup toolchain install nightly --profile minimal --no-self-update
+        run: rustup toolchain install "$PUBLIC_API_NIGHTLY" --profile minimal --no-self-update
 
       - name: Install cargo-public-api
         run: cargo install --locked --version 0.51.0 cargo-public-api
 
       - name: Diff public API against checked-in snapshot
         run: |
-          cargo public-api --simplified > /tmp/public-api-current.txt
+          cargo +"$PUBLIC_API_NIGHTLY" public-api --simplified > /tmp/public-api-current.txt
           if ! diff -u docs/public-api.txt /tmp/public-api-current.txt; then
             echo
             echo "::error::Public API has changed. If this is intentional:"
-            echo "  cargo public-api --simplified > docs/public-api.txt"
+            echo "  cargo +$PUBLIC_API_NIGHTLY public-api --simplified > docs/public-api.txt"
             echo "  git commit docs/public-api.txt"
             echo "  Add a docs/migrations/vX.Y.Z.md entry for any breaking change."
             exit 1
