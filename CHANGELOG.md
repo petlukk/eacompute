@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.16.0 — UNRELEASED — Native bitmask and bit-scan intrinsics
+## v1.16.0 — 2026-10-08 — Native bitmask and bit-scan intrinsics
 
 ### Added
 
