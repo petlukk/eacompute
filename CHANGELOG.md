@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.16.1 — 2026-10-09 — Unsigned conversion sources
+
+### Fixed
+
+- **Conversions of unsigned expressions zero-extend** (#44) — `to_i16` /
+  `to_i32` / `to_i64` / `to_f32` / `to_f64` chose sign extension (and
+  `sitofp`) for every source that was not a plain variable, constant or
+  vector index, so `to_i64(a | b)`, `to_i64(movemask_u8x32(v))` or a call
+  returning `u32` with the top bit set was silently sign-extended. Codegen's
+  type inference now knows call result types (scalar intrinsics and user
+  functions). Found by Linta's lexer kernel, whose 64-bit masks combine two
+  `movemask_u8x32` halves.
+
 ## v1.16.0 — 2026-10-08 — Native bitmask and bit-scan intrinsics
 
 ### Added
