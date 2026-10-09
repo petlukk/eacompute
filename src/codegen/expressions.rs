@@ -344,6 +344,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 .infer_expr_type(lhs)
                 .or_else(|| self.infer_expr_type(rhs)),
             Expr::Negate(inner, _) => self.infer_expr_type(inner),
+            Expr::Call { name, args, .. } => self.infer_call_type(name, args),
             // Element type of `p[i]` / `v[i]`, resolved like compile_expr does
             // (object must be a variable).
             Expr::Index { object, .. } => match object.as_ref() {
@@ -375,6 +376,26 @@ impl<'ctx> CodeGenerator<'ctx> {
         })
     }
 
+    /// Result type of a call: the scalar intrinsics whose result type is
+    /// fixed, or a user function's declared return type.
+    fn infer_call_type(&self, name: &str, args: &[Expr]) -> Option<Type> {
+        match name {
+            "movemask_u8x16" | "movemask_u8x32" | "movemask_u64x4" => Some(Type::U32),
+            "nibble_mask_u8x16" => Some(Type::U64),
+            "ctz_u32" | "ctz_u64" => Some(Type::I32),
+            "to_i16" => Some(Type::I16),
+            "to_i32" => Some(Type::I32),
+            "to_i64" => Some(Type::I64),
+            "to_f32" => Some(Type::F32),
+            "to_f64" => Some(Type::F64),
+            "reduce_add" | "reduce_max" | "reduce_min" => match self.infer_expr_type(args.first()?)? {
+                Type::Vector { elem, .. } => Some(*elem),
+                _ => None,
+            },
+            _ => self.func_signatures.get(name).and_then(|(_, ret)| ret.clone()),
+        }
+    }
+
     fn infer_binary_hint(&self, lhs: &Expr, rhs: &Expr, outer_hint: Option<&Type>) -> Option<Type> {
         if let Some(ty) = self.infer_expr_type(lhs) {
             return Some(ty);
@@ -385,14 +406,13 @@ impl<'ctx> CodeGenerator<'ctx> {
         outer_hint.cloned()
     }
 
+    /// Whether a conversion source is an unsigned integer: decides zero- vs
+    /// sign-extension and uitofp vs sitofp. Uses the inferred type of any
+    /// expression, not only plain variables, so `to_i64(a | b)` and
+    /// `to_i64(movemask_u8x32(v))` zero-extend.
     pub(super) fn arg_is_unsigned(&self, expr: &Expr) -> bool {
-        if let Expr::Variable(name, _) = expr {
-            if let Some((_, ty)) = self.variables.get(name) {
-                return ty.is_unsigned_integer();
-            }
-            if let Some((ty, _)) = self.constants.get(name) {
-                return ty.is_unsigned_integer();
-            }
+        if let Some(ty) = self.infer_expr_type(expr) {
+            return ty.is_unsigned_integer();
         }
         if let Expr::Index { object, .. } = expr
             && let Expr::Variable(name, _) = object.as_ref()
