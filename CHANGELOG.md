@@ -13,6 +13,12 @@
   it is a compile error naming it. `--pclmul` is refused for AArch64 targets
   and `--aes` for x86-64.
 
+### Fixed
+
+- **Intrinsics reference** — `maddubs_i32` was documented but never
+  existed; the table now lists `madd_i16` (`pmaddwd`), which with
+  `maddubs_i16` gives the same 32-bit sums, and the 256-bit forms.
+
 ## v1.16.1 — 2026-10-09 — Unsigned conversion sources
 
 ### Fixed

@@ -572,11 +572,13 @@ Multiply unsigned bytes by signed bytes and add adjacent pairs. **x86 only.**
 
 | Intrinsic | Signature | Description |
 |-----------|-----------|-------------|
-| `maddubs_i16(a, b)` | `(u8x16, i8x16) -> i16x8` | Multiply and add adjacent pairs to 16-bit |
-| `maddubs_i32(a, b)` | `(u8x16, i8x16) -> i32x4` | Multiply and add adjacent quads to 32-bit |
+| `maddubs_i16(a, b)` | `(u8x16, i8x16) -> i16x8`, `(u8x32, i8x32) -> i16x16` | Multiply and add adjacent pairs to 16-bit (`pmaddubsw`) |
+| `madd_i16(a, b)` | `(i16x8, i16x8) -> i32x4`, `(i16x16, i16x16) -> i32x8` | Multiply i16 pairs and add adjacent products to 32-bit (`pmaddwd`) |
 
 ```
 let products: i16x8 = maddubs_i16(unsigned_bytes, signed_weights);
+let ones: i16x8 = splat(1)
+let quads: i32x4 = madd_i16(products, ones)   // sums of four byte products
 ```
 
 ### vdot_i32
