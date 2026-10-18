@@ -5,6 +5,7 @@ mod expr_check;
 mod intrinsics;
 mod intrinsics_bitmask;
 mod intrinsics_byteshift;
+mod intrinsics_clmul;
 mod intrinsics_conv;
 mod intrinsics_dotprod;
 mod intrinsics_f16;

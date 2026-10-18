@@ -453,6 +453,29 @@ let m: u64 = nibble_mask_u8x16(bytes .== splat(60))
 if m != 0 { first = ctz_u64(m) / 4 }
 ```
 
+## Carry-Less Multiply
+
+### clmul_lo_u64x2 / clmul_hi_u64x2
+
+Multiply one 64-bit lane of each operand as polynomials over GF(2) (XOR
+instead of add, no carries) into a 128-bit product, low half in lane 0:
+`clmul_lo_u64x2(a, b)` is `a[0] ⊗ b[0]`, `clmul_hi_u64x2(a, b)` is
+`a[1] ⊗ b[1]`. The two forms are what CRC folding needs (constants packed
+so that `x.lo ⊗ k.lo ^ x.hi ⊗ k.hi` folds 128 bits).
+
+| Intrinsic | Arguments | Result | x86 (`--pclmul`) | ARM (`--aes`) |
+|---|---|---|---|---|
+| `clmul_lo_u64x2(a, b)` | `u64x2, u64x2` | `u64x2` | `pclmulqdq $0x00` | `pmull` |
+| `clmul_hi_u64x2(a, b)` | `u64x2, u64x2` | `u64x2` | `pclmulqdq $0x11` | `pmull2` |
+
+PCLMULQDQ is not part of x86-64-v3 and PMULL needs the crypto extension, so
+each is a compile error without its flag; check the CPU at run time before
+calling such a kernel.
+
+```
+let folded: u64x2 = clmul_lo_u64x2(x, k) .^ clmul_hi_u64x2(x, k) .^ next
+```
+
 ## Bit Scan
 
 ### ctz_u32 / ctz_u64

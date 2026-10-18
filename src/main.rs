@@ -126,6 +126,12 @@ fn main() {
             "--fp16" => {
                 append_feature(&mut extra_features, "+fullfp16");
             }
+            "--pclmul" => {
+                append_feature(&mut extra_features, "+pclmul");
+            }
+            "--aes" => {
+                append_feature(&mut extra_features, "+aes");
+            }
             other => {
                 eprintln!("error: unknown option '{other}'");
                 process::exit(1);
@@ -183,6 +189,16 @@ fn main() {
 
         if !opts.is_arm() && opts.extra_features.contains("i8mm") {
             eprintln!("error: --i8mm is only valid for AArch64 targets");
+            process::exit(1);
+        }
+
+        if opts.is_arm() && opts.extra_features.contains("pclmul") {
+            eprintln!("error: --pclmul is only valid for x86-64 targets (on AArch64 use --aes)");
+            process::exit(1);
+        }
+
+        if !opts.is_arm() && opts.extra_features.contains("+aes") {
+            eprintln!("error: --aes is only valid for AArch64 targets (on x86-64 use --pclmul)");
             process::exit(1);
         }
 
