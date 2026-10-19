@@ -111,6 +111,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let obj = dir.path().join("kernel.o");
         let mut o = opts(host, true);
+        o.target_triple = None; // the host triple: its C ABI, e.g. Win64 on Windows
         o.target_cpu = None; // the host CPU
         ea_compiler::compile_with_options(KERNEL, &obj, OutputMode::ObjectFile, &o)
             .expect("compile");
