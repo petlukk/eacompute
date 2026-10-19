@@ -155,4 +155,35 @@ int main(void) {
         let out = Command::new(&bin).output().unwrap();
         assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "0");
     }
+
+    fn cli_error(flags: &[&str]) -> String {
+        let dir = TempDir::new().unwrap();
+        let src = dir.path().join("k.ea");
+        std::fs::write(&src, "export func f() {}\n").unwrap();
+        let out = Command::new(env!("CARGO_BIN_EXE_ea"))
+            .arg(&src)
+            .args(flags)
+            .output()
+            .unwrap();
+        assert!(!out.status.success());
+        String::from_utf8_lossy(&out.stderr).into_owned()
+    }
+
+    #[test]
+    fn pclmul_is_refused_for_aarch64() {
+        let e = cli_error(&["--pclmul", "--target-triple=aarch64-unknown-linux-gnu"]);
+        assert!(
+            e.contains("--pclmul is only valid for x86-64") && e.contains("--aes"),
+            "{e}"
+        );
+    }
+
+    #[test]
+    fn aes_is_refused_for_x86_64() {
+        let e = cli_error(&["--aes", "--target-triple=x86_64-unknown-linux-gnu"]);
+        assert!(
+            e.contains("--aes is only valid for AArch64") && e.contains("--pclmul"),
+            "{e}"
+        );
+    }
 }
