@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.17.0 — UNRELEASED — Carry-less multiply
+## v1.17.0 — 2026-10-19 — Carry-less multiply
 
 ### Added
 
