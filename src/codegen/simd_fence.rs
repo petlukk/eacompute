@@ -31,7 +31,9 @@ impl<'ctx> CodeGenerator<'ctx> {
         _function: FunctionValue<'ctx>,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         if !args.is_empty() {
-            return Err(CompileError::codegen_error("fence_nt takes 0 arguments"));
+            return Err(CompileError::codegen_error(
+                "fence_nt takes 0 arguments",
+            ));
         }
 
         if self.is_arm {

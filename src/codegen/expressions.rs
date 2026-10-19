@@ -388,16 +388,11 @@ impl<'ctx> CodeGenerator<'ctx> {
             "to_i64" => Some(Type::I64),
             "to_f32" => Some(Type::F32),
             "to_f64" => Some(Type::F64),
-            "reduce_add" | "reduce_max" | "reduce_min" => {
-                match self.infer_expr_type(args.first()?)? {
-                    Type::Vector { elem, .. } => Some(*elem),
-                    _ => None,
-                }
-            }
-            _ => self
-                .func_signatures
-                .get(name)
-                .and_then(|(_, ret)| ret.clone()),
+            "reduce_add" | "reduce_max" | "reduce_min" => match self.infer_expr_type(args.first()?)? {
+                Type::Vector { elem, .. } => Some(*elem),
+                _ => None,
+            },
+            _ => self.func_signatures.get(name).and_then(|(_, ret)| ret.clone()),
         }
     }
 

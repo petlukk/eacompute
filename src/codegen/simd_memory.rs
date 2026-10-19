@@ -134,21 +134,20 @@ impl<'ctx> CodeGenerator<'ctx> {
 
         // Determine element type for GEP and the value to store.
         // Vector path keeps the existing behavior; scalar path is the v1.15 addition.
-        let (elem_ty, store_val, is_vector): (BasicTypeEnum<'ctx>, BasicValueEnum<'ctx>, bool) =
-            match val_basic {
-                BasicValueEnum::VectorValue(vec_val) => {
-                    let vec_ty = vec_val.get_type();
-                    (vec_ty.get_element_type(), vec_val.into(), true)
-                }
-                BasicValueEnum::IntValue(int_val) => {
-                    (int_val.get_type().into(), int_val.into(), false)
-                }
-                _ => {
-                    return Err(CompileError::codegen_error(
-                        "stream_store value must be a vector or i16/u16/i32/u32/i64/u64 scalar",
-                    ));
-                }
-            };
+        let (elem_ty, store_val, is_vector): (BasicTypeEnum<'ctx>, BasicValueEnum<'ctx>, bool) = match val_basic {
+            BasicValueEnum::VectorValue(vec_val) => {
+                let vec_ty = vec_val.get_type();
+                (vec_ty.get_element_type(), vec_val.into(), true)
+            }
+            BasicValueEnum::IntValue(int_val) => {
+                (int_val.get_type().into(), int_val.into(), false)
+            }
+            _ => {
+                return Err(CompileError::codegen_error(
+                    "stream_store value must be a vector or i16/u16/i32/u32/i64/u64 scalar",
+                ));
+            }
+        };
 
         let elem_ptr = unsafe {
             self.builder

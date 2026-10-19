@@ -256,6 +256,8 @@ pub fn python_lib_path_expr(lib_name: &str) -> String {
 /// prefix — e.g. `lib/libfoo.so` -> `foo` (issue #1).
 pub fn rust_link_stem(lib_name: &str) -> String {
     let basename = lib_name.rsplit('/').next().unwrap_or(lib_name);
-    let trimmed = basename.trim_end_matches(".so").trim_end_matches(".dll");
+    let trimmed = basename
+        .trim_end_matches(".so")
+        .trim_end_matches(".dll");
     trimmed.strip_prefix("lib").unwrap_or(trimmed).to_string()
 }

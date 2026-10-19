@@ -65,7 +65,14 @@ mod tests {
     /// because log(x) → 0 as x → 1, making relative error blow up near 1.
     fn accuracy_test_impl(inputs: &[f32], vector_type: &str) {
         // padding = 1.0 because log(1) = 0 — safe to pad input arrays with.
-        assert_transcendental_accuracy(inputs, vector_type, "log_approx_f32", "logf", 3.0e-6, 1.0);
+        assert_transcendental_accuracy(
+            inputs,
+            vector_type,
+            "log_approx_f32",
+            "logf",
+            3.0e-6,
+            1.0,
+        );
     }
 
     #[test]
