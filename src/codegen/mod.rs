@@ -14,6 +14,7 @@ mod simd_arithmetic;
 mod simd_bitmask;
 #[cfg(feature = "llvm")]
 mod simd_byteshift;
+mod simd_clmul;
 #[cfg(feature = "llvm")]
 mod simd_conv;
 #[cfg(feature = "llvm")]
@@ -96,6 +97,8 @@ pub struct CodeGenerator<'ctx> {
     pub(crate) dotprod: bool,
     pub(crate) i8mm: bool,
     pub(crate) fp16: bool,
+    pub(crate) pclmul: bool,
+    pub(crate) aes: bool,
     pub(crate) is_arm: bool,
     pub(crate) constants: HashMap<String, (Type, Literal)>,
 }
@@ -136,6 +139,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             dotprod: opts.extra_features.contains("dotprod"),
             i8mm: opts.extra_features.contains("i8mm"),
             fp16: opts.extra_features.contains("fullfp16"),
+            pclmul: opts.extra_features.contains("pclmul"),
+            aes: opts.extra_features.contains("+aes"),
             is_arm: opts.is_arm(),
             constants: HashMap::new(),
         }

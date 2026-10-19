@@ -373,6 +373,8 @@ impl TypeChecker {
                         "nibble_mask_u8x16",
                         "ctz_u32",
                         "ctz_u64",
+                        "clmul_lo_u64x2",
+                        "clmul_hi_u64x2",
                         "min",
                         "max",
                         "maddubs_i16",

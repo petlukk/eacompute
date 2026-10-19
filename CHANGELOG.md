@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.17.0 — UNRELEASED — Carry-less multiply
+
+### Added
+
+- **`clmul_lo_u64x2` / `clmul_hi_u64x2`** — carry-less (GF(2) polynomial)
+  multiply of lane 0 by lane 0, or lane 1 by lane 1, of two `u64x2`, into
+  the 128-bit product as `u64x2` (low half in lane 0). The building block of
+  CRC folding and GHASH. Native on both architectures behind a flag: x86
+  `pclmulqdq` with `--pclmul` (PCLMULQDQ is not part of x86-64-v3), ARM
+  `pmull` / `pmull2` with `--aes` (the crypto extension). Without the flag
+  it is a compile error naming it. `--pclmul` is refused for AArch64 targets
+  and `--aes` for x86-64.
+
+### Fixed
+
+- **Intrinsics reference** — `maddubs_i32` was documented but never
+  existed; the table now lists `madd_i16` (`pmaddwd`), which with
+  `maddubs_i16` gives the same 32-bit sums, and the 256-bit forms.
+
 ## v1.16.1 — 2026-10-09 — Unsigned conversion sources
 
 ### Fixed

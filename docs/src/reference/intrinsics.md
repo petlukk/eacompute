@@ -453,6 +453,29 @@ let m: u64 = nibble_mask_u8x16(bytes .== splat(60))
 if m != 0 { first = ctz_u64(m) / 4 }
 ```
 
+## Carry-Less Multiply
+
+### clmul_lo_u64x2 / clmul_hi_u64x2
+
+Multiply one 64-bit lane of each operand as polynomials over GF(2) (XOR
+instead of add, no carries) into a 128-bit product, low half in lane 0:
+`clmul_lo_u64x2(a, b)` is `a[0] ⊗ b[0]`, `clmul_hi_u64x2(a, b)` is
+`a[1] ⊗ b[1]`. The two forms are what CRC folding needs (constants packed
+so that `x.lo ⊗ k.lo ^ x.hi ⊗ k.hi` folds 128 bits).
+
+| Intrinsic | Arguments | Result | x86 (`--pclmul`) | ARM (`--aes`) |
+|---|---|---|---|---|
+| `clmul_lo_u64x2(a, b)` | `u64x2, u64x2` | `u64x2` | `pclmulqdq $0x00` | `pmull` |
+| `clmul_hi_u64x2(a, b)` | `u64x2, u64x2` | `u64x2` | `pclmulqdq $0x11` | `pmull2` |
+
+PCLMULQDQ is not part of x86-64-v3 and PMULL needs the crypto extension, so
+each is a compile error without its flag; check the CPU at run time before
+calling such a kernel.
+
+```
+let folded: u64x2 = clmul_lo_u64x2(x, k) .^ clmul_hi_u64x2(x, k) .^ next
+```
+
 ## Bit Scan
 
 ### ctz_u32 / ctz_u64
@@ -549,11 +572,13 @@ Multiply unsigned bytes by signed bytes and add adjacent pairs. **x86 only.**
 
 | Intrinsic | Signature | Description |
 |-----------|-----------|-------------|
-| `maddubs_i16(a, b)` | `(u8x16, i8x16) -> i16x8` | Multiply and add adjacent pairs to 16-bit |
-| `maddubs_i32(a, b)` | `(u8x16, i8x16) -> i32x4` | Multiply and add adjacent quads to 32-bit |
+| `maddubs_i16(a, b)` | `(u8x16, i8x16) -> i16x8`, `(u8x32, i8x32) -> i16x16` | Multiply and add adjacent pairs to 16-bit (`pmaddubsw`) |
+| `madd_i16(a, b)` | `(i16x8, i16x8) -> i32x4`, `(i16x16, i16x16) -> i32x8` | Multiply i16 pairs and add adjacent products to 32-bit (`pmaddwd`) |
 
 ```
 let products: i16x8 = maddubs_i16(unsigned_bytes, signed_weights);
+let ones: i16x8 = splat(1)
+let quads: i32x4 = madd_i16(products, ones)   // sums of four byte products
 ```
 
 ### vdot_i32
