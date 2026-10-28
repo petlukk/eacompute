@@ -178,13 +178,4 @@ int main(void) {
             "{e}"
         );
     }
-
-    #[test]
-    fn aes_is_refused_for_x86_64() {
-        let e = cli_error(&["--aes", "--target-triple=x86_64-unknown-linux-gnu"]);
-        assert!(
-            e.contains("--aes is only valid for AArch64") && e.contains("--pclmul"),
-            "{e}"
-        );
-    }
 }

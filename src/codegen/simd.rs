@@ -173,6 +173,7 @@ impl<'ctx> CodeGenerator<'ctx> {
         ) || typeck_types::parse_typed_load(name).is_some()
             || Self::is_bitmask_intrinsic(name)
             || Self::is_clmul_intrinsic(name)
+            || Self::is_aes_intrinsic(name)
     }
 
     /// Returns true if the expression is a variable whose type is an f16 vector.
@@ -401,6 +402,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             _ if Self::is_clmul_intrinsic(name) => {
                 self.compile_clmul_intrinsic(name, args, function)
             }
+            _ if Self::is_aes_intrinsic(name) => self.compile_aes_intrinsic(name, args, function),
             _ if Self::is_bitmask_intrinsic(name) => {
                 self.compile_bitmask_intrinsic(name, args, function)
             }

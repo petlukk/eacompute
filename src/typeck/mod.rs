@@ -3,6 +3,7 @@ pub mod const_eval;
 pub mod deprecations;
 mod expr_check;
 mod intrinsics;
+mod intrinsics_aes;
 mod intrinsics_bitmask;
 mod intrinsics_byteshift;
 mod intrinsics_clmul;
