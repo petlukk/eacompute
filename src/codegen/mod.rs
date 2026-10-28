@@ -8,6 +8,7 @@ mod comparisons;
 mod expressions;
 #[cfg(feature = "llvm")]
 mod simd;
+mod simd_aes;
 #[cfg(feature = "llvm")]
 mod simd_arithmetic;
 #[cfg(feature = "llvm")]

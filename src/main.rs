@@ -197,11 +197,6 @@ fn main() {
             process::exit(1);
         }
 
-        if !opts.is_arm() && opts.extra_features.contains("+aes") {
-            eprintln!("error: --aes is only valid for AArch64 targets (on x86-64 use --pclmul)");
-            process::exit(1);
-        }
-
         let stem = std::path::Path::new(input_file)
             .file_stem()
             .and_then(|s| s.to_str())

@@ -476,6 +476,36 @@ calling such a kernel.
 let folded: u64x2 = clmul_lo_u64x2(x, k) .^ clmul_hi_u64x2(x, k) .^ next
 ```
 
+## AES Rounds
+
+### aesenc_u8x16 / aese_u8x16 / aesmc_u8x16
+
+One AES round step on a 16-byte block, each a single instruction. The two
+architectures split a round differently, so each instruction is its own
+intrinsic and the other architecture's is a compile error that names the
+local idiom:
+
+| Intrinsic | Arguments | Result | Instruction | Computes |
+|---|---|---|---|---|
+| `aesenc_u8x16(x, k)` | `u8x16, u8x16` | `u8x16` | x86 `aesenc` | `MixColumns(ShiftRows(SubBytes(x))) ^ k` |
+| `aese_u8x16(x, k)` | `u8x16, u8x16` | `u8x16` | ARM `aese` | `SubBytes(ShiftRows(x ^ k))` |
+| `aesmc_u8x16(x)` | `u8x16` | `u8x16` | ARM `aesmc` | `MixColumns(x)` |
+
+AES-NI is not part of x86-64-v3 and `aese`/`aesmc` need the crypto
+extension, so all three are compile errors without `--aes` (valid for both
+architectures); check the CPU at run time before calling such a kernel.
+The round `AESRound(x, k)` of AES-based ciphers such as AEGIS is
+`aesenc_u8x16(x, k)` on x86 and, on ARM, an `aese` with a zero key, an
+`aesmc` and a xor, which Neoverse cores fuse into one pair:
+
+```
+// x86
+let y: u8x16 = aesenc_u8x16(x, k)
+// ARM
+let z: u8x16 = splat(0)
+let y: u8x16 = aesmc_u8x16(aese_u8x16(x, z)) .^ k
+```
+
 ## Bit Scan
 
 ### ctz_u32 / ctz_u64

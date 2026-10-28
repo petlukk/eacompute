@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.18.0 — UNRELEASED — AES rounds
+
+### Added
+
+- **`aesenc_u8x16`** (x86-only), **`aese_u8x16`** and **`aesmc_u8x16`**
+  (ARM-only) — one AES round step on a `u8x16`, each a single native
+  instruction: x86 `aesenc` is `MixColumns(ShiftRows(SubBytes(x))) ^ k`,
+  ARM `aese` is `SubBytes(ShiftRows(x ^ k))` and `aesmc` is
+  `MixColumns(x)`. On the other architecture each is a compile error naming
+  the local idiom (an ARM round is `aesmc_u8x16(aese_u8x16(x, zero)) .^ k`),
+  never an emulation. The building blocks of AES-based ciphers such as
+  AEGIS.
+
+### Changed
+
+- **`--aes` is valid for x86-64 too**, where it enables AES-NI (not part of
+  x86-64-v3); the AES intrinsics need it on both architectures. On AArch64
+  it still also enables `pmull` for the carry-less multiply. In v1.17.0 it
+  was refused for x86-64.
+
 ## v1.17.0 — 2026-10-19 — Carry-less multiply
 
 ### Added
