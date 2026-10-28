@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.18.0 — UNRELEASED — AES rounds
+## v1.18.0 — 2026-10-28 — AES rounds
 
 ### Added
 
