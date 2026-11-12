@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.19.0 — UNRELEASED — i16x8 bitcast
+## v1.19.0 — 2026-11-12 — i16x8 bitcast
 
 ### Added
 
