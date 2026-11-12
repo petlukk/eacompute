@@ -107,6 +107,7 @@ impl TypeChecker {
             "bitcast_i8x32" => Some(self.check_bitcast(args, locals, span, Type::I8, 32)),
             "bitcast_i32x4" => Some(self.check_bitcast(args, locals, span, Type::I32, 4)),
             "bitcast_i32x8" => Some(self.check_bitcast(args, locals, span, Type::I32, 8)),
+            "bitcast_i16x8" => Some(self.check_bitcast(args, locals, span, Type::I16, 8)),
             "sat_add" => Some(self.check_sat_add(args, locals, span)),
             "sat_sub" => Some(self.check_sat_sub(args, locals, span)),
             "abs_diff" => Some(self.check_abs_diff(args, locals, span)),

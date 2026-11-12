@@ -596,6 +596,27 @@ Convert wider lanes to narrower lanes, with clamping and rounding.
 let packed = narrow_f32x4_i8(float_pixels);
 ```
 
+### Bitcasts
+
+Reinterpret a vector's bits as another vector type of the same total width. No instruction on either architecture; a mismatched width is a compile error.
+
+| Intrinsic | Output | Source |
+|-----------|--------|--------|
+| `bitcast_i8x16(v)` | `i8x16` | any 128-bit vector |
+| `bitcast_i16x8(v)` | `i16x8` | any 128-bit vector |
+| `bitcast_i32x4(v)` | `i32x4` | any 128-bit vector |
+| `bitcast_i8x32(v)` | `i8x32` | any 256-bit vector |
+| `bitcast_i32x8(v)` | `i32x8` | any 256-bit vector |
+
+`bitcast_i16x8` is the way back to bytes after 8-bit fixed-point math in u16 lanes:
+
+```
+let lo: u16x8 = widen_u8_u16(px)
+let hi: u16x8 = widen_u8_u16_hi(px)
+// ... math on lo and hi ...
+let out: u8x16 = pack_usat_i16x8(bitcast_i16x8(lo), bitcast_i16x8(hi))
+```
+
 ### Multiply-Add Byte Pairs
 
 Multiply unsigned bytes by signed bytes and add adjacent pairs. **x86 only.**

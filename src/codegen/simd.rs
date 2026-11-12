@@ -167,6 +167,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "bitcast_i8x32"
                 | "bitcast_i32x4"
                 | "bitcast_i32x8"
+                | "bitcast_i16x8"
                 | "f32x4_from_scalars"
                 | "f32x8_from_scalars"
                 | "permute_runtime"
@@ -369,6 +370,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "bitcast_i8x32" => self.compile_bitcast(args, function, Type::I8, 32),
             "bitcast_i32x4" => self.compile_bitcast(args, function, Type::I32, 4),
             "bitcast_i32x8" => self.compile_bitcast(args, function, Type::I32, 8),
+            "bitcast_i16x8" => self.compile_bitcast(args, function, Type::I16, 8),
             "widen_u8_u16" => self.compile_widen_u8_u16(args, function),
             "widen_u8_u16_hi" => self.compile_widen_u8_u16_hi(args, function),
             "concat_i8x16" | "concat_u8x16" | "concat_i8x32" | "concat_u8x32" | "concat_i32x8"
