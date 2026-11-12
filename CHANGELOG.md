@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.20.0 — UNRELEASED — u8x16 bitcast
+## v1.20.0 — 2026-11-12 — u8x16 bitcast
 
 ### Added
 
