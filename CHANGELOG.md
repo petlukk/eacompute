@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.19.0 — UNRELEASED — i16x8 bitcast
+
+### Added
+
+- **`bitcast_i16x8`** — any 128-bit vector reinterpreted as `i16x8`, no
+  instruction on either architecture. The way back from u16 lanes
+  (`widen_u8_u16`, 8-bit fixed-point blends) to `pack_usat_i16x8`, which
+  takes `i16x8`; before it there was no path from `u16x8` to bytes. For
+  Vingilot's glyph mask blend.
+
+### Fixed
+
+- **Intrinsics reference** — the bitcasts (`bitcast_i8x16`, `bitcast_i8x32`,
+  `bitcast_i32x4`, `bitcast_i32x8`) were not documented; they now have a
+  section next to the conversions.
+
 ## v1.18.0 — 2026-10-28 — AES rounds
 
 ### Added
