@@ -352,7 +352,7 @@ impl<'ctx> CodeGenerator<'ctx> {
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         let v = self.compile_expr(&args[0], function)?;
         let target_ty = match target_elem {
-            crate::typeck::Type::I8 => self.context.i8_type().vec_type(target_width as u32),
+            crate::typeck::Type::I8 | crate::typeck::Type::U8 => self.context.i8_type().vec_type(target_width as u32),
             crate::typeck::Type::I16 => self.context.i16_type().vec_type(target_width as u32),
             crate::typeck::Type::I32 => self.context.i32_type().vec_type(target_width as u32),
             _ => {

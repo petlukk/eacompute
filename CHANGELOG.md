@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.20.0 — UNRELEASED — u8x16 bitcast
+
+### Added
+
+- **`bitcast_u8x16`** — any 128-bit vector reinterpreted as `u8x16`, no
+  instruction on either architecture. Lanes loaded or computed as `i32`
+  (RGBA pixels, a `load_masked` of the last 1-3 pixels of a row) had no way
+  to the `u8x16` intrinsics (`widen_u8_u16`, `shuffle`). For Vingilot's glyph
+  mask blend, which must not touch pixels past a row's end.
+
 ## v1.19.0 — 2026-11-12 — i16x8 bitcast
 
 ### Added

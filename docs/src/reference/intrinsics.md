@@ -603,6 +603,7 @@ Reinterpret a vector's bits as another vector type of the same total width. No i
 | Intrinsic | Output | Source |
 |-----------|--------|--------|
 | `bitcast_i8x16(v)` | `i8x16` | any 128-bit vector |
+| `bitcast_u8x16(v)` | `u8x16` | any 128-bit vector |
 | `bitcast_i16x8(v)` | `i16x8` | any 128-bit vector |
 | `bitcast_i32x4(v)` | `i32x4` | any 128-bit vector |
 | `bitcast_i8x32(v)` | `i8x32` | any 256-bit vector |
@@ -616,6 +617,8 @@ let hi: u16x8 = widen_u8_u16_hi(px)
 // ... math on lo and hi ...
 let out: u8x16 = pack_usat_i16x8(bitcast_i16x8(lo), bitcast_i16x8(hi))
 ```
+
+`bitcast_u8x16` takes lanes loaded as `i32` (whole RGBA pixels, for example the last pixels of a row through `load_masked`) to the `u8x16` intrinsics.
 
 ### Multiply-Add Byte Pairs
 
