@@ -18,6 +18,17 @@
   computed `alloc & !mark` as `a ^ (a & m)` (two instructions), and its
   regexp kernels wrote NOT as `x .^ ff` for LLVM to fold into `vpandn`/`bic`
   unseen.
+- **`.&`, `.|`, `.^` on comparison masks** — a comparison of `TxN` vectors
+  now gives a `mask<T>xN`, and two masks of the same source and width
+  combine directly (one `vpand`/`vpor`/`vpxor`; ARM `and`/`orr`/`eor`),
+  feeding `select`, `movemask_*` and `nibble_mask_u8x16` as before.
+  Vingilot's five ARM scanners and Linta's `cells.ea` went through
+  `select(m, ff, 0)` (3 `vpblendvb` left in `cells`). Masks of different
+  sources (`(a_i32x8 .< b) .& (c_f32x8 .< d)`), a mask with an integer
+  vector, and shifts of masks are type errors: they would need a hidden
+  pack or extend. Masks are still written inline (a `let` needs a type,
+  and mask types have no spelling). Known: `select` still accepts a mask of
+  another source with the same lane count, as before.
 
 ### Deprecated
 

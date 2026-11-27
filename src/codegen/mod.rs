@@ -239,7 +239,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             Type::F16 => BasicTypeEnum::FloatType(self.context.f16_type()),
             Type::F32 => BasicTypeEnum::FloatType(self.context.f32_type()),
             Type::F64 | Type::FloatLiteral => BasicTypeEnum::FloatType(self.context.f64_type()),
-            Type::Bool => BasicTypeEnum::IntType(self.context.bool_type()),
+            Type::Bool | Type::Mask(_) => BasicTypeEnum::IntType(self.context.bool_type()),
             Type::Pointer { .. } => {
                 BasicTypeEnum::PointerType(self.context.ptr_type(AddressSpace::default()))
             }
@@ -303,7 +303,7 @@ impl<'ctx> CodeGenerator<'ctx> {
 
     pub(crate) fn type_alignment(ty: &Type) -> u32 {
         match ty {
-            Type::Bool | Type::I8 | Type::U8 => 1,
+            Type::Bool | Type::Mask(_) | Type::I8 | Type::U8 => 1,
             Type::I16 | Type::U16 => 2,
             Type::I32 | Type::U32 | Type::F32 | Type::IntLiteral => 4,
             Type::I64 | Type::U64 | Type::F64 | Type::FloatLiteral | Type::Pointer { .. } => 8,
