@@ -1004,6 +1004,7 @@ pub ea_compiler::typeck::types::Type::I32
 pub ea_compiler::typeck::types::Type::I64
 pub ea_compiler::typeck::types::Type::I8
 pub ea_compiler::typeck::types::Type::IntLiteral
+pub ea_compiler::typeck::types::Type::Mask(alloc::boxed::Box<ea_compiler::typeck::types::Type>)
 pub ea_compiler::typeck::types::Type::Pointer
 pub ea_compiler::typeck::types::Type::Pointer::inner: alloc::boxed::Box<ea_compiler::typeck::types::Type>
 pub ea_compiler::typeck::types::Type::Pointer::mutable: bool
@@ -1022,6 +1023,7 @@ impl ea_compiler::typeck::types::Type
 pub fn ea_compiler::typeck::types::Type::is_bool(&self) -> bool
 pub fn ea_compiler::typeck::types::Type::is_float(&self) -> bool
 pub fn ea_compiler::typeck::types::Type::is_integer(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_mask_lane(&self) -> bool
 pub fn ea_compiler::typeck::types::Type::is_numeric(&self) -> bool
 pub fn ea_compiler::typeck::types::Type::is_pointer(&self) -> bool
 pub fn ea_compiler::typeck::types::Type::is_unsigned_integer(&self) -> bool
@@ -1064,6 +1066,7 @@ pub ea_compiler::typeck::Type::I32
 pub ea_compiler::typeck::Type::I64
 pub ea_compiler::typeck::Type::I8
 pub ea_compiler::typeck::Type::IntLiteral
+pub ea_compiler::typeck::Type::Mask(alloc::boxed::Box<ea_compiler::typeck::types::Type>)
 pub ea_compiler::typeck::Type::Pointer
 pub ea_compiler::typeck::Type::Pointer::inner: alloc::boxed::Box<ea_compiler::typeck::types::Type>
 pub ea_compiler::typeck::Type::Pointer::mutable: bool
@@ -1082,6 +1085,7 @@ impl ea_compiler::typeck::types::Type
 pub fn ea_compiler::typeck::types::Type::is_bool(&self) -> bool
 pub fn ea_compiler::typeck::types::Type::is_float(&self) -> bool
 pub fn ea_compiler::typeck::types::Type::is_integer(&self) -> bool
+pub fn ea_compiler::typeck::types::Type::is_mask_lane(&self) -> bool
 pub fn ea_compiler::typeck::types::Type::is_numeric(&self) -> bool
 pub fn ea_compiler::typeck::types::Type::is_pointer(&self) -> bool
 pub fn ea_compiler::typeck::types::Type::is_unsigned_integer(&self) -> bool
