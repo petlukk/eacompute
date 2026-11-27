@@ -31,9 +31,9 @@ mod tests {
     const I4: &str = "export func f(p: *mut i32, n: i32) {\n    let v: i32x4 = load_masked_i32x4(p, 0, n)\n    store_masked_i32x4(p, 0, v .+ splat(1), n)\n}\n";
 
     /// The last n ints of a page with an inaccessible page after it:
-    /// touching any lane past n faults.
+    /// touching any lane past n faults (POSIX mmap, so not on Windows).
     #[test]
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", unix))]
     fn masked_i32x8_tail_n0_to_n8() {
         assert_c_interop(
             TAIL8,
