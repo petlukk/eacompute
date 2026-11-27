@@ -39,10 +39,17 @@
   **`widen_u8x16_u16x16`** (x86 `vpmovzxbw` into a ymm register; ARM error
   pointing to `widen_u8_u16` + `widen_u8_u16_hi`). For Tiro's 256-bit row
   kernels (8 RGBA pixels a step).
+- **`load_masked_<t>` / `store_masked_<t>`** for `i32x4`, `i32x8`,
+  `f32x4`, `f32x8` and `u64x4`: the first `n` lanes, zeros after on a load;
+  AVX2 `vpmaskmovd` / `vpmaskmovq` / `vmaskmovps`. ARM: compile error (NEON
+  has no masked load or store; use a padded buffer).
 
 ### Deprecated
 
 - **`gather`** — use the typed spelling. Removal in v2.0.0.
+- **`load_masked` / `store_masked`** — use the typed spelling. The generic
+  forms are emulated by LLVM for 8- and 16-bit lanes on AVX2 and for every
+  lane type on ARM. Removal in v2.0.0.
 
 ## v1.20.0 — 2026-11-12 — u8x16 bitcast
 

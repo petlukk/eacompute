@@ -242,6 +242,7 @@ impl TypeChecker {
                 .or_else(|| self.check_logic_intrinsic(name, args, locals, span))
                 .or_else(|| self.check_float_intrinsic(name, args, locals, span))
                 .or_else(|| self.check_wide_intrinsic(name, args, locals, span))
+                .or_else(|| self.check_maskmem_intrinsic(name, args, locals, span))
                 .or_else(|| self.check_aes_intrinsic(name, args, locals, span)),
         }
     }

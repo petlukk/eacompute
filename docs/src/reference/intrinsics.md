@@ -205,6 +205,21 @@ Masked vector store. Only lanes where the mask is true are written.
 store_masked(out, i, value, mask);
 ```
 
+### load_masked_<t> / store_masked_<t>
+
+`t` is `i32x4`, `i32x8`, `f32x4`, `f32x8` or `u64x4`.
+
+```
+let v: i32x8 = load_masked_i32x8(p, off, n)   // lanes 0..n of p[off..], zeros after
+store_masked_i32x8(p, off, v, n)               // writes lanes 0..n only
+```
+
+Lanes past `n` are never read or written (safe at the end of a mapping).
+AVX2 `vpmaskmovd` / `vpmaskmovq` / `vmaskmovps`. ARM: compile error (NEON
+has no masked load or store; copy the tail into a padded buffer). The
+generic `load_masked` / `store_masked` are deprecated since v1.21.0.
+Since v1.21.0.
+
 ### bitcast_u8x32 / bitcast_i16x16
 
 Any 256-bit vector reinterpreted as `u8x32` / `i16x16`; no instruction.

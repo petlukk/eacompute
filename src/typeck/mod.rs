@@ -12,6 +12,7 @@ mod intrinsics_dotprod;
 mod intrinsics_f16;
 mod intrinsics_float;
 mod intrinsics_lane;
+pub(crate) mod intrinsics_maskmem;
 mod intrinsics_logic;
 mod intrinsics_memory;
 mod intrinsics_neon;

@@ -187,6 +187,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             || Self::is_logic_intrinsic(name)
             || Self::is_float_intrinsic(name)
             || Self::is_wide_intrinsic(name)
+            || Self::is_maskmem_intrinsic(name)
             || Self::is_aes_intrinsic(name)
     }
 
@@ -425,6 +426,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             _ if Self::is_logic_intrinsic(name) => self.compile_logic_intrinsic(name, args, function),
             _ if Self::is_float_intrinsic(name) => self.compile_float_intrinsic(name, args, function),
             _ if Self::is_wide_intrinsic(name) => self.compile_wide_intrinsic(name, args, function),
+            _ if Self::is_maskmem_intrinsic(name) => self.compile_maskmem_intrinsic(name, args, function),
             _ if Self::is_clmul_intrinsic(name) => {
                 self.compile_clmul_intrinsic(name, args, function)
             }
