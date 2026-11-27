@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.21.0 — UNRELEASED — consumer gaps (Tiro, Linta, Vingilot)
+
+### Added
+
+- **`gather_i32x4` / `gather_i32x8` / `gather_f32x4` / `gather_f32x8`** —
+  typed native gathers (AVX2 `vpgatherdd` / `vgatherdps`). The generic
+  `gather` lowered to `llvm.masked.gather`, which LLVM scalarizes on
+  x86-64-v3 (Linta's `cells.ea`: 30 `vpextrd`/`vpinsrd`, no `vpgatherdd`;
+  Tiro's palette-row kernel was dropped for it). ARM: compile error.
+
+### Deprecated
+
+- **`gather`** — use the typed spelling. Removal in v2.0.0.
+
 ## v1.20.0 — 2026-11-12 — u8x16 bitcast
 
 ### Added

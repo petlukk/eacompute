@@ -51,6 +51,15 @@ pub type DeprecationTable = &'static [(&'static str, DeprecationInfo)];
 /// warning before the hard break in the next major release.
 pub const DEPRECATED_INTRINSICS: DeprecationTable = &[
     (
+        "gather",
+        DeprecationInfo {
+            since: "1.21.0",
+            advice: "use the typed spelling: gather_i32x4 / gather_i32x8 / gather_f32x4 / \
+                     gather_f32x8 (AVX2 vpgatherdd/vgatherdps); other element types have no \
+                     gather instruction, so load those lanes with scalar loads",
+        },
+    ),
+    (
         "sat_add",
         DeprecationInfo {
             since: "1.12.0",

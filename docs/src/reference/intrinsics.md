@@ -205,7 +205,22 @@ Masked vector store. Only lanes where the mask is true are written.
 store_masked(out, i, value, mask);
 ```
 
-### gather
+### gather_i32x4 / gather_i32x8 / gather_f32x4 / gather_f32x8
+
+```
+let v: i32x8 = gather_i32x8(base, idx)   // base: *i32, idx: i32x8
+let f: f32x4 = gather_f32x4(fbase, idx4) // fbase: *f32, idx4: i32x4
+```
+
+Lane k is `base[idx[k]]`. AVX2 `vpgatherdd` / `vgatherdps` (scale 4, every
+lane active). The caller owns the bounds, as with `load`. ARM: compile
+error (NEON has no gather; see `docs/idioms/neon-gather.md`). Since v1.21.0.
+
+### gather (deprecated since v1.21.0)
+
+Use the typed forms above: the generic form lowers to LLVM's masked
+gather, which LLVM scalarizes on x86-64-v3. Removal in v2.0.0.
+
 
 Load elements from scattered memory addresses using an index vector. x86 only -- not available on ARM.
 

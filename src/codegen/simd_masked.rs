@@ -202,6 +202,60 @@ impl<'ctx> CodeGenerator<'ctx> {
         Ok(vec)
     }
 
+    /// The typed gathers: AVX2 `llvm.x86.avx2.gather.d.{d,ps}[.256]` with
+    /// every lane active (an all-ones mask), scale 4. ARM has no gather.
+    pub(super) fn compile_gather_typed(
+        &mut self,
+        name: &str,
+        args: &[Expr],
+        function: FunctionValue<'ctx>,
+    ) -> crate::error::Result<BasicValueEnum<'ctx>> {
+        if self.is_arm {
+            return Err(CompileError::codegen_error(format!(
+                "{name}: NEON has no gather instruction. Load the lanes with \
+                 scalar loads and compose them (see docs/idioms/neon-gather.md)."
+            )));
+        }
+        let float = name.starts_with("gather_f32");
+        let width: u32 = if name.ends_with("x8") { 8 } else { 4 };
+        let base = self.compile_expr(&args[0], function)?.into_pointer_value();
+        let indices = self.compile_expr(&args[1], function)?.into_vector_value();
+        let i32_ty = self.context.i32_type();
+        let i8_ty = self.context.i8_type();
+        let ptr_ty = self.context.ptr_type(inkwell::AddressSpace::default());
+        let ivec = i32_ty.vec_type(width);
+        let ones = VectorType::const_vector(&vec![i32_ty.const_all_ones(); width as usize]);
+        let suffix = if width == 8 { ".256" } else { "" };
+        let (intrinsic_name, ret_ty, mask): (String, VectorType<'ctx>, BasicValueEnum<'ctx>) = if float {
+            let fvec = self.context.f32_type().vec_type(width);
+            let mask = self
+                .builder
+                .build_bit_cast(ones, fvec, "gather_mask")
+                .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+            (format!("llvm.x86.avx2.gather.d.ps{suffix}"), fvec, mask)
+        } else {
+            (format!("llvm.x86.avx2.gather.d.d{suffix}"), ivec, ones.into())
+        };
+        let fn_type = ret_ty.fn_type(&[ret_ty.into(), ptr_ty.into(), ivec.into(), ret_ty.into(), i8_ty.into()], false);
+        let intrinsic = self
+            .module
+            .get_function(&intrinsic_name)
+            .unwrap_or_else(|| self.module.add_function(&intrinsic_name, fn_type, None));
+        let passthrough = ret_ty.const_zero();
+        let result = self
+            .builder
+            .build_call(
+                intrinsic,
+                &[passthrough.into(), base.into(), indices.into(), mask.into(), i8_ty.const_int(4, false).into()],
+                "gather",
+            )
+            .map_err(|e| CompileError::codegen_error(e.to_string()))?
+            .try_as_basic_value()
+            .basic()
+            .ok_or_else(|| CompileError::codegen_error("gather did not return a value"))?;
+        Ok(result)
+    }
+
     pub(super) fn compile_gather(
         &mut self,
         args: &[Expr],

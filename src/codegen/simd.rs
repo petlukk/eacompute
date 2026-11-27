@@ -27,6 +27,10 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "stream_store"
                 | "fence_nt"
                 | "gather"
+                | "gather_i32x4"
+                | "gather_i32x8"
+                | "gather_f32x4"
+                | "gather_f32x8"
                 | "scatter"
                 | "load_masked"
                 | "store_masked"
@@ -254,6 +258,9 @@ impl<'ctx> CodeGenerator<'ctx> {
             "stream_store" => self.compile_stream_store(args, function),
             "fence_nt" => self.compile_fence_nt(args, function),
             "gather" => self.compile_gather(args, type_hint, function),
+            "gather_i32x4" | "gather_i32x8" | "gather_f32x4" | "gather_f32x8" => {
+                self.compile_gather_typed(name, args, function)
+            }
             "permute_runtime" => self.compile_permute_runtime(args, function),
             "scatter" => self.compile_scatter(args, function),
             "load_masked" => self.compile_load_masked(args, type_hint, function),

@@ -183,6 +183,10 @@ impl TypeChecker {
                 Some(self.check_prefetch(args, locals, span))
             }
             "gather" => Some(self.check_gather(args, locals, span)),
+            "gather_i32x4" => Some(self.check_gather_typed(name, Type::I32, 4, args, locals, span)),
+            "gather_i32x8" => Some(self.check_gather_typed(name, Type::I32, 8, args, locals, span)),
+            "gather_f32x4" => Some(self.check_gather_typed(name, Type::F32, 4, args, locals, span)),
+            "gather_f32x8" => Some(self.check_gather_typed(name, Type::F32, 8, args, locals, span)),
             "permute_runtime" => Some(self.check_permute_runtime(args, locals, span)),
             "scatter" => Some(self.check_scatter(args, locals, span)),
             "load_masked" => Some(self.check_load_masked(args, locals, type_hint, span)),
