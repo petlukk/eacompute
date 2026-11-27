@@ -175,6 +175,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "bitcast_i16x8"
                 | "bitcast_u8x16"
                 | "bitcast_f32x4"
+                | "bitcast_u8x32"
+                | "bitcast_i16x16"
                 | "bitcast_f32x8"
                 | "f32x4_from_scalars"
                 | "f32x8_from_scalars"
@@ -184,6 +186,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             || Self::is_clmul_intrinsic(name)
             || Self::is_logic_intrinsic(name)
             || Self::is_float_intrinsic(name)
+            || Self::is_wide_intrinsic(name)
             || Self::is_aes_intrinsic(name)
     }
 
@@ -386,6 +389,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             "bitcast_i16x8" => self.compile_bitcast(args, function, Type::I16, 8),
             "bitcast_u8x16" => self.compile_bitcast(args, function, Type::U8, 16),
             "bitcast_f32x4" => self.compile_bitcast(args, function, Type::F32, 4),
+            "bitcast_u8x32" => self.compile_bitcast(args, function, Type::U8, 32),
+            "bitcast_i16x16" => self.compile_bitcast(args, function, Type::I16, 16),
             "bitcast_f32x8" => self.compile_bitcast(args, function, Type::F32, 8),
             "widen_u8_u16" => self.compile_widen_u8_u16(args, function),
             "widen_u8_u16_hi" => self.compile_widen_u8_u16_hi(args, function),
@@ -419,6 +424,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             }
             _ if Self::is_logic_intrinsic(name) => self.compile_logic_intrinsic(name, args, function),
             _ if Self::is_float_intrinsic(name) => self.compile_float_intrinsic(name, args, function),
+            _ if Self::is_wide_intrinsic(name) => self.compile_wide_intrinsic(name, args, function),
             _ if Self::is_clmul_intrinsic(name) => {
                 self.compile_clmul_intrinsic(name, args, function)
             }

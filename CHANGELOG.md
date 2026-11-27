@@ -35,6 +35,10 @@
   `approx_pow2` needs `floor` and bit-level float/int moves). Integer to
   float was already `to_f32` on `i32xN` (`vcvtdq2ps`, ARM `scvtf`), now
   pinned by a test.
+- **`bitcast_u8x32` / `bitcast_i16x16`** (no instruction) and
+  **`widen_u8x16_u16x16`** (x86 `vpmovzxbw` into a ymm register; ARM error
+  pointing to `widen_u8_u16` + `widen_u8_u16_hi`). For Tiro's 256-bit row
+  kernels (8 RGBA pixels a step).
 
 ### Deprecated
 

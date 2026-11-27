@@ -205,6 +205,17 @@ Masked vector store. Only lanes where the mask is true are written.
 store_masked(out, i, value, mask);
 ```
 
+### bitcast_u8x32 / bitcast_i16x16
+
+Any 256-bit vector reinterpreted as `u8x32` / `i16x16`; no instruction.
+Since v1.21.0.
+
+### widen_u8x16_u16x16
+
+All 16 bytes of a `u8x16` zero-extended into one `u16x16` (x86 `vpmovzxbw`
+to a ymm register). ARM has no 256-bit vectors: a compile error pointing to
+`widen_u8_u16` and `widen_u8_u16_hi`. Since v1.21.0.
+
 ### floor_f32x4 / floor_f32x8
 
 Each lane rounded toward negative infinity (`-1.5` → `-2`, `-0.0` stays

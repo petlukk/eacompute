@@ -17,6 +17,7 @@ mod simd_bitmask;
 mod simd_byteshift;
 mod simd_clmul;
 mod simd_float;
+mod simd_wide;
 mod simd_logic;
 #[cfg(feature = "llvm")]
 mod simd_conv;

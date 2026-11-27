@@ -19,6 +19,7 @@ mod intrinsics_pack;
 mod intrinsics_prefetch;
 mod intrinsics_simd;
 mod intrinsics_transcendental;
+mod intrinsics_wide;
 pub mod types;
 
 use std::cell::RefCell;
