@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.21.0 — UNRELEASED — consumer gaps (Tiro, Linta, Vingilot)
+## v1.21.0 — 2026-11-27 — consumer gaps (Tiro, Linta, Vingilot)
 
 ### Added
 
