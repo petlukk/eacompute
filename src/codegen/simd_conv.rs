@@ -193,9 +193,16 @@ impl<'ctx> CodeGenerator<'ctx> {
                     )),
                 }
             }
-            "to_i64" => {
+            "to_i64" | "to_u64" => {
                 let target = self.context.i64_type();
                 match val {
+                    BasicValueEnum::FloatValue(fv) if name == "to_u64" => {
+                        let result = self
+                            .builder
+                            .build_float_to_unsigned_int(fv, target, "fptoui")
+                            .map_err(|e| CompileError::codegen_error(e.to_string()))?;
+                        Ok(BasicValueEnum::IntValue(result))
+                    }
                     BasicValueEnum::FloatValue(fv) => {
                         let result = self
                             .builder
@@ -217,9 +224,9 @@ impl<'ctx> CodeGenerator<'ctx> {
                             Ok(val)
                         }
                     }
-                    _ => Err(CompileError::codegen_error(
-                        "to_i64: unsupported source type",
-                    )),
+                    _ => Err(CompileError::codegen_error(format!(
+                        "{name}: unsupported source type"
+                    ))),
                 }
             }
             _ => unreachable!(),

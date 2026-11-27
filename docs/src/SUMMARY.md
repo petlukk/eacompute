@@ -31,6 +31,7 @@
 - [Eä vs NumPy](cookbook/numpy-comparison.md)
 - [Image Processing](cookbook/image-processing.md)
 - [Text Processing](cookbook/text-processing.md)
+- [Combining Comparison Masks](cookbook/mask-ops.md)
 - [ML Preprocessing](cookbook/ml-preprocessing.md)
 - [Native f16 Inference (NEW)](cookbook/fp16-inference.md)
 - [Fast Transcendentals: exp_poly_f32 (NEW)](cookbook/fast-transcendentals.md)

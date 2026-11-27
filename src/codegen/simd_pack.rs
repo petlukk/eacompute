@@ -355,6 +355,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             crate::typeck::Type::I8 | crate::typeck::Type::U8 => self.context.i8_type().vec_type(target_width as u32),
             crate::typeck::Type::I16 => self.context.i16_type().vec_type(target_width as u32),
             crate::typeck::Type::I32 => self.context.i32_type().vec_type(target_width as u32),
+            crate::typeck::Type::F32 => self.context.f32_type().vec_type(target_width as u32),
             _ => {
                 return Err(CompileError::codegen_error(format!(
                     "unsupported bitcast target element type: {target_elem}"

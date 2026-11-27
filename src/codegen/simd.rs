@@ -27,6 +27,10 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "stream_store"
                 | "fence_nt"
                 | "gather"
+                | "gather_i32x4"
+                | "gather_i32x8"
+                | "gather_f32x4"
+                | "gather_f32x8"
                 | "scatter"
                 | "load_masked"
                 | "store_masked"
@@ -80,6 +84,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "to_i16"
                 | "to_i32"
                 | "to_i64"
+                | "to_u64"
                 | "prefetch"
                 | "prefetch_write"
                 | "prefetch_nta"
@@ -169,12 +174,20 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "bitcast_i32x8"
                 | "bitcast_i16x8"
                 | "bitcast_u8x16"
+                | "bitcast_f32x4"
+                | "bitcast_u8x32"
+                | "bitcast_i16x16"
+                | "bitcast_f32x8"
                 | "f32x4_from_scalars"
                 | "f32x8_from_scalars"
                 | "permute_runtime"
         ) || typeck_types::parse_typed_load(name).is_some()
             || Self::is_bitmask_intrinsic(name)
             || Self::is_clmul_intrinsic(name)
+            || Self::is_logic_intrinsic(name)
+            || Self::is_float_intrinsic(name)
+            || Self::is_wide_intrinsic(name)
+            || Self::is_maskmem_intrinsic(name)
             || Self::is_aes_intrinsic(name)
     }
 
@@ -254,10 +267,13 @@ impl<'ctx> CodeGenerator<'ctx> {
             "stream_store" => self.compile_stream_store(args, function),
             "fence_nt" => self.compile_fence_nt(args, function),
             "gather" => self.compile_gather(args, type_hint, function),
+            "gather_i32x4" | "gather_i32x8" | "gather_f32x4" | "gather_f32x8" => {
+                self.compile_gather_typed(name, args, function)
+            }
             "permute_runtime" => self.compile_permute_runtime(args, function),
             "scatter" => self.compile_scatter(args, function),
-            "load_masked" => self.compile_load_masked(args, type_hint, function),
-            "store_masked" => self.compile_store_masked(args, function),
+            "load_masked" => self.compile_load_masked(args, type_hint, function, false),
+            "store_masked" => self.compile_store_masked(args, function, false),
             "fma" => {
                 if self.call_uses_f16(args, None) {
                     return self.compile_fma_f16(args, function);
@@ -312,7 +328,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "ummla_i32" => self.compile_ummla_i32(args, function),
             "usmmla_i32" => self.compile_usmmla_i32(args, function),
             "shuffle_bytes" => self.compile_shuffle_bytes(args, function),
-            "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" => {
+            "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" | "to_u64" => {
                 self.compile_conversion(name, args, function)
             }
             "prefetch" => self.compile_prefetch(args, function, 0, 3),
@@ -373,6 +389,10 @@ impl<'ctx> CodeGenerator<'ctx> {
             "bitcast_i32x8" => self.compile_bitcast(args, function, Type::I32, 8),
             "bitcast_i16x8" => self.compile_bitcast(args, function, Type::I16, 8),
             "bitcast_u8x16" => self.compile_bitcast(args, function, Type::U8, 16),
+            "bitcast_f32x4" => self.compile_bitcast(args, function, Type::F32, 4),
+            "bitcast_u8x32" => self.compile_bitcast(args, function, Type::U8, 32),
+            "bitcast_i16x16" => self.compile_bitcast(args, function, Type::I16, 16),
+            "bitcast_f32x8" => self.compile_bitcast(args, function, Type::F32, 8),
             "widen_u8_u16" => self.compile_widen_u8_u16(args, function),
             "widen_u8_u16_hi" => self.compile_widen_u8_u16_hi(args, function),
             "concat_i8x16" | "concat_u8x16" | "concat_i8x32" | "concat_u8x32" | "concat_i32x8"
@@ -403,6 +423,10 @@ impl<'ctx> CodeGenerator<'ctx> {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)
             }
+            _ if Self::is_logic_intrinsic(name) => self.compile_logic_intrinsic(name, args, function),
+            _ if Self::is_float_intrinsic(name) => self.compile_float_intrinsic(name, args, function),
+            _ if Self::is_wide_intrinsic(name) => self.compile_wide_intrinsic(name, args, function),
+            _ if Self::is_maskmem_intrinsic(name) => self.compile_maskmem_intrinsic(name, args, function),
             _ if Self::is_clmul_intrinsic(name) => {
                 self.compile_clmul_intrinsic(name, args, function)
             }

@@ -53,7 +53,7 @@ impl TypeChecker {
             "cos_approx_f32" => {
                 Some(self.check_sin_cos_approx_f32("cos_approx_f32", args, locals, span))
             }
-            "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" => {
+            "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" | "to_u64" => {
                 Some(self.check_conversion(name, args, locals, span))
             }
             "ptr_as_i8" | "ptr_as_u8" | "ptr_as_i16" | "ptr_as_u16" | "ptr_as_i32"
@@ -109,6 +109,10 @@ impl TypeChecker {
             "bitcast_i32x8" => Some(self.check_bitcast(args, locals, span, Type::I32, 8)),
             "bitcast_i16x8" => Some(self.check_bitcast(args, locals, span, Type::I16, 8)),
             "bitcast_u8x16" => Some(self.check_bitcast(args, locals, span, Type::U8, 16)),
+            "bitcast_f32x4" => Some(self.check_bitcast(args, locals, span, Type::F32, 4)),
+            "bitcast_u8x32" => Some(self.check_bitcast(args, locals, span, Type::U8, 32)),
+            "bitcast_i16x16" => Some(self.check_bitcast(args, locals, span, Type::I16, 16)),
+            "bitcast_f32x8" => Some(self.check_bitcast(args, locals, span, Type::F32, 8)),
             "sat_add" => Some(self.check_sat_add(args, locals, span)),
             "sat_sub" => Some(self.check_sat_sub(args, locals, span)),
             "abs_diff" => Some(self.check_abs_diff(args, locals, span)),
@@ -183,6 +187,10 @@ impl TypeChecker {
                 Some(self.check_prefetch(args, locals, span))
             }
             "gather" => Some(self.check_gather(args, locals, span)),
+            "gather_i32x4" => Some(self.check_gather_typed(name, Type::I32, 4, args, locals, span)),
+            "gather_i32x8" => Some(self.check_gather_typed(name, Type::I32, 8, args, locals, span)),
+            "gather_f32x4" => Some(self.check_gather_typed(name, Type::F32, 4, args, locals, span)),
+            "gather_f32x8" => Some(self.check_gather_typed(name, Type::F32, 8, args, locals, span)),
             "permute_runtime" => Some(self.check_permute_runtime(args, locals, span)),
             "scatter" => Some(self.check_scatter(args, locals, span)),
             "load_masked" => Some(self.check_load_masked(args, locals, type_hint, span)),
@@ -231,6 +239,10 @@ impl TypeChecker {
             _ => self
                 .check_bitmask_intrinsic(name, args, locals, span)
                 .or_else(|| self.check_clmul_intrinsic(name, args, locals, span))
+                .or_else(|| self.check_logic_intrinsic(name, args, locals, span))
+                .or_else(|| self.check_float_intrinsic(name, args, locals, span))
+                .or_else(|| self.check_wide_intrinsic(name, args, locals, span))
+                .or_else(|| self.check_maskmem_intrinsic(name, args, locals, span))
                 .or_else(|| self.check_aes_intrinsic(name, args, locals, span)),
         }
     }
@@ -452,6 +464,7 @@ impl TypeChecker {
             "to_i16" => Type::I16,
             "to_i32" => Type::I32,
             "to_i64" => Type::I64,
+            "to_u64" => Type::U64,
             _ => unreachable!(),
         };
         Ok(target)

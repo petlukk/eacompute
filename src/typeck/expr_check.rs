@@ -167,6 +167,19 @@ impl TypeChecker {
                     | BinaryOp::XorDot
                     | BinaryOp::ShiftLeftDot
                     | BinaryOp::ShiftRightDot => {
+                        let mask = |t: &Type| matches!(t, Type::Vector { elem, .. } if matches!(elem.as_ref(), Type::Mask(_)));
+                        if mask(&lt) || mask(&rt) {
+                            let logic = matches!(op, BinaryOp::AndDot | BinaryOp::OrDot | BinaryOp::XorDot);
+                            if logic && lt == rt {
+                                return Ok(lt);
+                            }
+                            return Err(CompileError::type_error(
+                                format!(
+                                    "masks combine only with .&, .| and .^, and only with a mask of the same source and width: got {lt} and {rt}"
+                                ),
+                                span.clone(),
+                            ));
+                        }
                         let result = types::unify_vector(&lt, &rt, span.clone())?;
                         match &result {
                             Type::Vector { elem, .. } if elem.is_integer() => Ok(result),
@@ -190,8 +203,8 @@ impl TypeChecker {
                     | BinaryOp::NotEqualDot => {
                         types::unify_vector(&lt, &rt, span.clone())?;
                         match &lt {
-                            Type::Vector { width, .. } => Ok(Type::Vector {
-                                elem: Box::new(Type::Bool),
+                            Type::Vector { elem, width } => Ok(Type::Vector {
+                                elem: Box::new(Type::Mask(elem.clone())),
                                 width: *width,
                             }),
                             _ => Err(CompileError::type_error(
@@ -352,6 +365,7 @@ impl TypeChecker {
                         "to_i16",
                         "to_i32",
                         "to_i64",
+                        "to_u64",
                         "reduce_add",
                         "reduce_max",
                         "reduce_min",

@@ -205,7 +205,70 @@ Masked vector store. Only lanes where the mask is true are written.
 store_masked(out, i, value, mask);
 ```
 
-### gather
+### load_masked_<t> / store_masked_<t>
+
+`t` is `i32x4`, `i32x8`, `f32x4`, `f32x8` or `u64x4`.
+
+```
+let v: i32x8 = load_masked_i32x8(p, off, n)   // lanes 0..n of p[off..], zeros after
+store_masked_i32x8(p, off, v, n)               // writes lanes 0..n only
+```
+
+Lanes past `n` are never read or written (safe at the end of a mapping); a
+negative `n` selects no lane. AVX2 `vpmaskmovd` / `vpmaskmovq` / `vmaskmovps`
+(x86 requires AVX2). ARM: compile error (NEON
+has no masked load or store; copy the tail into a padded buffer). The
+generic `load_masked` / `store_masked` are deprecated since v1.21.0.
+Since v1.21.0.
+
+### bitcast_u8x32 / bitcast_i16x16
+
+Any 256-bit vector reinterpreted as `u8x32` / `i16x16`; no instruction.
+Since v1.21.0.
+
+### widen_u8x16_u16x16
+
+All 16 bytes of a `u8x16` zero-extended into one `u16x16` (x86 `vpmovzxbw`
+to a ymm register). ARM has no 256-bit vectors: a compile error pointing to
+`widen_u8_u16` and `widen_u8_u16_hi`. Since v1.21.0.
+
+### floor_f32x4 / floor_f32x8
+
+Each lane rounded toward negative infinity (`-1.5` → `-2`, `-0.0` stays
+`-0.0`). x86 `vroundps` (floor mode), ARM `frintm`. Since v1.21.0.
+
+### bitcast_f32x4 / bitcast_f32x8
+
+Any 128- or 256-bit vector reinterpreted as `f32` lanes; no instruction.
+Integer to float by value is `to_f32` on `i32xN`. Since v1.21.0.
+
+### andnot_u8x16 / andnot_u8x32 / andnot_u64x2 / andnot_u64x4
+
+```
+let dead: u64x4 = andnot_u64x4(alloc, mark)   // alloc & !mark
+```
+
+`a & !b`, both operands and the result of the type in the name. One
+instruction on both targets: x86 `vpandn`, ARM `bic`. There is no vector
+NOT: x86 has none (it would be a hidden `vpxor`); write `.^ splat(255)`, or
+use `andnot` where the NOT feeds an AND. Since v1.21.0.
+
+### gather_i32x4 / gather_i32x8 / gather_f32x4 / gather_f32x8
+
+```
+let v: i32x8 = gather_i32x8(base, idx)   // base: *i32, idx: i32x8
+let f: f32x4 = gather_f32x4(fbase, idx4) // fbase: *f32, idx4: i32x4
+```
+
+Lane k is `base[idx[k]]`. AVX2 `vpgatherdd` / `vgatherdps` (scale 4, every
+lane active; x86 requires AVX2). The caller owns the bounds, as with `load`. ARM: compile
+error (NEON has no gather; see `docs/idioms/neon-gather.md`). Since v1.21.0.
+
+### gather (deprecated since v1.21.0)
+
+Use the typed forms above: the generic form lowers to LLVM's masked
+gather, which LLVM scalarizes on x86-64-v3. Removal in v2.0.0.
+
 
 Load elements from scattered memory addresses using an index vector. x86 only -- not available on ARM.
 
@@ -533,6 +596,7 @@ while m != 0 {
 | `to_f64(x)` | Convert to `f64` |
 | `to_i32(x)` | Convert to `i32` |
 | `to_i64(x)` | Convert to `i64` |
+| `to_u64(x)` | Convert to `u64` (integers extend by their signedness; floats truncate toward zero, and must be in `0..2^64`) |
 
 ```
 let f: f32 = to_f32(i);

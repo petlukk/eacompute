@@ -18,6 +18,10 @@ pub enum Type {
     F16,
     F64,
     Bool,
+    /// The lane of a comparison mask: all ones or zero, remembering the
+    /// element type it was compared from (v1.21.0), so masks of different
+    /// sources never combine through a hidden pack or extend.
+    Mask(Box<Type>),
     IntLiteral,
     FloatLiteral,
     String,
@@ -66,6 +70,12 @@ impl Type {
         matches!(self, Type::Bool)
     }
 
+    /// A comparison mask lane (or a bool lane), as `select` and the
+    /// bitmask intrinsics take.
+    pub fn is_mask_lane(&self) -> bool {
+        matches!(self, Type::Bool | Type::Mask(_))
+    }
+
     pub fn is_pointer(&self) -> bool {
         matches!(self, Type::Pointer { .. })
     }
@@ -77,7 +87,7 @@ impl Type {
     /// Size in bits of a scalar element type. Panics on non-scalar types.
     pub fn size_bits(&self) -> usize {
         match self {
-            Type::I8 | Type::U8 | Type::Bool => 8,
+            Type::I8 | Type::U8 | Type::Bool | Type::Mask(_) => 8,
             Type::I16 | Type::U16 | Type::F16 => 16,
             Type::I32 | Type::U32 | Type::F32 => 32,
             Type::I64 | Type::U64 | Type::F64 => 64,
@@ -108,6 +118,7 @@ impl fmt::Display for Type {
             Type::F16 => write!(f, "f16"),
             Type::F64 => write!(f, "f64"),
             Type::Bool => write!(f, "bool"),
+            Type::Mask(of) => write!(f, "mask<{of}>"),
             Type::IntLiteral => write!(f, "integer literal"),
             Type::FloatLiteral => write!(f, "float literal"),
             Type::String => write!(f, "string"),

@@ -176,6 +176,40 @@ impl TypeChecker {
         }
     }
 
+    /// `gather_<elem>x<width>(base: *elem, idx: i32x<width>) -> elemx<width>`:
+    /// the typed, native gathers (AVX2 vpgatherdd/vgatherdps).
+    pub(super) fn check_gather_typed(
+        &self,
+        name: &str,
+        elem: Type,
+        width: usize,
+        args: &[Expr],
+        locals: &HashMap<String, (Type, bool)>,
+        span: &Span,
+    ) -> crate::error::Result<Type> {
+        if args.len() != 2 {
+            return Err(CompileError::type_error(
+                format!("{name} expects 2 arguments (base, indices)"),
+                span.clone(),
+            ));
+        }
+        let ptr_type = self.check_expr(&args[0], locals)?;
+        if !matches!(&ptr_type, Type::Pointer { inner, .. } if inner.as_ref() == &elem) {
+            return Err(CompileError::type_error(
+                format!("{name} expects a base of type *{elem}, got {ptr_type}"),
+                args[0].span().clone(),
+            ));
+        }
+        let idx_type = self.check_expr(&args[1], locals)?;
+        if !matches!(&idx_type, Type::Vector { elem: e, width: w } if e.as_ref() == &Type::I32 && *w == width) {
+            return Err(CompileError::type_error(
+                format!("{name} expects indices of type i32x{width}, got {idx_type}"),
+                args[1].span().clone(),
+            ));
+        }
+        Ok(Type::Vector { elem: Box::new(elem), width })
+    }
+
     pub(super) fn check_gather(
         &self,
         args: &[Expr],

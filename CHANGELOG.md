@@ -1,5 +1,59 @@
 # Changelog
 
+## v1.21.0 — UNRELEASED — consumer gaps (Tiro, Linta, Vingilot)
+
+### Added
+
+- **`gather_i32x4` / `gather_i32x8` / `gather_f32x4` / `gather_f32x8`** —
+  typed native gathers (AVX2 `vpgatherdd` / `vgatherdps`). The generic
+  `gather` lowered to `llvm.masked.gather`, which LLVM scalarizes on
+  x86-64-v3 (Linta's `cells.ea`: 30 `vpextrd`/`vpinsrd`, no `vpgatherdd`;
+  Tiro's palette-row kernel was dropped for it). ARM: compile error.
+- **`to_u64`** — the missing member of the `to_*` conversions (integers
+  extend by their signedness, floats `fptoui`). Linta's `lex_masks_arm` and
+  Vingilot's `vg_css_masks` built 64-bit masks from two `u32` halves
+  through `i64` ("Eä has no to_u64").
+- **`andnot_u8x16` / `andnot_u8x32` / `andnot_u64x2` / `andnot_u64x4`** —
+  `a & !b` in one instruction (x86 `vpandn`, ARM `bic`). Linta's GC sweep
+  computed `alloc & !mark` as `a ^ (a & m)` (two instructions), and its
+  regexp kernels wrote NOT as `x .^ ff` for LLVM to fold into `vpandn`/`bic`
+  unseen.
+- **`.&`, `.|`, `.^` on comparison masks** — a comparison of `TxN` vectors
+  now gives a `mask<T>xN`, and two masks of the same source and width
+  combine directly (one `vpand`/`vpor`/`vpxor`; ARM `and`/`orr`/`eor`),
+  feeding `select`, `movemask_*` and `nibble_mask_u8x16` as before.
+  Vingilot's five ARM scanners and Linta's `cells.ea` went through
+  `select(m, ff, 0)` (3 `vpblendvb` left in `cells`). Masks of different
+  sources (`(a_i32x8 .< b) .& (c_f32x8 .< d)`), a mask with an integer
+  vector, and shifts of masks are type errors: they would need a hidden
+  pack or extend. Masks are still written inline (a `let` needs a type,
+  and mask types have no spelling). Known: `select` still accepts a mask of
+  another source with the same lane count, as before.
+- **`floor_f32x4` / `floor_f32x8`** (x86 `vroundps` floor mode, ARM
+  `frintm`) and **`bitcast_f32x4` / `bitcast_f32x8`** (the direction to
+  float; no instruction). For Tiro's f32x8 colour kernel (Skia's
+  `approx_pow2` needs `floor` and bit-level float/int moves). Integer to
+  float was already `to_f32` on `i32xN` (`vcvtdq2ps`, ARM `scvtf`), now
+  pinned by a test.
+- **`bitcast_u8x32` / `bitcast_i16x16`** (no instruction) and
+  **`widen_u8x16_u16x16`** (x86 `vpmovzxbw` into a ymm register; ARM error
+  pointing to `widen_u8_u16` + `widen_u8_u16_hi`). For Tiro's 256-bit row
+  kernels (8 RGBA pixels a step).
+- **`load_masked_<t>` / `store_masked_<t>`** for `i32x4`, `i32x8`,
+  `f32x4`, `f32x8` and `u64x4`: the first `n` lanes, zeros after on a load;
+  AVX2 `vpmaskmovd` / `vpmaskmovq` / `vmaskmovps`. ARM: compile error (NEON
+  has no masked load or store; use a padded buffer).
+  A count below zero selects no lane.
+- **x86 requires AVX2 for the new typed and 256-bit forms** (`--target`
+  x86-64-v3 or newer). Eä does not check the CPU's features itself.
+
+### Deprecated
+
+- **`gather`** — use the typed spelling. Removal in v2.0.0.
+- **`load_masked` / `store_masked`** — use the typed spelling. The generic
+  forms are emulated by LLVM for 8- and 16-bit lanes on AVX2 and for every
+  lane type on ARM. Removal in v2.0.0.
+
 ## v1.20.0 — 2026-11-12 — u8x16 bitcast
 
 ### Added

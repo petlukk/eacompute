@@ -51,6 +51,35 @@ pub type DeprecationTable = &'static [(&'static str, DeprecationInfo)];
 /// warning before the hard break in the next major release.
 pub const DEPRECATED_INTRINSICS: DeprecationTable = &[
     (
+        "load_masked",
+        DeprecationInfo {
+            since: "1.21.0",
+            advice: "use the typed spelling: load_masked_i32x4 / load_masked_i32x8 / \
+                     load_masked_f32x4 / load_masked_f32x8 / load_masked_u64x4 (AVX2 \
+                     vpmaskmov/vmaskmovps); 8- and 16-bit lanes and ARM have no masked load \
+                     (other 32/64-bit types: no typed form yet), so copy the tail into a \
+                     padded buffer",
+        },
+    ),
+    (
+        "store_masked",
+        DeprecationInfo {
+            since: "1.21.0",
+            advice: "use the typed spelling: store_masked_i32x4 / store_masked_i32x8 / \
+                     store_masked_f32x4 / store_masked_f32x8 / store_masked_u64x4; 8- and \
+                     16-bit lanes and ARM have no masked store, so write through a padded buffer",
+        },
+    ),
+    (
+        "gather",
+        DeprecationInfo {
+            since: "1.21.0",
+            advice: "use the typed spelling: gather_i32x4 / gather_i32x8 / gather_f32x4 / \
+                     gather_f32x8 (AVX2 vpgatherdd/vgatherdps); other element types have no \
+                     typed gather yet, so load those lanes with scalar loads",
+        },
+    ),
+    (
         "sat_add",
         DeprecationInfo {
             since: "1.12.0",

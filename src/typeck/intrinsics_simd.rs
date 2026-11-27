@@ -179,7 +179,7 @@ impl TypeChecker {
                     width: mask_w,
                 },
                 Type::Vector { width: val_w, .. },
-            ) if mask_elem.is_bool() && mask_w == val_w => Ok(a_type),
+            ) if mask_elem.is_mask_lane() && mask_w == val_w => Ok(a_type),
             _ => Err(CompileError::type_error(
                 format!(
                     "select mask must be bool vector matching operand width, got {mask_type}. Use comparison operators (.>, .==) to create a mask"
@@ -336,7 +336,7 @@ impl TypeChecker {
 
         match &arg_type {
             Type::Vector { elem, width } => {
-                let valid_elem = matches!(elem.as_ref(), Type::U8 | Type::I8 | Type::Bool);
+                let valid_elem = matches!(elem.as_ref(), Type::U8 | Type::I8) || elem.is_mask_lane();
                 if !valid_elem {
                     return Err(CompileError::type_error(
                         format!("movemask requires u8/i8/bool vector, got {arg_type}"),

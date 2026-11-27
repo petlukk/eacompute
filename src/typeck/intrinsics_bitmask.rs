@@ -52,7 +52,7 @@ impl TypeChecker {
         let arg = self.check_expr(&args[0], locals)?;
         let ok = match &arg {
             Type::Vector { elem, width: w } if *w == width => match elem.as_ref() {
-                Type::Bool => true,
+                Type::Bool | Type::Mask(_) => true,
                 Type::U8 | Type::I8 => raw_bytes_ok,
                 _ => false,
             },
