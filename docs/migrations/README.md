@@ -63,3 +63,6 @@ One sentence per breaking item.
 
 - **Affects:** known downstream consumers if any.
 ```
+- [`v1.21.0.md`](v1.21.0.md) — typed native `gather_*` and
+  `load_masked_*` / `store_masked_*`; the generic forms are deprecated.
+  Deprecation cycle begins v1.21.0.
