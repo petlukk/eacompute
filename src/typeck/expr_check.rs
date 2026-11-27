@@ -352,6 +352,7 @@ impl TypeChecker {
                         "to_i16",
                         "to_i32",
                         "to_i64",
+                        "to_u64",
                         "reduce_add",
                         "reduce_max",
                         "reduce_min",

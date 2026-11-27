@@ -53,7 +53,7 @@ impl TypeChecker {
             "cos_approx_f32" => {
                 Some(self.check_sin_cos_approx_f32("cos_approx_f32", args, locals, span))
             }
-            "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" => {
+            "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" | "to_u64" => {
                 Some(self.check_conversion(name, args, locals, span))
             }
             "ptr_as_i8" | "ptr_as_u8" | "ptr_as_i16" | "ptr_as_u16" | "ptr_as_i32"
@@ -456,6 +456,7 @@ impl TypeChecker {
             "to_i16" => Type::I16,
             "to_i32" => Type::I32,
             "to_i64" => Type::I64,
+            "to_u64" => Type::U64,
             _ => unreachable!(),
         };
         Ok(target)

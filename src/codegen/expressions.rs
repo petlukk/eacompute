@@ -386,6 +386,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "to_i16" => Some(Type::I16),
             "to_i32" => Some(Type::I32),
             "to_i64" => Some(Type::I64),
+            "to_u64" => Some(Type::U64),
             "to_f32" => Some(Type::F32),
             "to_f64" => Some(Type::F64),
             "reduce_add" | "reduce_max" | "reduce_min" => match self.infer_expr_type(args.first()?)? {

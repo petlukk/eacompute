@@ -84,6 +84,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "to_i16"
                 | "to_i32"
                 | "to_i64"
+                | "to_u64"
                 | "prefetch"
                 | "prefetch_write"
                 | "prefetch_nta"
@@ -319,7 +320,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             "ummla_i32" => self.compile_ummla_i32(args, function),
             "usmmla_i32" => self.compile_usmmla_i32(args, function),
             "shuffle_bytes" => self.compile_shuffle_bytes(args, function),
-            "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" => {
+            "to_f32" | "to_f64" | "to_f16" | "to_i16" | "to_i32" | "to_i64" | "to_u64" => {
                 self.compile_conversion(name, args, function)
             }
             "prefetch" => self.compile_prefetch(args, function, 0, 3),

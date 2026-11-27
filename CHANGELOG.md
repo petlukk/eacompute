@@ -9,6 +9,10 @@
   `gather` lowered to `llvm.masked.gather`, which LLVM scalarizes on
   x86-64-v3 (Linta's `cells.ea`: 30 `vpextrd`/`vpinsrd`, no `vpgatherdd`;
   Tiro's palette-row kernel was dropped for it). ARM: compile error.
+- **`to_u64`** — the missing member of the `to_*` conversions (integers
+  extend by their signedness, floats `fptoui`). Linta's `lex_masks_arm` and
+  Vingilot's `vg_css_masks` built 64-bit masks from two `u32` halves
+  through `i64` ("Eä has no to_u64").
 
 ### Deprecated
 

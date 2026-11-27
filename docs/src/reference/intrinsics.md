@@ -548,6 +548,7 @@ while m != 0 {
 | `to_f64(x)` | Convert to `f64` |
 | `to_i32(x)` | Convert to `i32` |
 | `to_i64(x)` | Convert to `i64` |
+| `to_u64(x)` | Convert to `u64` (integers extend by their signedness; floats truncate toward zero, unsigned) |
 
 ```
 let f: f32 = to_f32(i);
