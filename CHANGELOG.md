@@ -29,6 +29,12 @@
   pack or extend. Masks are still written inline (a `let` needs a type,
   and mask types have no spelling). Known: `select` still accepts a mask of
   another source with the same lane count, as before.
+- **`floor_f32x4` / `floor_f32x8`** (x86 `vroundps` floor mode, ARM
+  `frintm`) and **`bitcast_f32x4` / `bitcast_f32x8`** (the direction to
+  float; no instruction). For Tiro's f32x8 colour kernel (Skia's
+  `approx_pow2` needs `floor` and bit-level float/int moves). Integer to
+  float was already `to_f32` on `i32xN` (`vcvtdq2ps`, ARM `scvtf`), now
+  pinned by a test.
 
 ### Deprecated
 

@@ -109,6 +109,8 @@ impl TypeChecker {
             "bitcast_i32x8" => Some(self.check_bitcast(args, locals, span, Type::I32, 8)),
             "bitcast_i16x8" => Some(self.check_bitcast(args, locals, span, Type::I16, 8)),
             "bitcast_u8x16" => Some(self.check_bitcast(args, locals, span, Type::U8, 16)),
+            "bitcast_f32x4" => Some(self.check_bitcast(args, locals, span, Type::F32, 4)),
+            "bitcast_f32x8" => Some(self.check_bitcast(args, locals, span, Type::F32, 8)),
             "sat_add" => Some(self.check_sat_add(args, locals, span)),
             "sat_sub" => Some(self.check_sat_sub(args, locals, span)),
             "abs_diff" => Some(self.check_abs_diff(args, locals, span)),
@@ -236,6 +238,7 @@ impl TypeChecker {
                 .check_bitmask_intrinsic(name, args, locals, span)
                 .or_else(|| self.check_clmul_intrinsic(name, args, locals, span))
                 .or_else(|| self.check_logic_intrinsic(name, args, locals, span))
+                .or_else(|| self.check_float_intrinsic(name, args, locals, span))
                 .or_else(|| self.check_aes_intrinsic(name, args, locals, span)),
         }
     }

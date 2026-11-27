@@ -205,6 +205,16 @@ Masked vector store. Only lanes where the mask is true are written.
 store_masked(out, i, value, mask);
 ```
 
+### floor_f32x4 / floor_f32x8
+
+Each lane rounded toward negative infinity (`-1.5` → `-2`, `-0.0` stays
+`-0.0`). x86 `vroundps` (floor mode), ARM `frintm`. Since v1.21.0.
+
+### bitcast_f32x4 / bitcast_f32x8
+
+Any 128- or 256-bit vector reinterpreted as `f32` lanes; no instruction.
+Integer to float by value is `to_f32` on `i32xN`. Since v1.21.0.
+
 ### andnot_u8x16 / andnot_u8x32 / andnot_u64x2 / andnot_u64x4
 
 ```

@@ -174,6 +174,8 @@ impl<'ctx> CodeGenerator<'ctx> {
                 | "bitcast_i32x8"
                 | "bitcast_i16x8"
                 | "bitcast_u8x16"
+                | "bitcast_f32x4"
+                | "bitcast_f32x8"
                 | "f32x4_from_scalars"
                 | "f32x8_from_scalars"
                 | "permute_runtime"
@@ -181,6 +183,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             || Self::is_bitmask_intrinsic(name)
             || Self::is_clmul_intrinsic(name)
             || Self::is_logic_intrinsic(name)
+            || Self::is_float_intrinsic(name)
             || Self::is_aes_intrinsic(name)
     }
 
@@ -382,6 +385,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             "bitcast_i32x8" => self.compile_bitcast(args, function, Type::I32, 8),
             "bitcast_i16x8" => self.compile_bitcast(args, function, Type::I16, 8),
             "bitcast_u8x16" => self.compile_bitcast(args, function, Type::U8, 16),
+            "bitcast_f32x4" => self.compile_bitcast(args, function, Type::F32, 4),
+            "bitcast_f32x8" => self.compile_bitcast(args, function, Type::F32, 8),
             "widen_u8_u16" => self.compile_widen_u8_u16(args, function),
             "widen_u8_u16_hi" => self.compile_widen_u8_u16_hi(args, function),
             "concat_i8x16" | "concat_u8x16" | "concat_i8x32" | "concat_u8x32" | "concat_i32x8"
@@ -413,6 +418,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 self.compile_load(args, Some(&vec_type), function)
             }
             _ if Self::is_logic_intrinsic(name) => self.compile_logic_intrinsic(name, args, function),
+            _ if Self::is_float_intrinsic(name) => self.compile_float_intrinsic(name, args, function),
             _ if Self::is_clmul_intrinsic(name) => {
                 self.compile_clmul_intrinsic(name, args, function)
             }
