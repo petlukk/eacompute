@@ -205,6 +205,17 @@ Masked vector store. Only lanes where the mask is true are written.
 store_masked(out, i, value, mask);
 ```
 
+### andnot_u8x16 / andnot_u8x32 / andnot_u64x2 / andnot_u64x4
+
+```
+let dead: u64x4 = andnot_u64x4(alloc, mark)   // alloc & !mark
+```
+
+`a & !b`, both operands and the result of the type in the name. One
+instruction on both targets: x86 `vpandn`, ARM `bic`. There is no vector
+NOT: x86 has none (it would be a hidden `vpxor`); write `.^ splat(255)`, or
+use `andnot` where the NOT feeds an AND. Since v1.21.0.
+
 ### gather_i32x4 / gather_i32x8 / gather_f32x4 / gather_f32x8
 
 ```

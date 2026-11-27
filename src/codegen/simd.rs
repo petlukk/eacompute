@@ -180,6 +180,7 @@ impl<'ctx> CodeGenerator<'ctx> {
         ) || typeck_types::parse_typed_load(name).is_some()
             || Self::is_bitmask_intrinsic(name)
             || Self::is_clmul_intrinsic(name)
+            || Self::is_logic_intrinsic(name)
             || Self::is_aes_intrinsic(name)
     }
 
@@ -411,6 +412,7 @@ impl<'ctx> CodeGenerator<'ctx> {
                 let vec_type = typeck_types::parse_typed_load(name).unwrap();
                 self.compile_load(args, Some(&vec_type), function)
             }
+            _ if Self::is_logic_intrinsic(name) => self.compile_logic_intrinsic(name, args, function),
             _ if Self::is_clmul_intrinsic(name) => {
                 self.compile_clmul_intrinsic(name, args, function)
             }

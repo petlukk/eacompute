@@ -235,6 +235,7 @@ impl TypeChecker {
             _ => self
                 .check_bitmask_intrinsic(name, args, locals, span)
                 .or_else(|| self.check_clmul_intrinsic(name, args, locals, span))
+                .or_else(|| self.check_logic_intrinsic(name, args, locals, span))
                 .or_else(|| self.check_aes_intrinsic(name, args, locals, span)),
         }
     }

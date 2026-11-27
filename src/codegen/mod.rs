@@ -16,6 +16,7 @@ mod simd_bitmask;
 #[cfg(feature = "llvm")]
 mod simd_byteshift;
 mod simd_clmul;
+mod simd_logic;
 #[cfg(feature = "llvm")]
 mod simd_conv;
 #[cfg(feature = "llvm")]

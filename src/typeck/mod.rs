@@ -11,6 +11,7 @@ mod intrinsics_conv;
 mod intrinsics_dotprod;
 mod intrinsics_f16;
 mod intrinsics_lane;
+mod intrinsics_logic;
 mod intrinsics_memory;
 mod intrinsics_neon;
 mod intrinsics_pack;

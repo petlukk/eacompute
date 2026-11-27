@@ -13,6 +13,11 @@
   extend by their signedness, floats `fptoui`). Linta's `lex_masks_arm` and
   Vingilot's `vg_css_masks` built 64-bit masks from two `u32` halves
   through `i64` ("Eä has no to_u64").
+- **`andnot_u8x16` / `andnot_u8x32` / `andnot_u64x2` / `andnot_u64x4`** —
+  `a & !b` in one instruction (x86 `vpandn`, ARM `bic`). Linta's GC sweep
+  computed `alloc & !mark` as `a ^ (a & m)` (two instructions), and its
+  regexp kernels wrote NOT as `x .^ ff` for LLVM to fold into `vpandn`/`bic`
+  unseen.
 
 ### Deprecated
 
