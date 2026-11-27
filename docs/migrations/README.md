@@ -34,6 +34,9 @@ loud warnings before the hard break.
 - [`v1.16.0.md`](v1.16.0.md) — monomorphic rename of `movemask` →
   `movemask_u8x16` / `movemask_u8x32` (x86) with ARM counterpart
   `nibble_mask_u8x16`. Deprecation cycle begins v1.16.0.
+- [`v1.21.0.md`](v1.21.0.md) — typed native `gather_*` and
+  `load_masked_*` / `store_masked_*`; the generic forms are deprecated.
+  Deprecation cycle begins v1.21.0.
 
 ## Authoring a new migration file
 
@@ -63,6 +66,3 @@ One sentence per breaking item.
 
 - **Affects:** known downstream consumers if any.
 ```
-- [`v1.21.0.md`](v1.21.0.md) — typed native `gather_*` and
-  `load_masked_*` / `store_masked_*`; the generic forms are deprecated.
-  Deprecation cycle begins v1.21.0.
