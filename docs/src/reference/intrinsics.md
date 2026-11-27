@@ -214,8 +214,9 @@ let v: i32x8 = load_masked_i32x8(p, off, n)   // lanes 0..n of p[off..], zeros a
 store_masked_i32x8(p, off, v, n)               // writes lanes 0..n only
 ```
 
-Lanes past `n` are never read or written (safe at the end of a mapping).
-AVX2 `vpmaskmovd` / `vpmaskmovq` / `vmaskmovps`. ARM: compile error (NEON
+Lanes past `n` are never read or written (safe at the end of a mapping); a
+negative `n` selects no lane. AVX2 `vpmaskmovd` / `vpmaskmovq` / `vmaskmovps`
+(x86 requires AVX2). ARM: compile error (NEON
 has no masked load or store; copy the tail into a padded buffer). The
 generic `load_masked` / `store_masked` are deprecated since v1.21.0.
 Since v1.21.0.
@@ -260,7 +261,7 @@ let f: f32x4 = gather_f32x4(fbase, idx4) // fbase: *f32, idx4: i32x4
 ```
 
 Lane k is `base[idx[k]]`. AVX2 `vpgatherdd` / `vgatherdps` (scale 4, every
-lane active). The caller owns the bounds, as with `load`. ARM: compile
+lane active; x86 requires AVX2). The caller owns the bounds, as with `load`. ARM: compile
 error (NEON has no gather; see `docs/idioms/neon-gather.md`). Since v1.21.0.
 
 ### gather (deprecated since v1.21.0)
@@ -595,7 +596,7 @@ while m != 0 {
 | `to_f64(x)` | Convert to `f64` |
 | `to_i32(x)` | Convert to `i32` |
 | `to_i64(x)` | Convert to `i64` |
-| `to_u64(x)` | Convert to `u64` (integers extend by their signedness; floats truncate toward zero, unsigned) |
+| `to_u64(x)` | Convert to `u64` (integers extend by their signedness; floats truncate toward zero, and must be in `0..2^64`) |
 
 ```
 let f: f32 = to_f32(i);

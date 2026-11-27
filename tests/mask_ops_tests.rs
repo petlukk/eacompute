@@ -120,4 +120,23 @@ mod tests {
             "0 4 0 9 0 5 0 8 ffffffff",
         );
     }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn masks_combine_on_arm() {
+        assert_c_interop(
+            WS_ARM,
+            r#"
+            #include <stdio.h>
+            #include <stdint.h>
+            uint64_t ws(const uint8_t *p);
+            int main(void) {
+                uint8_t s[16] = {'a', ' ', 'b', '\t', 'c', 'd', ' ', ' ', 'e', '\t', 'f', 'g', 'h', 'i', 'j', ' '};
+                printf("%llx\n", (unsigned long long)ws(s));
+                return 0;
+            }
+            "#,
+            "f00000f0ff00f0f0",
+        );
+    }
 }

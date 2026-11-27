@@ -272,8 +272,8 @@ impl<'ctx> CodeGenerator<'ctx> {
             }
             "permute_runtime" => self.compile_permute_runtime(args, function),
             "scatter" => self.compile_scatter(args, function),
-            "load_masked" => self.compile_load_masked(args, type_hint, function),
-            "store_masked" => self.compile_store_masked(args, function),
+            "load_masked" => self.compile_load_masked(args, type_hint, function, false),
+            "store_masked" => self.compile_store_masked(args, function, false),
             "fma" => {
                 if self.call_uses_f16(args, None) {
                     return self.compile_fma_f16(args, function);

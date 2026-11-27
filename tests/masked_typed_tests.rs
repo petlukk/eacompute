@@ -62,6 +62,30 @@ mod tests {
         );
     }
 
+    /// A count below zero means no lanes (the generic form took it as an
+    /// unsigned count, so every lane).
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn negative_count_touches_no_lane() {
+        assert_c_interop(
+            TAIL8,
+            r#"
+            #include <stdio.h>
+            #include <stdint.h>
+            void tail(int32_t *p, int32_t n);
+            int main(void) {
+                int32_t p[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+                tail(p, -3);
+                int ok = 1;
+                for (int k = 0; k < 8; k++) ok &= p[k] == k + 1;
+                printf("%d\n", ok);
+                return 0;
+            }
+            "#,
+            "1",
+        );
+    }
+
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn typed_masked_are_native() {
@@ -78,7 +102,7 @@ mod tests {
     #[test]
     fn typed_masked_is_an_error_on_arm() {
         let e = asm(I4, "aarch64-unknown-linux-gnu", "generic").unwrap_err();
-        assert!(e.contains("padded"), "{e}");
+        assert!(e.contains("padded") && !e.contains('\\'), "{e}");
     }
 
     #[test]

@@ -117,4 +117,27 @@ mod tests {
         assert_typecheck_error("export func f(a: f32x4) -> f32x8 { return floor_f32x8(a) }", "f32x8");
         assert_typecheck_error("export func f(a: i32x4) -> f32x8 { return bitcast_f32x8(a) }", "bit widths");
     }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn floor_and_bitcast_run_on_arm() {
+        let src = "export func f(p: *f32, q: *i32, out: *mut f32, bits: *mut f32) {\n    let v: f32x4 = load(p, 0)\n    store(out, 0, floor_f32x4(v))\n    let i: i32x4 = load(q, 0)\n    store(bits, 0, bitcast_f32x4(i))\n}\n";
+        assert_c_interop(
+            src,
+            r#"
+            #include <stdio.h>
+            #include <stdint.h>
+            void f(const float *p, const int32_t *q, float *out, float *bits);
+            int main(void) {
+                float p[4] = {-1.5f, -0.0f, 2.999f, 0.5f};
+                int32_t q[4] = {0x3f800000, 0, (int32_t)0x80000000, 0x3f000000};
+                float o[4], b[4];
+                f(p, q, o, b);
+                printf("%g %g %g %g | %g %g %g %g\n", o[0], o[1], o[2], o[3], b[0], b[1], b[2], b[3]);
+                return 0;
+            }
+            "#,
+            "-2 -0 2 0 | 1 0 -0 0.5",
+        );
+    }
 }

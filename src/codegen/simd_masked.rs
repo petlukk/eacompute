@@ -10,10 +10,13 @@ use super::CodeGenerator;
 
 impl<'ctx> CodeGenerator<'ctx> {
     /// Builds a `<width x i1>` mask where lane `i` is true iff `i < count_val`.
+    /// Lanes below `count`; `signed`: a negative count selects no lane
+    /// (the typed forms), else the count is unsigned (the generic forms).
     fn build_count_mask(
         &mut self,
         count_val: inkwell::values::IntValue<'ctx>,
         width: u32,
+        signed: bool,
     ) -> crate::error::Result<VectorValue<'ctx>> {
         let i32_ty = self.context.i32_type();
         let lane_indices: Vec<_> = (0..width)
@@ -29,7 +32,12 @@ impl<'ctx> CodeGenerator<'ctx> {
 
         let mask = self
             .builder
-            .build_int_compare(IntPredicate::ULT, indices_vec, count_splat, "mask")
+            .build_int_compare(
+                if signed { IntPredicate::SLT } else { IntPredicate::ULT },
+                indices_vec,
+                count_splat,
+                "mask",
+            )
             .map_err(|e| CompileError::codegen_error(e.to_string()))?;
 
         Ok(mask)
@@ -40,6 +48,7 @@ impl<'ctx> CodeGenerator<'ctx> {
         args: &[Expr],
         type_hint: Option<&Type>,
         function: FunctionValue<'ctx>,
+        signed_count: bool,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         let ptr_val = self.compile_expr(&args[0], function)?.into_pointer_value();
         let idx_val = self.compile_expr(&args[1], function)?.into_int_value();
@@ -57,7 +66,7 @@ impl<'ctx> CodeGenerator<'ctx> {
         .map_err(|e| CompileError::codegen_error(e.to_string()))?;
 
         // Build mask: lane_indices < count_splat -> <N x i1>
-        let mask = self.build_count_mask(count_val, width)?;
+        let mask = self.build_count_mask(count_val, width, signed_count)?;
 
         // Build zero passthrough vector
         let passthrough = vec_ty.const_zero();
@@ -111,6 +120,7 @@ impl<'ctx> CodeGenerator<'ctx> {
         &mut self,
         args: &[Expr],
         function: FunctionValue<'ctx>,
+        signed_count: bool,
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         let ptr_val = self.compile_expr(&args[0], function)?.into_pointer_value();
         let idx_val = self.compile_expr(&args[1], function)?.into_int_value();
@@ -129,7 +139,7 @@ impl<'ctx> CodeGenerator<'ctx> {
         .map_err(|e| CompileError::codegen_error(e.to_string()))?;
 
         // Build mask: lane_indices < count_splat -> <N x i1>
-        let mask = self.build_count_mask(count_val, width)?;
+        let mask = self.build_count_mask(count_val, width, signed_count)?;
 
         // Element alignment
         let element_alignment = self.element_alignment(elem_ty);

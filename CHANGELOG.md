@@ -43,6 +43,9 @@
   `f32x4`, `f32x8` and `u64x4`: the first `n` lanes, zeros after on a load;
   AVX2 `vpmaskmovd` / `vpmaskmovq` / `vmaskmovps`. ARM: compile error (NEON
   has no masked load or store; use a padded buffer).
+  A count below zero selects no lane.
+- **x86 requires AVX2 for the new typed and 256-bit forms** (`--target`
+  x86-64-v3 or newer). Eä does not check the CPU's features itself.
 
 ### Deprecated
 

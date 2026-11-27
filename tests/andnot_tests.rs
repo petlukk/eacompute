@@ -94,4 +94,26 @@ mod tests {
         assert_typecheck_error("export func f(a: i32x4, b: i32x4) -> u8x16 { return andnot_u8x16(a, b) }", "u8x16");
         assert_typecheck_error("export func f(a: u8x16, b: u8x32) -> u8x16 { return andnot_u8x16(a, b) }", "u8x32");
     }
+
+    #[test]
+    #[cfg(target_arch = "aarch64")]
+    fn andnot_runs_on_arm() {
+        assert_c_interop(
+            SWEEP2,
+            r#"
+            #include <stdio.h>
+            #include <stdint.h>
+            void f(const uint64_t *a, const uint64_t *b, uint64_t *out);
+            int main(void) {
+                uint64_t a[2] = {0xff00, UINT64_MAX};
+                uint64_t b[2] = {0x0ff0, 1};
+                uint64_t o[2];
+                f(a, b, o);
+                printf("%llx %llx\n", (unsigned long long)o[0], (unsigned long long)o[1]);
+                return 0;
+            }
+            "#,
+            "f000 fffffffffffffffe",
+        );
+    }
 }

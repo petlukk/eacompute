@@ -22,17 +22,17 @@ impl<'ctx> CodeGenerator<'ctx> {
     ) -> crate::error::Result<BasicValueEnum<'ctx>> {
         if self.is_arm {
             return Err(CompileError::codegen_error(format!(
-                "{name}: NEON has no masked load or store; copy the tail into a padded buffer \\
-                 and use plain loads and stores"
+                "{name}: NEON has no masked load or store; copy the tail into a buffer padded \
+                 to a whole vector and use plain load/store (see docs/migrations/v1.21.0.md)"
             )));
         }
         let (store, elem, width) =
             crate::typeck::intrinsics_maskmem::typed_masked(name).expect("checked by is_maskmem_intrinsic");
         if store {
-            self.compile_store_masked(args, function)
+            self.compile_store_masked(args, function, true)
         } else {
             let hint = Type::Vector { elem: Box::new(elem), width };
-            self.compile_load_masked(args, Some(&hint), function)
+            self.compile_load_masked(args, Some(&hint), function, true)
         }
     }
 }

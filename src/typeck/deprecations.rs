@@ -56,8 +56,9 @@ pub const DEPRECATED_INTRINSICS: DeprecationTable = &[
             since: "1.21.0",
             advice: "use the typed spelling: load_masked_i32x4 / load_masked_i32x8 / \
                      load_masked_f32x4 / load_masked_f32x8 / load_masked_u64x4 (AVX2 \
-                     vpmaskmov/vmaskmovps); 8- and 16-bit lanes and ARM have no masked load, \
-                     so copy the tail into a padded buffer",
+                     vpmaskmov/vmaskmovps); 8- and 16-bit lanes and ARM have no masked load \
+                     (other 32/64-bit types: no typed form yet), so copy the tail into a \
+                     padded buffer",
         },
     ),
     (
@@ -75,7 +76,7 @@ pub const DEPRECATED_INTRINSICS: DeprecationTable = &[
             since: "1.21.0",
             advice: "use the typed spelling: gather_i32x4 / gather_i32x8 / gather_f32x4 / \
                      gather_f32x8 (AVX2 vpgatherdd/vgatherdps); other element types have no \
-                     gather instruction, so load those lanes with scalar loads",
+                     typed gather yet, so load those lanes with scalar loads",
         },
     ),
     (
